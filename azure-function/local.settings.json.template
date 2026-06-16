@@ -1,0 +1,19 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+
+    "ZOHO_CLIENT_ID":     "<your-zoho-client-id>",
+    "ZOHO_CLIENT_SECRET": "<your-zoho-client-secret>",
+    "ZOHO_REFRESH_TOKEN": "<your-zoho-refresh-token>",
+    "ZOHO_ORG_ID":        "60019389025",
+
+    "SHAREPOINT_TENANT_ID":     "<your-azure-tenant-id>",
+    "SHAREPOINT_CLIENT_ID":     "<your-azure-app-client-id>",
+    "SHAREPOINT_CLIENT_SECRET": "<your-azure-app-client-secret>",
+    "SHAREPOINT_SITE_URL":      "cloudenablersinc.sharepoint.com/sites/SupportTeam",
+    "SHAREPOINT_HTML_FOLDER":   "Daily Reports/HTML",
+    "SHAREPOINT_EXCEL_FOLDER":  "Daily Reports/Excel"
+  }
+}
