@@ -13,7 +13,7 @@
     "SHAREPOINT_CLIENT_ID":     "<your-azure-app-client-id>",
     "SHAREPOINT_CLIENT_SECRET": "<your-azure-app-client-secret>",
     "SHAREPOINT_SITE_URL":      "cloudenablersinc.sharepoint.com/sites/SupportTeam",
-    "SHAREPOINT_HTML_FOLDER":   "Daily Reports/HTML",
-    "SHAREPOINT_EXCEL_FOLDER":  "Daily Reports/Excel"
+    "SHAREPOINT_HTML_FOLDER":   "General/Daily-Incident-Report/Template",
+    "SHAREPOINT_EXCEL_FOLDER":  "General/Daily-Incident-Report/Template"
   }
 }
