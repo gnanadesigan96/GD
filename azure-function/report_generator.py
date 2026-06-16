@@ -429,11 +429,11 @@ def generate_excel(tickets: list[dict], today: date) -> bytes:
 
 
 def generate_html(tickets: list[dict], today: date) -> str:
-    """Return full HTML report string."""
-    mo_long  = ["January","February","March","April","May","June",
-                "July","August","September","October","November","December"]
-    mo_short = ["Jan","Feb","Mar","Apr","May","Jun",
-                "Jul","Aug","Sep","Oct","Nov","Dec"]
+    """Return full HTML report (table-based inline styles, email-compatible)."""
+    from collections import defaultdict
+
+    mo_long = ["January","February","March","April","May","June",
+               "July","August","September","October","November","December"]
     title_date = f"{mo_long[today.month-1]} {today.day}, {today.year}"
 
     by_status: dict[str, list] = {}
@@ -445,227 +445,220 @@ def generate_html(tickets: list[dict], today: date) -> str:
     oh    = by_status.get("On Hold", [])
     arc   = by_status.get("Awaiting Resolution Confirmation", [])
 
-    n_new  = len(open_)
-    n_ip   = len(ip)
-    n_oh   = len(oh)
-    n_arc  = len(arc)
+    n_new = len(open_); n_ip = len(ip); n_oh = len(oh); n_arc = len(arc)
 
-    # L2 count: only Platinum/Gold/Silver with ADO
+    # L2: only Platinum/Gold/Silver with ADO
     n_l2 = sum(1 for t in tickets
                if t["ado"] and t["band"] in ("Platinum","Gold","Silver"))
 
-    # Aging counts
     ag = {"30d+":0,"15-30d":0,"8-14d":0,"0-7d":0}
     for t in tickets:
         ag[t["bucket"]] += 1
 
-    # Band counts (visible in report)
-    n_plat  = sum(1 for t in tickets if t["band"] == "Platinum")
-    n_gold  = sum(1 for t in tickets if t["band"] == "Gold")
-    n_silver= sum(1 for t in tickets if t["band"] == "Silver")
+    n_plat   = sum(1 for t in tickets if t["band"] == "Platinum")
+    n_gold   = sum(1 for t in tickets if t["band"] == "Gold")
+    n_silver = sum(1 for t in tickets if t["band"] == "Silver")
 
-    # Group visible tickets by band/account for HTML sections
-    # Order: Platinum accounts, then Gold accounts, then Silver accounts, then Blackstone (Bronze named)
-    def _group_by_account(ticket_list: list[dict]) -> dict[str, list]:
-        groups: dict[str, list] = {}
-        for t in ticket_list:
-            groups.setdefault(t["display"], []).append(t)
-        return groups
+    # ── Pill helpers ──────────────────────────────────────────────────────────
+    _AGE_PILL = {
+        "0-7d":  "background:#F0FDF4;color:#14532D",
+        "8-14d": "background:#FEFCE8;color:#713F12",
+        "15-30d":"background:#FEF3C7;color:#B45309",
+        "30d+":  "background:#FEE2E2;color:#B91C1C",
+    }
+    _PRI_PILL = {
+        "P2": "background:#FFF7ED;color:#C2410C",
+        "P3": "background:#F1F5F9;color:#475569",
+    }
+    _STAT_PILL = {
+        "Open":                            "background:#EFF6FF;color:#1D4ED8",
+        "In Progress":                     "background:#F0FDF4;color:#15803D",
+        "On Hold":                         "background:#FFFBEB;color:#B45309",
+        "Awaiting Resolution Confirmation":"background:#EDE9FE;color:#6D28D9",
+    }
+    _STAT_BADGE_STYLE = {
+        "Open":                            "background:#EFF6FF;color:#1D4ED8",
+        "In Progress":                     "background:#F0FDF4;color:#15803D",
+        "On Hold":                         "background:#FFFBEB;color:#B45309",
+        "Awaiting Resolution Confirmation":"background:#EDE9FE;color:#6D28D9",
+    }
+    _ROW_BG = {
+        ("On Hold","30d+"):      "#FFF0F0",
+        ("On Hold","15-30d"):    "#FFFBF0",
+        ("On Hold","8-14d"):     "#FFFBF0",
+        ("In Progress","8-14d"): "#FEFFF0",
+    }
+    _BAND_BADGE_HTML = {
+        "Platinum": '<span style="font-size:9px;font-weight:700;background:#1E293B;color:#CBD5E1;border:1px solid #334155;border-radius:4px;padding:2px 7px;">&#x1F451; Platinum</span>',
+        "Gold":     '<span style="font-size:9px;font-weight:700;background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;border-radius:4px;padding:2px 7px;">&#x2B50; Gold</span>',
+        "Silver":   '<span style="font-size:9px;font-weight:700;background:#F1F5F9;color:#475569;border:1px solid #CBD5E1;border-radius:4px;padding:2px 7px;">&#x1F948; Silver</span>',
+        "Bronze":   '<span style="font-size:9px;font-weight:700;background:#FFF7ED;color:#9A3412;border:1px solid #FED7AA;border-radius:4px;padding:2px 7px;">&#x1F536; Bronze</span>',
+    }
 
-    plat_tickets      = [t for t in tickets if t["band"] == "Platinum"]
-    gold_tickets      = [t for t in tickets if t["band"] == "Gold"]
-    silver_tickets    = [t for t in tickets if t["band"] == "Silver"]
-    blackstone_tickets= [t for t in tickets if t["band"] == "Blackstone-Bronze"]
+    _TH = (
+        '<tr style="background:#F8FAFC;">'
+        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:7%;">Ticket</th>'
+        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:22%;">Subject</th>'
+        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:8%;">Priority</th>'
+        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:13%;">Status</th>'
+        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:5%;">Age</th>'
+        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:5%;">Team</th>'
+        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:6%;">ADO #</th>'
+        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:13%;">Raised By</th>'
+        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:13%;">Last Update</th>'
+        '</tr>'
+    )
 
-    # CSS
-    css = """
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#F8FAFC;margin:0;padding:20px;color:#0F172A}
-    .container{max-width:1200px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.08);overflow:hidden}
-    .header{background:linear-gradient(135deg,#1E293B 0%,#334155 100%);padding:28px 36px;color:#fff}
-    .header h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.3px}
-    .header p{margin:6px 0 0;font-size:13px;opacity:.7}
-    .summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:20px 28px;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
-    .card{background:#fff;border-radius:8px;padding:14px 16px;border:1px solid #E2E8F0;text-align:center}
-    .card .label{font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
-    .card .value{font-size:26px;font-weight:700;color:#0F172A}
-    .card.blue{border-top:3px solid #3B82F6}.card.green{border-top:3px solid #22C55E}
-    .card.yellow{border-top:3px solid #EAB308}.card.purple{border-top:3px solid #A855F7}
-    .card.l2{border-top:3px solid #6D28D9}
-    .age-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 28px 16px;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
-    .age-card{border-radius:8px;padding:12px 16px;text-align:center}
-    .age-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-    .age-card .value{font-size:22px;font-weight:700}
-    .age-red{background:#FEE2E2;color:#B91C1C}.age-orange{background:#FEF3C7;color:#B45309}
-    .age-yellow{background:#FEFCE8;color:#713F12}.age-green{background:#F0FDF4;color:#14532D}
-    .band-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:0 28px 20px;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
-    .band-card{border-radius:8px;padding:12px 16px;text-align:center}
-    .band-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-    .band-card .value{font-size:22px;font-weight:700}
-    .plat{background:#CBD5E1;color:#1E293B}.gold{background:#FEF9C3;color:#92400E}.silver{background:#DBEAFE;color:#1E4976}
-    .section{padding:20px 28px;border-bottom:1px solid #F1F5F9}
-    .section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-    .section-title{font-size:15px;font-weight:700;color:#1E293B}
-    .badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
-    .badge-plat{background:#CBD5E1;color:#1E293B}.badge-gold{background:#FEF9C3;color:#92400E}
-    .badge-silver{background:#DBEAFE;color:#1E4976}.badge-bronze{background:#FFF7ED;color:#9A3412}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th{background:#1E293B;color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600}
-    td{padding:7px 10px;border-bottom:1px solid #F1F5F9;vertical-align:top}
-    .ticket-id{color:#2563EB;font-weight:700;white-space:nowrap}
-    .pri-p2{background:#FFF7ED;color:#C2410C;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700}
-    .pri-p3{background:#F1F5F9;color:#475569;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700}
-    .stat-open{background:#DBEAFE;color:#1D4ED8;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
-    .stat-ip{background:#DCFCE7;color:#15803D;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
-    .stat-oh{background:#FEF9C3;color:#B45309;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
-    .stat-arc{background:#EDE9FE;color:#6D28D9;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
-    .age-0{background:#F0FDF4;color:#14532D;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
-    .age-1{background:#FEFCE8;color:#713F12;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
-    .age-2{background:#FEF3C7;color:#B45309;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
-    .age-3{background:#FEE2E2;color:#B91C1C;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
-    .ado{background:#F5F3FF;color:#6D28D9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
-    .team-l2{background:#EDE9FE;color:#6D28D9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
-    .team-l1{background:#F1F5F9;color:#64748B;padding:2px 6px;border-radius:4px;font-size:10px}
-    .reason{font-size:11px;color:#78350F;max-width:280px}
-    .footer{padding:16px 28px;background:#F8FAFC;text-align:center;font-size:11px;color:#94A3B8}
-    """
-
-    def _age_cls(bkt: str) -> str:
-        return {"0-7d":"age-0","8-14d":"age-1","15-30d":"age-2","30d+":"age-3"}[bkt]
-
-    def _stat_cls(status: str) -> str:
-        return {"Open":"stat-open","In Progress":"stat-ip",
-                "On Hold":"stat-oh","Awaiting Resolution Confirmation":"stat-arc"}.get(status,"")
-
-    def _stat_label(status: str) -> str:
-        return "ARC" if status == "Awaiting Resolution Confirmation" else status
-
-    def _pri_cls(pri: str) -> str:
-        return "pri-p2" if pri == "P2" else "pri-p3"
-
-    def _badge_cls(band: str) -> str:
-        return {"Platinum":"badge-plat","Gold":"badge-gold",
-                "Silver":"badge-silver"}.get(band,"badge-bronze")
-
-    def _ticket_rows(ticket_list: list[dict], show_reason: bool = True) -> str:
+    def _ticket_rows(lst: list[dict]) -> str:
         rows = []
-        for t in ticket_list:
-            reason_cell = f'<td class="reason">{t["reason"] or "—"}</td>' if show_reason else ""
-            rows.append(f"""
-            <tr>
-              <td class="ticket-id">#{t["num"]}</td>
-              <td>{t["display"]}</td>
-              <td><span class="{_age_cls(t["bucket"])}">{t["age"]}d</span></td>
-              <td><span class="{_pri_cls(t["priority"])}">{t["priority"]}</span></td>
-              <td><span class="{_stat_cls(t["status"])}">{_stat_label(t["status"])}</span></td>
-              <td style="max-width:300px;font-size:11px">{t["subject"]}</td>
-              <td><span class="{"ado" if t["ado"] else "team-l1"}">{t["ado"] or "—"}</span></td>
-              <td><span class="{"team-l2" if t["team"]=="L2" else "team-l1"}">{t["team"]}</span></td>
-              <td style="font-size:11px;color:#64748B">{t["contact"]}</td>
-              <td style="font-size:11px;color:#334155">{t["assignee"]}</td>
-              {reason_cell}
-              <td style="font-size:10px;color:#94A3B8;white-space:nowrap">{t["last_updated"]}</td>
-            </tr>""")
-        return "\n".join(rows)
+        for t in lst:
+            rbg = _ROW_BG.get((t["status"], t["bucket"]), "#FFFFFF")
+            age_sty  = _AGE_PILL[t["bucket"]]
+            pri_sty  = _PRI_PILL.get(t["priority"], "background:#F1F5F9;color:#475569")
+            stat_sty = _STAT_PILL.get(t["status"], "background:#F1F5F9;color:#475569")
+            team_td  = (
+                '<span style="font-size:9px;font-weight:700;background:#EDE9FE;color:#6D28D9;padding:2px 5px;border-radius:3px;">L2</span>'
+                if t["team"] == "L2" else
+                '<span style="font-size:9px;font-weight:600;background:#F1F5F9;color:#64748B;padding:2px 5px;border-radius:3px;">L1</span>'
+            )
+            ado_td = (
+                f'<span style="font-size:10px;font-weight:700;background:#F5F3FF;color:#6D28D9;padding:2px 5px;border-radius:4px;">{t["ado"]}</span>'
+                if t["ado"] else ""
+            )
+            rows.append(
+                f'<tr style="background:{rbg};">'
+                f'<td style="padding:5px 10px;font-size:11px;font-weight:600;color:#2563EB;border-bottom:1px solid #F1F5F9;">#{t["num"]}</td>'
+                f'<td style="padding:5px 10px;font-size:11px;color:#334155;border-bottom:1px solid #F1F5F9;">{t["subject"]}</td>'
+                f'<td style="padding:5px 10px;border-bottom:1px solid #F1F5F9;"><span style="font-size:10px;font-weight:700;{pri_sty};padding:2px 8px;border-radius:4px;">{t["priority"]}</span></td>'
+                f'<td style="padding:5px 10px;border-bottom:1px solid #F1F5F9;"><span style="font-size:10px;font-weight:600;{stat_sty};padding:2px 7px;border-radius:10px;white-space:nowrap;">{t["status"]}</span></td>'
+                f'<td style="padding:5px 10px;border-bottom:1px solid #F1F5F9;"><span style="font-size:10px;font-weight:600;{age_sty};padding:2px 6px;border-radius:10px;">{t["age"]}d</span></td>'
+                f'<td style="padding:5px 10px;border-bottom:1px solid #F1F5F9;">{team_td}</td>'
+                f'<td style="padding:5px 10px;border-bottom:1px solid #F1F5F9;">{ado_td}</td>'
+                f'<td style="padding:5px 10px;font-size:10px;color:#475569;border-bottom:1px solid #F1F5F9;">{t["contact"]}</td>'
+                f'<td style="padding:5px 10px;font-size:10px;color:#64748B;border-bottom:1px solid #F1F5F9;">{t["last_updated"]}</td>'
+                f'</tr>'
+            )
+        return "".join(rows)
 
-    def _table_header(show_reason: bool = True) -> str:
-        reason_th = "<th>Reason / Last Update</th>" if show_reason else ""
-        return f"""
-        <table>
-          <thead>
-            <tr>
-              <th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th>
-              <th>Status</th><th>Subject</th><th>ADO #</th><th>Team</th>
-              <th>Raised By</th><th>Assignee</th>{reason_th}<th>Modified</th>
-            </tr>
-          </thead>
-          <tbody>"""
+    def _status_counts(lst: list[dict]) -> str:
+        counts: dict[str, int] = defaultdict(int)
+        for t in lst:
+            counts[t["status"]] += 1
+        parts = []
+        for s in ["Awaiting Resolution Confirmation","On Hold","In Progress","Open"]:
+            if counts[s]:
+                sty = _STAT_BADGE_STYLE[s]
+                parts.append(f'<span style="font-size:10px;{sty};padding:2px 6px;border-radius:4px;margin-left:4px;">{counts[s]} {s}</span>')
+        return "".join(parts)
 
-    def _account_section(account_name: str, band: str, ticket_list: list[dict],
-                         show_reason: bool = True) -> str:
-        badge = BAND_BADGE.get(band, "Bronze")
-        bc = _badge_cls(band)
-        rows = _ticket_rows(ticket_list, show_reason)
-        return f"""
-        <div class="section">
-          <div class="section-header">
-            <span class="section-title">{account_name}</span>
-            <span class="badge {bc}">{badge}</span>
-            <span style="font-size:12px;color:#64748B">({len(ticket_list)} ticket{"s" if len(ticket_list)!=1 else ""})</span>
-          </div>
-          {_table_header(show_reason)}
-          {rows}
-          </tbody></table>
-        </div>"""
+    def _account_block(name: str, band: str, lst: list[dict]) -> str:
+        badge = _BAND_BADGE_HTML.get(band, _BAND_BADGE_HTML["Bronze"])
+        sc    = _status_counts(lst)
+        rows  = _ticket_rows(lst)
+        return (
+            '<tr><td style="padding-bottom:14px;">'
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+            'style="background:#fff;border:1px solid #E4E8EF;border-radius:10px;margin-bottom:10px;">'
+            '<tr><td style="background:#F8FAFC;border-bottom:1px solid #E4E8EF;padding:8px 14px;">'
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+            f'<td style="font-size:13px;font-weight:700;color:#0F172A;">{name}&nbsp;{badge}</td>'
+            f'<td align="right">{sc}</td>'
+            '</tr></table></td></tr>'
+            '<tr><td><table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            f'{_TH}{rows}'
+            '</table></td></tr></table></td></tr>'
+        )
 
-    # Build sections
-    sections = []
+    # Build grouped sections (Platinum → Gold → Silver → Blackstone)
+    plat_grp:   dict[str, list] = defaultdict(list)
+    gold_grp:   dict[str, list] = defaultdict(list)
+    silver_grp: dict[str, list] = defaultdict(list)
+    blackstone: list[dict]      = []
 
-    # Platinum
-    for acct, lst in _group_by_account(plat_tickets).items():
-        sections.append(_account_section(acct, "Platinum", lst, show_reason=True))
+    for t in tickets:
+        if t["band"] == "Blackstone-Bronze":
+            blackstone.append(t)
+        elif t["band"] == "Platinum":
+            plat_grp[t["display"]].append(t)
+        elif t["band"] == "Gold":
+            gold_grp[t["display"]].append(t)
+        elif t["band"] == "Silver":
+            silver_grp[t["display"]].append(t)
 
-    # Gold
-    for acct, lst in _group_by_account(gold_tickets).items():
-        sections.append(_account_section(acct, "Gold", lst, show_reason=True))
+    sections = ""
+    for name, lst in plat_grp.items():
+        sections += _account_block(name, "Platinum", lst)
+    for name, lst in gold_grp.items():
+        sections += _account_block(name, "Gold", lst)
+    for name, lst in silver_grp.items():
+        sections += _account_block(name, "Silver", lst)
+    if blackstone:
+        sections += _account_block("Blackstone", "Bronze", blackstone)
 
-    # Silver
-    for acct, lst in _group_by_account(silver_tickets).items():
-        sections.append(_account_section(acct, "Silver", lst, show_reason=True))
+    # ── Assemble full HTML ────────────────────────────────────────────────────
+    return (
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+        f'<title>Daily Incident Report · {title_date}</title></head>\n'
+        '<body style="margin:0;padding:0;background:#F4F6F9;font-family:Arial,sans-serif;font-size:13px;color:#1A2035;">\n'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F4F6F9;">'
+        '<tr><td align="center" style="padding:20px 16px 40px;">\n'
+        '<table width="980" cellpadding="0" cellspacing="0" border="0" style="max-width:980px;width:100%;">\n'
 
-    # Blackstone (Bronze named account)
-    if blackstone_tickets:
-        sections.append(_account_section("Blackstone", "Blackstone-Bronze", blackstone_tickets, show_reason=False))
+        # Header
+        '<tr><td style="background:#fff;border:1px solid #E4E8EF;border-radius:10px;padding:18px 28px 16px;">'
+        '<div style="font-size:17px;font-weight:700;color:#0F172A;">Daily Incident Report</div>'
+        f'<div style="font-size:11px;color:#64748B;margin-top:3px;"><b style="color:#334155;">Period:</b>&nbsp;{title_date} · 18:00 IST&nbsp;&nbsp;<b style="color:#334155;">Dept:</b>&nbsp;CoreStack Support</div>'
+        '</td></tr><tr><td height="14"></td></tr>\n'
 
-    sections_html = "\n".join(sections)
+        # Summary label
+        '<tr><td style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;padding-bottom:10px;">Summary</td></tr>\n'
 
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Daily Incident Report — {title_date}</title>
-<style>{css}</style>
-</head>
-<body>
-<div class="container">
-  <!-- Header -->
-  <div class="header">
-    <h1>Daily Incident Report</h1>
-    <p>{title_date} &nbsp;·&nbsp; CoreStack Support Team</p>
-  </div>
+        # 5 status cards
+        '<tr><td style="padding-bottom:14px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+        f'<td width="20%" style="padding-right:10px;" valign="top"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:1px solid #E4E8EF;border-radius:10px;border-top:3px solid #3B82F6;"><tr><td style="padding:12px 14px;"><div style="font-size:10px;font-weight:600;color:#64748B;text-transform:uppercase;">New</div><div style="font-size:26px;font-weight:700;color:#3B82F6;line-height:1.1;margin:4px 0 2px;">{n_new}</div><div style="font-size:10px;color:#94A3B8;">opened</div></td></tr></table></td>'
+        f'<td width="20%" style="padding-right:10px;" valign="top"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:1px solid #E4E8EF;border-radius:10px;border-top:3px solid #10B981;"><tr><td style="padding:12px 14px;"><div style="font-size:10px;font-weight:600;color:#64748B;text-transform:uppercase;">In Progress</div><div style="font-size:26px;font-weight:700;color:#10B981;line-height:1.1;margin:4px 0 2px;">{n_ip}</div><div style="font-size:10px;color:#94A3B8;">being worked</div></td></tr></table></td>'
+        f'<td width="20%" style="padding-right:10px;" valign="top"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:1px solid #E4E8EF;border-radius:10px;border-top:3px solid #F59E0B;"><tr><td style="padding:12px 14px;"><div style="font-size:10px;font-weight:600;color:#64748B;text-transform:uppercase;">On Hold</div><div style="font-size:26px;font-weight:700;color:#F59E0B;line-height:1.1;margin:4px 0 2px;">{n_oh}</div><div style="font-size:10px;color:#94A3B8;">pending / monitoring</div></td></tr></table></td>'
+        f'<td width="20%" style="padding-right:10px;" valign="top"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:1px solid #E4E8EF;border-radius:10px;border-top:3px solid #8B5CF6;"><tr><td style="padding:12px 14px;"><div style="font-size:10px;font-weight:600;color:#64748B;text-transform:uppercase;">Awaiting Confirmation</div><div style="font-size:26px;font-weight:700;color:#8B5CF6;line-height:1.1;margin:4px 0 2px;">{n_arc}</div><div style="font-size:10px;color:#94A3B8;">awaiting customer</div></td></tr></table></td>'
+        f'<td width="20%" style="padding-right:0px;" valign="top"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border:1px solid #E4E8EF;border-radius:10px;border-top:3px solid #EF4444;"><tr><td style="padding:12px 14px;"><div style="font-size:10px;font-weight:600;color:#64748B;text-transform:uppercase;">With L2 (PGS)</div><div style="font-size:26px;font-weight:700;color:#EF4444;line-height:1.1;margin:4px 0 2px;">{n_l2}</div><div style="font-size:10px;color:#94A3B8;">ADO linked</div></td></tr></table></td>'
+        '</tr></table></td></tr>\n'
 
-  <!-- Status summary cards -->
-  <div class="summary-grid">
-    <div class="card blue"><div class="label">New</div><div class="value">{n_new}</div></div>
-    <div class="card green"><div class="label">In Progress</div><div class="value">{n_ip}</div></div>
-    <div class="card yellow"><div class="label">On Hold</div><div class="value">{n_oh}</div></div>
-    <div class="card purple"><div class="label">Awaiting Confirmation</div><div class="value">{n_arc}</div></div>
-    <div class="card l2"><div class="label">With L2 (PGS)</div><div class="value">{n_l2}</div></div>
-  </div>
+        # Aging label + cards
+        '<tr><td style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;padding-bottom:10px;">Open Ticket Aging</td></tr>\n'
+        '<tr><td style="padding-bottom:14px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+        f'<td width="25%" style="padding-right:10px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;"><tr><td style="padding:10px 14px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="font-size:11px;font-weight:600;color:#991B1B;">30d+</td><td align="right" style="font-size:26px;font-weight:700;color:#DC2626;">{ag["30d+"]}</td></tr></table></td></tr></table></td>'
+        f'<td width="25%" style="padding-right:10px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;"><tr><td style="padding:10px 14px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="font-size:11px;font-weight:600;color:#92400E;">15-30d</td><td align="right" style="font-size:26px;font-weight:700;color:#D97706;">{ag["15-30d"]}</td></tr></table></td></tr></table></td>'
+        f'<td width="25%" style="padding-right:10px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FEFCE8;border:1px solid #FEF08A;border-radius:8px;"><tr><td style="padding:10px 14px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="font-size:11px;font-weight:600;color:#713F12;">8-14d</td><td align="right" style="font-size:26px;font-weight:700;color:#CA8A04;">{ag["8-14d"]}</td></tr></table></td></tr></table></td>'
+        f'<td width="25%"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;"><tr><td style="padding:10px 14px;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="font-size:11px;font-weight:600;color:#14532D;">0-7d</td><td align="right" style="font-size:26px;font-weight:700;color:#16A34A;">{ag["0-7d"]}</td></tr></table></td></tr></table></td>'
+        '</tr></table></td></tr>\n'
 
-  <!-- Aging cards -->
-  <div class="age-grid">
-    <div class="age-card age-red"><div class="label">30d+</div><div class="value">{ag["30d+"]}</div></div>
-    <div class="age-card age-orange"><div class="label">15-30d</div><div class="value">{ag["15-30d"]}</div></div>
-    <div class="age-card age-yellow"><div class="label">8-14d</div><div class="value">{ag["8-14d"]}</div></div>
-    <div class="age-card age-green"><div class="label">0-7d</div><div class="value">{ag["0-7d"]}</div></div>
-  </div>
+        # Band label + cards
+        '<tr><td style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;padding-bottom:10px;">Tickets by Account Band</td></tr>\n'
+        '<tr><td style="padding-bottom:14px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+        f'<td width="33%" style="padding-right:10px;" valign="top"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1E293B;border:1px solid #334155;border-radius:10px;"><tr><td style="padding:14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:11px;font-weight:700;color:#CBD5E1;text-transform:uppercase;">&#x1F451; Platinum</td><td align="right" style="font-size:28px;font-weight:700;color:#CBD5E1;">{n_plat}</td></tr></table></td></tr></table></td>'
+        f'<td width="33%" style="padding-right:10px;" valign="top"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#451A03;border:1px solid #78350F;border-radius:10px;"><tr><td style="padding:14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:11px;font-weight:700;color:#FBBF24;text-transform:uppercase;">&#x2B50; Gold</td><td align="right" style="font-size:28px;font-weight:700;color:#FBBF24;">{n_gold}</td></tr></table></td></tr></table></td>'
+        f'<td width="33%" style="padding-right:10px;" valign="top"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1E3A5F;border:1px solid #1E4976;border-radius:10px;"><tr><td style="padding:14px 16px;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="font-size:11px;font-weight:700;color:#93C5FD;text-transform:uppercase;">&#x1F948; Silver</td><td align="right" style="font-size:28px;font-weight:700;color:#93C5FD;">{n_silver}</td></tr></table></td></tr></table></td>'
+        '</tr></table></td></tr>\n'
 
-  <!-- Band cards -->
-  <div class="band-grid">
-    <div class="band-card plat"><div class="label">Platinum</div><div class="value">{n_plat}</div></div>
-    <div class="band-card gold"><div class="label">Gold</div><div class="value">{n_gold}</div></div>
-    <div class="band-card silver"><div class="label">Silver</div><div class="value">{n_silver}</div></div>
-  </div>
+        # Section label
+        '<tr><td style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;padding-bottom:10px;">Ticket Detail by Account (Platinum · Gold · Silver)</td></tr>\n'
 
-  <!-- Account sections -->
-  {sections_html}
+        # Reference legend
+        '<tr><td style="padding-bottom:14px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F8FAFC;border:1px solid #E4E8EF;border-radius:10px;"><tr><td style="padding:14px 18px;">'
+        '<div style="font-size:10px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Reference</div>'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+        '<td width="50%" valign="top" style="padding-right:24px;border-right:1px solid #E4E8EF;">'
+        '<div style="font-size:10px;font-weight:700;color:#B45309;margin-bottom:4px;">&#x1F7E1; On Hold</div>'
+        '<div style="font-size:10px;color:#64748B;line-height:1.7;">Ticket kept for monitoring, backfill in progress, pending information from the customer or third parties like Azure / AWS / GCP / OCI.</div>'
+        '</td>'
+        '<td width="50%" valign="top" style="padding-left:24px;">'
+        '<div style="font-size:10px;font-weight:700;color:#6D28D9;margin-bottom:4px;">&#x1F7E3; Awaiting Resolution Confirmation</div>'
+        '<div style="font-size:10px;color:#64748B;line-height:1.7;">Issue fixed / clarification has been communicated. Awaiting resolution confirmation from the customer for closure.</div>'
+        '</td>'
+        '</tr></table>'
+        '</td></tr></table></td></tr>\n'
 
-  <div class="footer">
-    Generated automatically by CoreStack Support Bot &nbsp;·&nbsp; {title_date} 18:00 IST
-  </div>
-</div>
-</body>
-</html>"""
+        # Account sections
+        + sections +
 
-    return html
+        '</table></td></tr></table></body></html>'
+    )
