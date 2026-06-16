@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daily Incident Report — June 16, 2026</title>
+<style>
+body{font-family:'Segoe UI',Arial,sans-serif;background:#F8FAFC;margin:0;padding:20px;color:#0F172A}
+.container{max-width:1200px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.08);overflow:hidden}
+.header{background:linear-gradient(135deg,#1E293B 0%,#334155 100%);padding:28px 36px;color:#fff}
+.header h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.3px}
+.header p{margin:6px 0 0;font-size:13px;opacity:.7}
+.summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:20px 28px;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
+.card{background:#fff;border-radius:8px;padding:14px 16px;border:1px solid #E2E8F0;text-align:center}
+.card .label{font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.card .value{font-size:26px;font-weight:700;color:#0F172A}
+.card.blue{border-top:3px solid #3B82F6}.card.green{border-top:3px solid #22C55E}
+.card.yellow{border-top:3px solid #EAB308}.card.purple{border-top:3px solid #A855F7}
+.card.l2{border-top:3px solid #6D28D9}
+.age-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 28px 16px;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
+.age-card{border-radius:8px;padding:12px 16px;text-align:center}
+.age-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.age-card .value{font-size:22px;font-weight:700}
+.age-red{background:#FEE2E2;color:#B91C1C}.age-orange{background:#FEF3C7;color:#B45309}
+.age-yellow{background:#FEFCE8;color:#713F12}.age-green{background:#F0FDF4;color:#14532D}
+.band-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:0 28px 20px;background:#F8FAFC;border-bottom:1px solid #E2E8F0}
+.band-card{border-radius:8px;padding:12px 16px;text-align:center}
+.band-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.band-card .value{font-size:22px;font-weight:700}
+.plat{background:#CBD5E1;color:#1E293B}.gold{background:#FEF9C3;color:#92400E}.silver{background:#DBEAFE;color:#1E4976}
+.section{padding:20px 28px;border-bottom:1px solid #F1F5F9}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.section-title{font-size:15px;font-weight:700;color:#1E293B}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-plat{background:#CBD5E1;color:#1E293B}.badge-gold{background:#FEF9C3;color:#92400E}
+.badge-silver{background:#DBEAFE;color:#1E4976}.badge-bronze{background:#FFF7ED;color:#9A3412}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#1E293B;color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600}
+td{padding:7px 10px;border-bottom:1px solid #F1F5F9;vertical-align:top}
+.ticket-id{color:#2563EB;font-weight:700;white-space:nowrap}
+.pri-p2{background:#FFF7ED;color:#C2410C;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.pri-p3{background:#F1F5F9;color:#475569;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.stat-open{background:#DBEAFE;color:#1D4ED8;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.stat-ip{background:#DCFCE7;color:#15803D;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.stat-oh{background:#FEF9C3;color:#B45309;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.stat-arc{background:#EDE9FE;color:#6D28D9;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.age-0{background:#F0FDF4;color:#14532D;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+.age-1{background:#FEFCE8;color:#713F12;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+.age-2{background:#FEF3C7;color:#B45309;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+.age-3{background:#FEE2E2;color:#B91C1C;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+.ado{background:#F5F3FF;color:#6D28D9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+.team-l2{background:#EDE9FE;color:#6D28D9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
+.team-l1{background:#F1F5F9;color:#64748B;padding:2px 6px;border-radius:4px;font-size:10px}
+.reason{font-size:11px;color:#78350F;max-width:280px}
+.footer{padding:16px 28px;background:#F8FAFC;text-align:center;font-size:11px;color:#94A3B8}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Daily Incident Report</h1>
+    <p>June 16, 2026 &nbsp;·&nbsp; CoreStack Support Team</p>
+  </div>
+  <div class="summary-grid">
+    <div class="card blue"><div class="label">New</div><div class="value">2</div></div>
+    <div class="card green"><div class="label">In Progress</div><div class="value">18</div></div>
+    <div class="card yellow"><div class="label">On Hold</div><div class="value">9</div></div>
+    <div class="card purple"><div class="label">Awaiting Confirmation</div><div class="value">13</div></div>
+    <div class="card l2"><div class="label">With L2 (PGS)</div><div class="value">10</div></div>
+  </div>
+  <div class="age-grid">
+    <div class="age-card age-red"><div class="label">30d+</div><div class="value">3</div></div>
+    <div class="age-card age-orange"><div class="label">15-30d</div><div class="value">6</div></div>
+    <div class="age-card age-yellow"><div class="label">8-14d</div><div class="value">12</div></div>
+    <div class="age-card age-green"><div class="label">0-7d</div><div class="value">21</div></div>
+  </div>
+  <div class="band-grid">
+    <div class="band-card plat"><div class="label">Platinum</div><div class="value">2</div></div>
+    <div class="band-card gold"><div class="label">Gold</div><div class="value">15</div></div>
+    <div class="band-card silver"><div class="label">Silver</div><div class="value">3</div></div>
+  </div>
+  <div class="section">
+<div class="section-header">
+  <span class="section-title">Neurealm</span>
+  <span class="badge badge-plat">Platinum</span>
+  <span style="font-size:12px;color:#64748B">(2 tickets)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Reason / Last Update</th><th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#211893</td>
+<td>Neurealm</td>
+<td><span class="age-2">26d</span></td>
+<td><span class="pri-p2">P2</span></td>
+<td><span class="stat-oh">On Hold</span></td>
+<td style="max-width:300px;font-size:11px">Re: Core stock Finops Dashboard cost differ</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Parthasarathy K</td>
+<td style="font-size:11px;color:#334155">Avinash Naidu</td>
+<td class="reason">Customer needs to raise the support case with Azure. This is an issue from Azure side.</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 15</td>
+</tr><tr>
+<td class="ticket-id">#211895</td>
+<td>Neurealm</td>
+<td><span class="age-2">26d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-oh">On Hold</span></td>
+<td style="max-width:300px;font-size:11px">Re: Core stock Finops Dashboard cost differ for GCP</td>
+<td><span class="ado">131068</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Parthasarathy K</td>
+<td style="font-size:11px;color:#334155">Nithin Ram</td>
+<td class="reason">Steps provided customer has to implement the changes.</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 15</td>
+</tr></tbody>
+</table>
+</div><div class="section">
+<div class="section-header">
+  <span class="section-title">Synoptek</span>
+  <span class="badge badge-gold">Gold</span>
+  <span style="font-size:12px;color:#64748B">(1 ticket)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Reason / Last Update</th><th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#206833</td>
+<td>Synoptek</td>
+<td><span class="age-3">40d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">Mar26 usage for Mitsui Chemicals</td>
+<td><span class="ado">129985</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Stacey Zborowski</td>
+<td style="font-size:11px;color:#334155">Nithin Ram</td>
+<td class="reason">—</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 15</td>
+</tr></tbody>
+</table>
+</div><div class="section">
+<div class="section-header">
+  <span class="section-title">Tata Communications</span>
+  <span class="badge badge-gold">Gold</span>
+  <span style="font-size:12px;color:#64748B">(2 tickets)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Reason / Last Update</th><th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#211192</td>
+<td>Tata Communications</td>
+<td><span class="age-2">28d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">FinOps Email Notification Issue (Clone)</td>
+<td><span class="ado">125029</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Sunilkumar S</td>
+<td style="font-size:11px;color:#334155">PremKumar B</td>
+<td class="reason">—</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 09</td>
+</tr><tr>
+<td class="ticket-id">#216750</td>
+<td>Tata Communications</td>
+<td><span class="age-1">14d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">FW: Production Environment IFoundry5X</td>
+<td><span class="ado">132646</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Sunilkumar S</td>
+<td style="font-size:11px;color:#334155">PremKumar B</td>
+<td class="reason">—</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 09</td>
+</tr></tbody>
+</table>
+</div><div class="section">
+<div class="section-header">
+  <span class="section-title">Kyndryl</span>
+  <span class="badge badge-gold">Gold</span>
+  <span style="font-size:12px;color:#64748B">(6 tickets)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Reason / Last Update</th><th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#216808</td>
+<td>Kyndryl</td>
+<td><span class="age-1">14d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">Difference Between CoreStack Recommendation and Azure Calculator Pricing</td>
+<td><span class="ado">132316</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Randhir Kumar</td>
+<td style="font-size:11px;color:#334155">PremKumar B</td>
+<td class="reason">—</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 04</td>
+</tr><tr>
+<td class="ticket-id">#217515</td>
+<td>Kyndryl</td>
+<td><span class="age-1">12d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">FW: Cost Mismatch in recommendation</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Nagalakshmi N</td>
+<td style="font-size:11px;color:#334155">Ganga Reddy</td>
+<td class="reason">—</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 04</td>
+</tr><tr>
+<td class="ticket-id">#220105</td>
+<td>Kyndryl</td>
+<td><span class="age-0">6d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">Merged cells in cost recommendation Report</td>
+<td><span class="ado">133816</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Nagalakshmi N</td>
+<td style="font-size:11px;color:#334155">PremKumar B</td>
+<td class="reason">—</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 10</td>
+</tr><tr>
+<td class="ticket-id">#222461</td>
+<td>Kyndryl</td>
+<td><span class="age-0">0d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">Kyndryl SaaS Okta SSO Configuration</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Nagalakshmi N</td>
+<td style="font-size:11px;color:#334155">Avinash Naidu</td>
+<td class="reason">—</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 16</td>
+</tr><tr>
+<td class="ticket-id">#220491</td>
+<td>Kyndryl</td>
+<td><span class="age-0">5d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-arc">ARC</span></td>
+<td style="max-width:300px;font-size:11px">FW: Resources Cost - Beside Tagged and untagged - LifeLabs</td>
+<td><span class="ado">133656</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Nagalakshmi N</td>
+<td style="font-size:11px;color:#334155">Avinash Naidu</td>
+<td class="reason">NA</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 15</td>
+</tr><tr>
+<td class="ticket-id">#221054</td>
+<td>Kyndryl</td>
+<td><span class="age-0">4d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-arc">ARC</span></td>
+<td style="max-width:300px;font-size:11px">US SaaS - Kyndryl - Default dashboards not visible for tenant/finops_admin</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Nagalakshmi N</td>
+<td style="font-size:11px;color:#334155">Nithin Ram</td>
+<td class="reason">NA</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 12</td>
+</tr></tbody>
+</table>
+</div><div class="section">
+<div class="section-header">
+  <span class="section-title">Otsuka</span>
+  <span class="badge badge-gold">Gold</span>
+  <span style="font-size:12px;color:#64748B">(4 tickets)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Reason / Last Update</th><th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#222287</td>
+<td>Otsuka</td>
+<td><span class="age-0">1d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">Confirmation Request – AI (LLM) Cost Details</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Rajkumar Uppu</td>
+<td style="font-size:11px;color:#334155">Nithin Ram</td>
+<td class="reason">—</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 15</td>
+</tr><tr>
+<td class="ticket-id">#211954</td>
+<td>Otsuka</td>
+<td><span class="age-2">26d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-oh">On Hold</span></td>
+<td style="max-width:300px;font-size:11px">AWS Accounts transfer from INH to ISO Tenant</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Rajkumar Uppu</td>
+<td style="font-size:11px;color:#334155">Aadhithya S</td>
+<td class="reason">Awaiting confirmation from Ashok to proceed with backfilling of the cost data for these 3 accounts.</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">May 22</td>
+</tr><tr>
+<td class="ticket-id">#217606</td>
+<td>Otsuka</td>
+<td><span class="age-1">12d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-arc">ARC</span></td>
+<td style="max-width:300px;font-size:11px">Login Issue with CoreStack Tool</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Rajkumar Uppu</td>
+<td style="font-size:11px;color:#334155">Ganga Reddy</td>
+<td class="reason">Customer pinged in teams and asked to hold for 1 day.</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 12</td>
+</tr><tr>
+<td class="ticket-id">#222219</td>
+<td>Otsuka</td>
+<td><span class="age-0">1d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-arc">ARC</span></td>
+<td style="max-width:300px;font-size:11px">Request for Azure DevOps Cost Details at Resource Level</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Rajkumar Uppu</td>
+<td style="font-size:11px;color:#334155">Nithin Ram</td>
+<td class="reason">Awaiting customer confirmation on findings.</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 15</td>
+</tr></tbody>
+</table>
+</div><div class="section">
+<div class="section-header">
+  <span class="section-title">Logicalis</span>
+  <span class="badge badge-gold">Gold</span>
+  <span style="font-size:12px;color:#64748B">(1 ticket)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Reason / Last Update</th><th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#205888</td>
+<td>Logicalis</td>
+<td><span class="age-3">42d</span></td>
+<td><span class="pri-p2">P2</span></td>
+<td><span class="stat-oh">On Hold</span></td>
+<td style="max-width:300px;font-size:11px">Need assistance to update creds for EA account for Trinity College</td>
+<td><span class="ado">132186</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Kamran Wahid</td>
+<td style="font-size:11px;color:#334155">PremKumar B</td>
+<td class="reason">Customer is checking access permissions with their admin.</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 12</td>
+</tr></tbody>
+</table>
+</div><div class="section">
+<div class="section-header">
+  <span class="section-title">Synopsys</span>
+  <span class="badge badge-gold">Gold</span>
+  <span style="font-size:12px;color:#64748B">(1 ticket)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Reason / Last Update</th><th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#220875</td>
+<td>Synopsys</td>
+<td><span class="age-0">4d</span></td>
+<td><span class="pri-p2">P2</span></td>
+<td><span class="stat-arc">ARC</span></td>
+<td style="max-width:300px;font-size:11px">Dashboard slowness</td>
+<td><span class="ado">133875</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Ranjitha Thota</td>
+<td style="font-size:11px;color:#334155">Ganga Reddy</td>
+<td class="reason">Resolved and awaiting customer confirmation.</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 15</td>
+</tr></tbody>
+</table>
+</div><div class="section">
+<div class="section-header">
+  <span class="section-title">Cloud Kinetics</span>
+  <span class="badge badge-silver">Silver</span>
+  <span style="font-size:12px;color:#64748B">(2 tickets)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Reason / Last Update</th><th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#219898</td>
+<td>Cloud Kinetics</td>
+<td><span class="age-0">6d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">Deployment Status Confirmation Required</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Service Assurance</td>
+<td style="font-size:11px;color:#334155">PremKumar B</td>
+<td class="reason">—</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 15</td>
+</tr><tr>
+<td class="ticket-id">#217785</td>
+<td>Cloud Kinetics</td>
+<td><span class="age-1">11d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-oh">On Hold</span></td>
+<td style="max-width:300px;font-size:11px">RDS Snapshot Not Created on May 31</td>
+<td><span class="ado">132850</span></td>
+<td><span class="team-l2">L2</span></td>
+<td style="font-size:11px;color:#64748B">Service Assurance</td>
+<td style="font-size:11px;color:#334155">Gnanadesigan A</td>
+<td class="reason">We have stated that we do not have sufficient logs to troubleshoot further and the customer is checking internally.</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 11</td>
+</tr></tbody>
+</table>
+</div><div class="section">
+<div class="section-header">
+  <span class="section-title">Getronics</span>
+  <span class="badge badge-silver">Silver</span>
+  <span style="font-size:12px;color:#64748B">(1 ticket)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Reason / Last Update</th><th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#219361</td>
+<td>Getronics</td>
+<td><span class="age-1">8d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-arc">ARC</span></td>
+<td style="max-width:300px;font-size:11px">Filtrona Finops Dashboard Unallocated Resource Groups</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Shashank N</td>
+<td style="font-size:11px;color:#334155">Nithin Ram</td>
+<td class="reason">NA</td>
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 08</td>
+</tr></tbody>
+</table>
+</div><div class="section">
+<div class="section-header">
+  <span class="section-title">Blackstone</span>
+  <span class="badge badge-bronze">Bronze</span>
+  <span style="font-size:12px;color:#64748B">(1 ticket)</span>
+</div>
+<table>
+<thead><tr>
+<th>Ticket #</th><th>Customer</th><th>Age</th><th>Pri</th><th>Status</th>
+<th>Subject</th><th>ADO #</th><th>Team</th><th>Raised By</th><th>Assignee</th>
+<th>Modified</th>
+</tr></thead>
+<tbody><tr>
+<td class="ticket-id">#220546</td>
+<td>Blackstone</td>
+<td><span class="age-0">5d</span></td>
+<td><span class="pri-p3">P3</span></td>
+<td><span class="stat-ip">In Progress</span></td>
+<td style="max-width:300px;font-size:11px">ODP/Blackstone - Bus Patrol</td>
+<td><span class="team-l1">—</span></td>
+<td><span class="team-l1">L1</span></td>
+<td style="font-size:11px;color:#64748B">Jayven Couch</td>
+<td style="font-size:11px;color:#334155">Nithin Ram</td>
+
+<td style="font-size:10px;color:#94A3B8;white-space:nowrap">Jun 11</td>
+</tr></tbody>
+</table>
+</div>
+  <div class="footer">
+    Generated automatically by CoreStack Support Bot &nbsp;·&nbsp; June 16, 2026 18:00 IST
+  </div>
+</div>
+</body>
+</html>
