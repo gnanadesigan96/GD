@@ -354,12 +354,113 @@ def fetch_platform_metrics():
         },
     }
 
+# ─── DOCX HELPERS ────────────────────────────────────────────────────────────
+
+from docx import Document
+from docx.shared import Pt, RGBColor, Inches, Cm
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+
+# Brand colours
+C_DARK   = (0x1F, 0x29, 0x37)
+C_WHITE  = (0xFF, 0xFF, 0xFF)
+C_ACCENT = (0x00, 0x70, 0xC0)
+C_GREY   = (0xF2, 0xF2, 0xF2)
+C_MUTED  = (0x75, 0x75, 0x75)
+C_GREEN  = (0x70, 0xAD, 0x47)
+C_RED    = (0xFF, 0x00, 0x00)
+
+
+def _set_cell_bg(cell, rgb: RGBColor):
+    tc   = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    shd  = OxmlElement("w:shd")
+    hex_color = f"{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}"
+    shd.set(qn("w:val"),   "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"),  hex_color)
+    tcPr.append(shd)
+
+
+def _set_cell_border(cell, border_side="bottom", color="CCCCCC", sz="4"):
+    tc   = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    tcBdr = tcPr.find(qn("w:tcBdr"))
+    if tcBdr is None:
+        tcBdr = OxmlElement("w:tcBdr")
+        tcPr.append(tcBdr)
+    side = OxmlElement(f"w:{border_side}")
+    side.set(qn("w:val"),   "single")
+    side.set(qn("w:sz"),    sz)
+    side.set(qn("w:space"), "0")
+    side.set(qn("w:color"), color)
+    tcBdr.append(side)
+
+
+def _para_fmt(para, space_before=0, space_after=0, align=WD_ALIGN_PARAGRAPH.LEFT):
+    para.paragraph_format.space_before = Pt(space_before)
+    para.paragraph_format.space_after  = Pt(space_after)
+    para.alignment = align
+
+
+def _run(para, text, bold=False, italic=False, size=10,
+         color=None, font="Calibri"):
+    run = para.add_run(text)
+    run.bold   = bold
+    run.italic = italic
+    run.font.name = font
+    run.font.size = Pt(size)
+    if color:
+        run.font.color.rgb = RGBColor(*color)
+    return run
+
+
+def _heading(doc, text, level_size=12, color=C_DARK):
+    p = doc.add_paragraph()
+    _para_fmt(p, space_before=10, space_after=2)
+    _run(p, text, bold=True, size=level_size, color=color)
+    return p
+
+
+def _add_table(doc, headers, rows, col_widths=None, zebra=True, header_bg=C_DARK):
+    """Generic styled table."""
+    tbl = doc.add_table(rows=1 + len(rows), cols=len(headers))
+    tbl.style = "Table Grid"
+    tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+
+    # Header row
+    hdr_cells = tbl.rows[0].cells
+    for i, h in enumerate(headers):
+        hdr_cells[i].text = ""
+        p = hdr_cells[i].paragraphs[0]
+        _run(p, h, bold=True, size=9, color=C_WHITE)
+        _set_cell_bg(hdr_cells[i], header_bg)
+        hdr_cells[i].vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+    # Data rows
+    for r_idx, row in enumerate(rows):
+        cells = tbl.rows[r_idx + 1].cells
+        bg = C_GREY if (zebra and r_idx % 2 == 0) else C_WHITE
+        for c_idx, val in enumerate(row):
+            cells[c_idx].text = ""
+            p = cells[c_idx].paragraphs[0]
+            _run(p, str(val), size=9)
+            _set_cell_bg(cells[c_idx], bg)
+
+    # Column widths
+    if col_widths:
+        for row in tbl.rows:
+            for i, w in enumerate(col_widths):
+                row.cells[i].width = Inches(w)
+
+    return tbl
+
+
 # ─── REPORT RENDERER ─────────────────────────────────────────────────────────
 
-def col(val, width):
-    return str(val).ljust(width)[:width]
-
-def render_report(ado_items, visitors, pages, metrics, region="US East"):
+def build_region_section(doc, ado_items, visitors, pages, metrics, region):
     today     = datetime.date.today()
     now_ist   = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
     date_str  = today.strftime("%A, %B %-d, %Y")
@@ -369,112 +470,181 @@ def render_report(ado_items, visitors, pages, metrics, region="US East"):
     pendo_start = today - datetime.timedelta(days=PENDO_WINDOW_DAYS - 1)
     pendo_range = f"{pendo_start.strftime('%-d %b')} – {pendo_end.strftime('%-d %b')}"
 
-    open_incidents = len([i for i in ado_items if i["state"] not in ("Closed", "Removed", "Done", "Resolved")])
+    open_incidents = [i for i in ado_items if i["state"] not in ("Closed", "Removed", "Done", "Resolved")]
     n2  = metrics["n2"]
     svc = metrics["cost"]
 
+    # ── Page title ─────────────────────────────────────────────────────────────
+    title_p = doc.add_paragraph()
+    _para_fmt(title_p, space_before=0, space_after=2)
+    _run(title_p, f"Blackstone — daily scrum update  {region}",
+         bold=True, size=16, color=C_DARK)
+
+    sub_p = doc.add_paragraph()
+    _para_fmt(sub_p, space_before=0, space_after=6)
+    _run(sub_p, f"{date_str}   ·   Report generated {time_str}",
+         size=9, color=C_MUTED)
+
+    # ── At a glance KPI row ────────────────────────────────────────────────────
+    _heading(doc, "At a glance")
+
+    kpi_tbl = doc.add_table(rows=2, cols=4)
+    kpi_tbl.style = "Table Grid"
+    kpi_tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+    kpi_headers = ["Compliance", "API requests", "Slow req ≥30s", "Open incidents"]
+    open_ids    = ", ".join([f"#{i['id']}" for i in open_incidents[:3]]) or "None"
+    kpi_vals    = [
+        n2["compliance_pct"],
+        f"{svc['total_requests_24h']}\nMax {svc['max_response_sec']}s resp.",
+        str(svc["slow_requests_30s"]),
+        f"{len(open_incidents)}\n{open_ids}",
+    ]
+    for i, h in enumerate(kpi_headers):
+        c = kpi_tbl.rows[0].cells[i]
+        c.text = ""
+        _run(c.paragraphs[0], h, bold=True, size=9, color=C_WHITE)
+        _set_cell_bg(c, C_DARK)
+    for i, v in enumerate(kpi_vals):
+        c = kpi_tbl.rows[1].cells[i]
+        c.text = ""
+        _run(c.paragraphs[0], v, bold=True, size=13, color=C_ACCENT)
+        _set_cell_bg(c, C_GREY)
+    kpi_w = [1.5, 1.8, 1.8, 1.8]
+    for row in kpi_tbl.rows:
+        for i, w in enumerate(kpi_w):
+            row.cells[i].width = Inches(w)
+
+    doc.add_paragraph()
+
+    # ── Platform performance ───────────────────────────────────────────────────
+    _heading(doc, f"Platform performance — {region}   (N-2 metric)")
+    _add_table(doc,
+        headers=["Metric", "Value"],
+        rows=[
+            ("Total accounts",       n2["total_accounts"]),
+            ("Completed jobs (24h)", n2["completed_jobs_24h"]),
+            ("Tenants impacted",     n2["tenants_impacted"]),
+            ("Pending N-2 accts",    n2["pending_n2_accts"]),
+            ("Older backlog",        n2["older_backlog"]),
+            ("Compliance %",         n2["compliance_pct"]),
+        ],
+        col_widths=[3.5, 1.5],
+    )
+    doc.add_paragraph()
+
+    # ── Service metric (COST) ─────────────────────────────────────────────────
+    _heading(doc, "Service metric (COST)")
+    _add_table(doc,
+        headers=["Metric", "Value"],
+        rows=[
+            ("Total requests (24h)",  svc["total_requests_24h"]),
+            ("Max response time",     f"{svc['max_response_sec']} sec"),
+            ("Slow requests ≥30s",    svc["slow_requests_30s"]),
+            ("Users impacted",        svc["users_impacted"]),
+            ("Health status",         svc["health_status"]),
+        ],
+        col_widths=[3.5, 1.5],
+    )
+    doc.add_paragraph()
+
+    # ── Pendo engagement ──────────────────────────────────────────────────────
+    _heading(doc, f"Pendo engagement — Blackstone segment  ·  last {PENDO_WINDOW_DAYS} days ({pendo_range})")
+    note_p = doc.add_paragraph()
+    _para_fmt(note_p, space_before=0, space_after=4)
+    _run(note_p,
+         f"Source: Blackstone Pendo segment only.  {PENDO_EXCLUDED_EMAIL} excluded.  "
+         f"Grey rows = segment members with no activity in this window.",
+         size=8, italic=True, color=C_MUTED)
+
+    visitor_rows = []
+    for v in visitors:
+        ev = str(v["events"])    if v["events"]    != "—" else "—"
+        da = str(v["daysActive"]) if v["daysActive"] != "—" else "—"
+        mn = str(v["minutes"])   if v["minutes"]   != "—" else "—"
+        visitor_rows.append((v["visitor"], v["domain"], ev, da, mn, v["lastSeen"]))
+
+    _add_table(doc,
+        headers=["Visitor", "Domain", "Events (3d)", "Days active", "Minutes", "Last seen"],
+        rows=visitor_rows,
+        col_widths=[1.8, 1.8, 1.0, 1.0, 0.9, 0.9],
+    )
+    doc.add_paragraph()
+
+    _heading(doc, "Top pages visited", level_size=10)
+    _add_table(doc,
+        headers=["Page", "Views"],
+        rows=[(p["page"], p["views"]) for p in pages],
+        col_widths=[4.5, 0.8],
+    )
+    doc.add_paragraph()
+
+    # ── ADO incidents ─────────────────────────────────────────────────────────
     ado_url = (
         f"https://dev.azure.com/{ADO_ORG}/{ADO_PROJECT}/_workitems?"
         f"filter=tags+eq+'Blackstone'"
     )
+    _heading(doc, "Blackstone incidents — ADO status")
+    link_p = doc.add_paragraph()
+    _para_fmt(link_p, space_before=0, space_after=4)
+    _run(link_p, "ADO query: ", size=9, color=C_MUTED)
+    _run(link_p, ado_url, size=9, color=C_ACCENT)
 
-    lines = []
-    W = 72
-
-    def hr(char="─"):
-        lines.append(char * W)
-
-    def section(title):
-        lines.append("")
-        lines.append(f"  {title}")
-        hr()
-
-    # ── Header ────────────────────────────────────────────────────────────────
-    lines.append("")
-    lines.append(f"  Blackstone — daily scrum update  {region}")
-    lines.append(f"  {date_str}   ·   Report generated {time_str}")
-    hr("═")
-
-    # ── At a glance ───────────────────────────────────────────────────────────
-    section("At a glance")
-    lines.append(f"  {'Compliance':<22} {'API requests':<20} {'Slow req ≥30s':<18} {'Open incidents'}")
-    lines.append(f"  {n2['compliance_pct']:<22} {svc['total_requests_24h']:<20} {svc['slow_requests_30s']:<18} {open_incidents}")
-    lines.append(f"  {'':22} {'Max ' + str(svc['max_response_sec']) + 's resp.':<20} {'':18} {', '.join(['#'+str(i['id']) for i in ado_items[:3]]) or 'None'}")
-
-    # ── Platform performance ───────────────────────────────────────────────────
-    section(f"Platform performance — {region}   (N-2 metric)")
-    rows_n2 = [
-        ("Total accounts",       n2["total_accounts"]),
-        ("Completed jobs (24h)", n2["completed_jobs_24h"]),
-        ("Tenants impacted",     n2["tenants_impacted"]),
-        ("Pending N-2 accts",    n2["pending_n2_accts"]),
-        ("Older backlog",        n2["older_backlog"]),
-        ("Compliance %",         n2["compliance_pct"]),
-    ]
-    lines.append(f"  {'Metric':<35} {'Value'}")
-    for label, val in rows_n2:
-        lines.append(f"  {label:<35} {val}")
-
-    # ── Service metric (COST) ─────────────────────────────────────────────────
-    section("Service metric (COST)")
-    rows_svc = [
-        ("Total requests (24h)",  svc["total_requests_24h"]),
-        ("Max response time",     f"{svc['max_response_sec']} sec"),
-        ("Slow requests ≥30s",    svc["slow_requests_30s"]),
-        ("Users impacted",        svc["users_impacted"]),
-        ("Health status",         svc["health_status"]),
-    ]
-    lines.append(f"  {'Metric':<35} {'Value'}")
-    for label, val in rows_svc:
-        lines.append(f"  {label:<35} {val}")
-
-    # ── Pendo engagement ──────────────────────────────────────────────────────
-    section(f"Pendo engagement — Blackstone segment  ·  last {PENDO_WINDOW_DAYS} days ({pendo_range})")
-    lines.append(f"  Source: Blackstone Pendo segment only.  {PENDO_EXCLUDED_EMAIL} excluded.")
-    lines.append(f"  Grey rows = segment members with no activity in this window.")
-    lines.append("")
-    lines.append(f"  {'Visitor':<28} {'Domain':<22} {'Events':>7} {'Days':>5} {'Min':>6}  {'Last seen'}")
-    hr("·")
-    for v in visitors:
-        ev  = str(v["events"])   if v["events"]   != "—" else "—"
-        da  = str(v["daysActive"]) if v["daysActive"] != "—" else "—"
-        mn  = str(v["minutes"])  if v["minutes"]  != "—" else "—"
-        lines.append(f"  {v['visitor']:<28} {v['domain']:<22} {ev:>7} {da:>5} {mn:>6}  {v['lastSeen']}")
-
-    lines.append("")
-    lines.append(f"  Top pages visited")
-    lines.append(f"  {'Page':<40} {'Views':>6}")
-    hr("·")
-    for p in pages:
-        lines.append(f"  {p['page']:<40} {p['views']:>6}")
-
-    # ── ADO incidents ─────────────────────────────────────────────────────────
-    section("Blackstone incidents — ADO status")
-    lines.append(f"  ADO query: {ado_url}")
-    lines.append("")
-    lines.append(f"  {'ID':<9} {'Title':<48} {'Assigned to':<22} {'Pri':<4} {'State':<15} {'Type'}")
-    hr("·")
+    ado_rows = []
     for item in ado_items:
         pri = f"P{item['priority']}" if item["priority"] else "—"
-        lines.append(
-            f"  {str(item['id']):<9} "
-            f"{item['title'][:46]:<48} "
-            f"{item['assignedTo'][:20]:<22} "
-            f"{pri:<4} "
-            f"{item['state']:<15} "
-            f"{item['workItemType']}"
-        )
-    if not ado_items:
-        lines.append("  No active Blackstone work items found.")
+        ado_rows.append((
+            str(item["id"]),
+            item["title"],
+            item["assignedTo"],
+            item.get("areaPath", "").split("\\")[-1] or "—",
+            pri,
+            item["state"],
+            item["workItemType"],
+        ))
+    if not ado_rows:
+        ado_rows = [("—", "No active Blackstone work items found.", "", "", "", "", "")]
 
-    # ── Footer ────────────────────────────────────────────────────────────────
-    lines.append("")
-    hr("═")
-    lines.append(f"  CoreStack · Cloud Operations Intelligence · Daily scrum report")
-    lines.append(f"  N-2 = jobs created 24h–48h ago  ·  Slow = request ≥30s")
-    lines.append("")
+    _add_table(doc,
+        headers=["ID", "Title", "Assigned to", "Bundle", "Pri", "State", "Type"],
+        rows=ado_rows,
+        col_widths=[0.6, 2.8, 1.4, 0.9, 0.4, 1.0, 0.7],
+    )
 
-    return "\n".join(lines)
+
+def render_docx(regions_data):
+    """
+    regions_data: list of (region_label, ado_items, visitors, pages, metrics)
+    Returns a Document object.
+    """
+    doc = Document()
+
+    # Page margins
+    section = doc.sections[0]
+    section.top_margin    = Cm(1.5)
+    section.bottom_margin = Cm(1.5)
+    section.left_margin   = Cm(1.8)
+    section.right_margin  = Cm(1.8)
+
+    # Default paragraph style
+    style = doc.styles["Normal"]
+    style.font.name = "Calibri"
+    style.font.size = Pt(10)
+
+    for idx, (region_label, ado_items, visitors, pages, metrics) in enumerate(regions_data):
+        if idx > 0:
+            doc.add_page_break()
+        build_region_section(doc, ado_items, visitors, pages, metrics, region_label)
+
+    # Footer note
+    footer_p = doc.add_paragraph()
+    _para_fmt(footer_p, space_before=12, space_after=0)
+    _run(footer_p,
+         "CoreStack · Cloud Operations Intelligence · Daily scrum report   "
+         "N-2 = jobs created 24h–48h ago  ·  Slow = request ≥30s",
+         size=8, color=C_MUTED, italic=True)
+
+    return doc
+
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 
@@ -485,7 +655,6 @@ def main():
     print("Fetching Pendo engagement (all visitors, splitting by server field)...")
     all_visitors = fetch_pendo_all_visitors()
     eu_visitors, useast_visitors, _ = split_visitors_by_region(all_visitors)
-
     print(f"  → EU visitors: {len(eu_visitors)}  |  USEast visitors: {len(useast_visitors)}")
 
     print("Fetching platform metrics...")
@@ -497,17 +666,15 @@ def main():
     pages_useast = fetch_pendo_top_pages(region_visitor_ids=useast_ids or None)
     pages_eu     = fetch_pendo_top_pages(region_visitor_ids=eu_ids     or None)
 
-    out_file = f"Blackstone_Scrum_{datetime.date.today().strftime('%Y%m%d')}.txt"
-    with open(out_file, "w") as f:
-        for region_label, visitors, pages in [
-            ("US East", useast_visitors, pages_useast),
-            ("EU",      eu_visitors,     pages_eu),
-        ]:
-            report = render_report(ado_items, visitors, pages, metrics, region=region_label)
-            print(report)
-            f.write(report + "\n\n")
+    doc = render_docx([
+        ("US East", ado_items, useast_visitors, pages_useast, metrics),
+        ("EU",      ado_items, eu_visitors,     pages_eu,     metrics),
+    ])
 
-    print(f"\n[Saved to {out_file}]")
+    out_file = f"Blackstone_Scrum_{datetime.date.today().strftime('%Y%m%d')}.docx"
+    doc.save(out_file)
+    print(f"\n✓ Saved to {out_file}")
+
 
 if __name__ == "__main__":
     main()
