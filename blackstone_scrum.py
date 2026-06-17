@@ -33,8 +33,8 @@ PENDO_SEGMENT_ID        = "dJzveERO2XLsAMSv8nEAKmftlVQ"  # single segment; EU/US
 
 # Visitor metadata field that holds the server/region value
 PENDO_SERVER_FIELD      = "server"   # e.g. visitor.server = "eu" or "useast"
-PENDO_REGION_EU         = "eu"       # value that means EU
-PENDO_REGION_USEAST     = "useast"   # value that means USEast
+PENDO_REGION_EU         = "portal.corestack.io"   # EU visitors: portal.corestack.io
+PENDO_REGION_USEAST     = "useast.corestack.io"   # USEast visitors: useast.corestack.io
 
 # Exclude this visitor from all counts (internal support account)
 PENDO_EXCLUDED_EMAIL = "cs.support.blackstone@corestack.io"
