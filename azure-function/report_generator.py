@@ -94,7 +94,9 @@ def parse_ticket(raw: dict, today: date) -> dict:
     """
     num = raw.get("ticketNumber", "")
     subject = raw.get("subject", "")
-    priority = raw.get("priority") or "P3"
+    _pri_map = {"Critical": "P1", "High": "P2", "Medium": "P3", "Normal": "P3", "Low": "P4"}
+    _raw_pri = raw.get("priority") or "Normal"
+    priority = _pri_map.get(_raw_pri, _raw_pri if _raw_pri.startswith("P") else "P3")
     status = raw.get("status", "")
 
     # Account name
@@ -177,7 +179,7 @@ def parse_ticket(raw: dict, today: date) -> dict:
     return {
         "num": str(num),
         "subject": subject,
-        "priority": priority if priority.startswith("P") else f"P{priority}",
+        "priority": priority,
         "account_raw": account_raw,
         "band": band,
         "display": display,
