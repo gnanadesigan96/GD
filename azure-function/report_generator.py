@@ -195,10 +195,10 @@ def parse_ticket(raw: dict, today: date) -> dict:
     contacts_list = raw.get("contacts") or []
     if contacts_list and isinstance(contacts_list, list):
         c = contacts_list[0]
-        contact = (c.get("firstName", "") + " " + c.get("lastName", "")).strip()
+        contact = ((c.get("firstName") or "") + " " + (c.get("lastName") or "")).strip()
     if not contact and raw.get("contact"):
         c = raw["contact"]
-        contact = (c.get("firstName", "") + " " + c.get("lastName", "")).strip()
+        contact = ((c.get("firstName") or "") + " " + (c.get("lastName") or "")).strip()
     if not contact:
         contact = raw.get("contactName") or raw.get("requesterName") or ""
     # Strip email fallback — show name only, not email address
@@ -219,7 +219,7 @@ def parse_ticket(raw: dict, today: date) -> dict:
     assignee = ""
     if raw.get("assignee"):
         a = raw["assignee"]
-        assignee = (a.get("firstName", "") + " " + a.get("lastName", "")).strip()
+        assignee = ((a.get("firstName") or "") + " " + (a.get("lastName") or "")).strip()
     if not assignee:
         assignee = raw.get("assigneeName") or ""
     if not assignee:
