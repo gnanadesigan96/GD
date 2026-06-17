@@ -112,12 +112,11 @@ def parse_ticket(raw: dict, today: date) -> dict:
         if cf.get(key):
             ado = str(cf[key]).strip()
             break
-    # Also try customFields list format: [{"apiName": "cf_ado_number", "value": "12345"}, ...]
+    # Also try customFields dict format: {"cf_ado_number": "12345", ...}
     if not ado:
-        for field in (raw.get("customFields") or []):
-            api_name = (field.get("apiName") or "").lower()
-            if "ado" in api_name and field.get("value"):
-                ado = str(field["value"]).strip()
+        for key, val in (raw.get("customFields") or {}).items():
+            if "ado" in key.lower() and val:
+                ado = str(val).strip()
                 break
     # Also try top-level
     if not ado:
