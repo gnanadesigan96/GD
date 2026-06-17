@@ -29,8 +29,12 @@ ADO_PAT     = os.environ.get("ADO_PAT", "YOUR_PAT_HERE")  # <-- paste your PAT h
 
 PENDO_API_KEY           = os.environ.get("PENDO_API_KEY", "YOUR_PENDO_API_KEY")  # <-- paste your key here
 PENDO_SUBSCRIPTION_ID   = "5122158603141120"
-PENDO_SEGMENT_ID_USEAST = "dJzveERO2XLsAMSv8nEAKmftlVQ"
-PENDO_SEGMENT_ID_EU     = os.environ.get("PENDO_SEGMENT_ID_EU", "YOUR_EU_SEGMENT_ID")   # <-- add EU segment ID if separate
+PENDO_SEGMENT_ID        = "dJzveERO2XLsAMSv8nEAKmftlVQ"  # single segment; EU/USEast split by visitor.server field
+
+# Visitor metadata field that holds the server/region value
+PENDO_SERVER_FIELD      = "server"   # e.g. visitor.server = "eu" or "useast"
+PENDO_REGION_EU         = "eu"       # value that means EU
+PENDO_REGION_USEAST     = "useast"   # value that means USEast
 
 # Exclude this visitor from all counts (internal support account)
 PENDO_EXCLUDED_EMAIL = "cs.support.blackstone@corestack.io"
@@ -163,12 +167,12 @@ def pendo_headers():
         "Content-Type": "application/json",
     }
 
-def fetch_pendo_segment_visitors(segment_id: str, window_days: int = PENDO_WINDOW_DAYS):
+def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
     """
-    Fetches visitors in a Pendo segment with engagement metrics for the last N days.
-    Returns list of dicts per visitor.
-
-    NOTE: Fill in PENDO_API_KEY and segment IDs to activate.
+    Fetches all visitors in the Blackstone segment with engagement metrics
+    for the last N days. Includes the visitor's 'server' metadata field so
+    callers can split into EU / USEast groups.
+    Returns list of dicts, each with a 'region' key.
     """
     if PENDO_API_KEY == "YOUR_PENDO_API_KEY":
         return _fake_pendo_visitors()
@@ -184,7 +188,7 @@ def fetch_pendo_segment_visitors(segment_id: str, window_days: int = PENDO_WINDO
                 {
                     "identified": {
                         "visitor": True,
-                        "segmentId": segment_id,
+                        "segmentId": PENDO_SEGMENT_ID,
                     }
                 },
                 {
@@ -195,6 +199,7 @@ def fetch_pendo_segment_visitors(segment_id: str, window_days: int = PENDO_WINDO
                         "firstName":  "visitor.firstName",
                         "domain":     "visitor.accountId",
                         "lastSeenAt": "visitor.lastSeenAt",
+                        "server":     f"visitor.{PENDO_SERVER_FIELD}",
                     }
                 },
                 {
@@ -227,20 +232,38 @@ def fetch_pendo_segment_visitors(segment_id: str, window_days: int = PENDO_WINDO
             datetime.datetime.utcfromtimestamp(last_seen_ms / 1000).strftime("%-d %b")
             if last_seen_ms else "—"
         )
+        server = (row.get("server") or "").lower()
+        if PENDO_REGION_EU in server:
+            region = "eu"
+        elif PENDO_REGION_USEAST in server:
+            region = "useast"
+        else:
+            region = server or "unknown"
+
         results.append({
-            "visitor":    (row.get("firstName") or "") + " " + (row.get("lastName") or ""),
+            "visitor":    ((row.get("firstName") or "") + " " + (row.get("lastName") or "")).strip() or row.get("visitorId", "—"),
             "domain":     row.get("domain", "—"),
             "events":     row.get("numEvents") or "—",
             "daysActive": row.get("daysActive") or "—",
             "minutes":    int(row.get("numMinutes") or 0) or "—",
             "lastSeen":   last_seen,
+            "region":     region,
         })
     return results
 
 
-def fetch_pendo_top_pages(segment_id: str, window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10):
+def split_visitors_by_region(visitors):
+    """Returns (eu_visitors, useast_visitors, other_visitors)."""
+    eu     = [v for v in visitors if v["region"] == "eu"]
+    useast = [v for v in visitors if v["region"] == "useast"]
+    other  = [v for v in visitors if v["region"] not in ("eu", "useast")]
+    return eu, useast, other
+
+
+def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10):
     """
-    Fetches top pages (by page views) for a Pendo segment in the last N days.
+    Fetches top pages for the Blackstone segment in the last N days.
+    If region_visitor_ids is provided, filters to only those visitor IDs (for EU/USEast split).
     """
     if PENDO_API_KEY == "YOUR_PENDO_API_KEY":
         return _fake_pendo_pages()
@@ -249,22 +272,29 @@ def fetch_pendo_top_pages(segment_id: str, window_days: int = PENDO_WINDOW_DAYS,
     start_ms = end_ms - (window_days * 86400 * 1000)
 
     url = "https://app.pendo.io/api/v1/aggregation"
+
+    pipeline = [
+        {"source": {"pageEvents": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
+        {"filter": f"segmentId == \"{PENDO_SEGMENT_ID}\""},
+    ]
+    if region_visitor_ids:
+        id_list = json.dumps(region_visitor_ids)
+        pipeline.append({"filter": f"visitorId in {id_list}"})
+
+    pipeline += [
+        {"group": {"group": ["pageId"], "fields": [{"views": {"sum": "numEvents"}}]}},
+        {"join": {
+            "kind": "left",
+            "pipeline": [{"source": {"pages": None}}, {"select": {"pageId": "id", "pageName": "name"}}],
+            "keys": ["pageId"],
+        }},
+        {"sort": [{"views": -1}]},
+        {"limit": top_n},
+    ]
+
     payload = {
         "response": {"mimeType": "application/json"},
-        "request": {
-            "pipeline": [
-                {"source": {"pageEvents": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
-                {"filter": f"segmentId == \"{segment_id}\""},
-                {"group": {"group": ["pageId"], "fields": [{"views": {"sum": "numEvents"}}]}},
-                {"join": {
-                    "kind": "left",
-                    "pipeline": [{"source": {"pages": None}}, {"select": {"pageId": "id", "pageName": "name"}}],
-                    "keys": ["pageId"],
-                }},
-                {"sort": [{"views": -1}]},
-                {"limit": top_n},
-            ]
-        }
+        "request": {"pipeline": pipeline},
     }
 
     resp = requests.post(url, headers=pendo_headers(), json=payload)
@@ -275,17 +305,17 @@ def fetch_pendo_top_pages(segment_id: str, window_days: int = PENDO_WINDOW_DAYS,
 
 def _fake_pendo_visitors():
     return [
-        {"visitor": "robert young",          "domain": "bluemantis.com",  "events": 152, "daysActive": 1, "minutes": 10, "lastSeen": "16 Jun"},
-        {"visitor": "timo pantsari",         "domain": "blackstone.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "15 Jun"},
-        {"visitor": "adam schutska",         "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "15 Jun"},
-        {"visitor": "bhavana prabhuswamy",   "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "15 Jun"},
-        {"visitor": "rj gravel",             "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "19 May"},
-        {"visitor": "abagchi",               "domain": "corestack.io",    "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "2 Jun"},
-        {"visitor": "cspbillingapi",         "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "26 May"},
-        {"visitor": "alex",                  "domain": "aliando.com",     "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "1 Jun"},
-        {"visitor": "dipali koche",          "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "1 Jun"},
-        {"visitor": "chris",                 "domain": "aliando.com",     "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "4 Jun"},
-        {"visitor": "dene donovan",          "domain": "ingrammicro.com", "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "9 Jun"},
+        {"visitor": "robert young",          "domain": "bluemantis.com",  "events": 152, "daysActive": 1, "minutes": 10, "lastSeen": "16 Jun", "region": "useast"},
+        {"visitor": "adam schutska",         "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "15 Jun", "region": "useast"},
+        {"visitor": "bhavana prabhuswamy",   "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "15 Jun", "region": "useast"},
+        {"visitor": "rj gravel",             "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "19 May", "region": "useast"},
+        {"visitor": "abagchi",               "domain": "corestack.io",    "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "2 Jun",  "region": "useast"},
+        {"visitor": "cspbillingapi",         "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "26 May", "region": "useast"},
+        {"visitor": "timo pantsari",         "domain": "blackstone.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "15 Jun", "region": "eu"},
+        {"visitor": "alex",                  "domain": "aliando.com",     "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "1 Jun",  "region": "eu"},
+        {"visitor": "dipali koche",          "domain": "bluemantis.com",  "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "1 Jun",  "region": "eu"},
+        {"visitor": "chris",                 "domain": "aliando.com",     "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "4 Jun",  "region": "eu"},
+        {"visitor": "dene donovan",          "domain": "ingrammicro.com", "events": "—", "daysActive": "—", "minutes": "—", "lastSeen": "9 Jun",  "region": "eu"},
     ]
 
 def _fake_pendo_pages():
@@ -452,20 +482,31 @@ def main():
     print("Fetching ADO Blackstone work items...")
     ado_items = fetch_ado_blackstone_incidents()
 
-    print("Fetching Pendo engagement (USEast segment)...")
-    visitors = fetch_pendo_segment_visitors(PENDO_SEGMENT_ID_USEAST)
-    pages    = fetch_pendo_top_pages(PENDO_SEGMENT_ID_USEAST)
+    print("Fetching Pendo engagement (all visitors, splitting by server field)...")
+    all_visitors = fetch_pendo_all_visitors()
+    eu_visitors, useast_visitors, _ = split_visitors_by_region(all_visitors)
+
+    print(f"  → EU visitors: {len(eu_visitors)}  |  USEast visitors: {len(useast_visitors)}")
 
     print("Fetching platform metrics...")
-    metrics  = fetch_platform_metrics()
+    metrics = fetch_platform_metrics()
 
-    report = render_report(ado_items, visitors, pages, metrics, region="US East")
-    print(report)
+    useast_ids = [v.get("visitorId") for v in useast_visitors if v.get("visitorId")]
+    eu_ids     = [v.get("visitorId") for v in eu_visitors     if v.get("visitorId")]
 
-    # Optionally save to file
+    pages_useast = fetch_pendo_top_pages(region_visitor_ids=useast_ids or None)
+    pages_eu     = fetch_pendo_top_pages(region_visitor_ids=eu_ids     or None)
+
     out_file = f"Blackstone_Scrum_{datetime.date.today().strftime('%Y%m%d')}.txt"
     with open(out_file, "w") as f:
-        f.write(report)
+        for region_label, visitors, pages in [
+            ("US East", useast_visitors, pages_useast),
+            ("EU",      eu_visitors,     pages_eu),
+        ]:
+            report = render_report(ado_items, visitors, pages, metrics, region=region_label)
+            print(report)
+            f.write(report + "\n\n")
+
     print(f"\n[Saved to {out_file}]")
 
 if __name__ == "__main__":
