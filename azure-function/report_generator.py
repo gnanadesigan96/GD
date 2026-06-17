@@ -99,32 +99,28 @@ def parse_ticket(raw: dict, today: date) -> dict:
     priority = _pri_map.get(_raw_pri, _raw_pri if _raw_pri.startswith("P") else "P3")
     status = raw.get("status", "")
 
-    # Account name
+    cf = raw.get("cf") or {}
+    custom_fields = raw.get("customFields") or {}
+
+    # Account name — live API returns account=null; name is in cf_customer
     account_raw = ""
     if raw.get("account"):
         account_raw = raw["account"].get("accountName") or raw["account"].get("name") or ""
     if not account_raw:
         account_raw = raw.get("accountName", "")
+    if not account_raw:
+        account_raw = cf.get("cf_customer") or custom_fields.get("Customer") or ""
 
-    # ADO — stored in custom field; field names vary, try common keys
+    # ADO — cf_ado_reference holds a full Azure DevOps URL; extract the work item number
     ado = ""
-    cf = raw.get("cf") or {}
-    for key in ("cf_ado_number", "cf_ado", "cf_adoNumber", "cf_ado_link",
-                "cf_azure_devops", "cf_ado_id", "cf_adoid", "cf_ADO_Number"):
-        if cf.get(key):
-            ado = str(cf[key]).strip()
-            break
-    # Also try customFields dict format: {"cf_ado_number": "12345", ...}
+    ado_raw = (cf.get("cf_ado_reference") or custom_fields.get("ADO reference") or "").strip()
+    if ado_raw and ado_raw.upper() not in ("NA", "N/A", ""):
+        m = re.search(r"/(\d+)\s*$", ado_raw)
+        ado = m.group(1) if m else ado_raw
     if not ado:
-        for key, val in (raw.get("customFields") or {}).items():
-            if "ado" in key.lower() and val:
-                ado = str(val).strip()
-                break
-    # Also try top-level
-    if not ado:
-        for key in ("adoNumber", "ado_number", "ado"):
-            if raw.get(key):
-                ado = str(raw[key]).strip()
+        for key in ("cf_ado_number", "cf_ado", "cf_adoNumber", "cf_ado_link", "cf_azure_devops"):
+            if cf.get(key):
+                ado = str(cf[key]).strip()
                 break
 
     # Dates — Zoho returns ISO strings with timezone
@@ -145,25 +141,39 @@ def parse_ticket(raw: dict, today: date) -> dict:
                   "Jul","Aug","Sep","Oct","Nov","Dec"]
         return f"{months[d.month-1]} {d.day:02d}"
 
-    # Contact / assignee
+    # Contact
     contact = ""
     if raw.get("contact"):
         c = raw["contact"]
-        contact = c.get("firstName", "") + " " + c.get("lastName", "")
-        contact = contact.strip()
+        contact = (c.get("firstName", "") + " " + c.get("lastName", "")).strip()
     if not contact:
-        contact = raw.get("contactName") or raw.get("requesterName") or ""
+        contact = raw.get("contactName") or raw.get("requesterName") or raw.get("email") or ""
 
+    # Assignee — map known IDs to names
+    _assignee_map = {
+        "100599000004409465": "Ganga Reddy",
+        "100599000004409501": "PremKumar B",
+        "100599000004409537": "Nithin Ram",
+        "100599000004409573": "Avinash Naidu",
+        "100599000049929001": "Deepesh H",
+        "100599000000176484": "Aadhithya S",
+        "100599000000176268": "Gnanadesigan A",
+        "100599000004648021": "Logesh S",
+    }
     assignee = ""
     if raw.get("assignee"):
         a = raw["assignee"]
-        assignee = a.get("firstName", "") + " " + a.get("lastName", "")
-        assignee = assignee.strip()
+        assignee = (a.get("firstName", "") + " " + a.get("lastName", "")).strip()
     if not assignee:
         assignee = raw.get("assigneeName") or ""
+    if not assignee:
+        aid = str(raw.get("assigneeId") or "")
+        assignee = _assignee_map.get(aid, "")
 
-    # Reason (last comment / resolution notes) — not in basic list, empty by default
-    reason = raw.get("resolution") or raw.get("reasonForOnHold") or ""
+    # Reason — on-hold/awaiting reason from custom field
+    reason = (cf.get("cf_on_hold_or_awaiting_confirmation_reason")
+              or custom_fields.get("On Hold or Awaiting Confirmation Reason")
+              or raw.get("resolution") or raw.get("reasonForOnHold") or "")
 
     age_days = (today - created_date).days
     bkt = _bucket(age_days)

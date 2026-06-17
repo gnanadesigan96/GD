@@ -128,16 +128,6 @@ def main():
         enriched = [f.result() for f in as_completed(futures)]
     logging.info("Enrichment done.")
 
-    # Debug: show raw account fields from first ticket
-    if enriched:
-        t0 = enriched[0]
-        import json
-        logging.info("DEBUG first ticket keys: %s", list(t0.keys()))
-        logging.info("DEBUG account field: %s", json.dumps(t0.get("account"), default=str))
-        logging.info("DEBUG accountId: %s", t0.get("accountId"))
-        logging.info("DEBUG cf keys: %s", list((t0.get("cf") or {}).keys()))
-        logging.info("DEBUG customFields keys: %s", list((t0.get("customFields") or {}).keys()))
-
     tickets = [parse_ticket(t, today) for t in enriched]
 
     # Count tickets with ADO
