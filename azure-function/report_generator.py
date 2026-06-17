@@ -17,43 +17,81 @@ IST = timedelta(hours=5, minutes=30)
 
 
 # ── Band / display-name classification ───────────────────────────────────────
+# Band classifications from Customer Adoption Report (Apr 2026)
 ACCOUNT_BAND: dict[str, str] = {
-    "neurealm": "Platinum",
-    "otsuka":   "Gold",
-    "otsuka-us": "Gold",
-    "kyndryl":  "Gold",
+    # Platinum
+    "neurealm":           "Platinum",
+    "taylor farms":       "Platinum",
+    "taylor_farms":       "Platinum",
+    # Gold
+    "otsuka":             "Gold",
+    "otsuka-us":          "Gold",
+    "kyndryl":            "Gold",
     "tatacommunications": "Gold",
-    "tata communications": "Gold",
-    "au.logicalis": "Gold",
-    "logicalis": "Gold",
-    "synopsys":  "Gold",
-    "synoptek":  "Gold",
-    "getronics": "Silver",
-    "cloud-kinetics": "Silver",
-    "cloud kinetics": "Silver",
+    "tata communications":"Gold",
+    "au.logicalis":       "Gold",
+    "logicalis":          "Gold",
+    "synopsys":           "Gold",
+    "synoptek":           "Gold",
+    "bluemantis":         "Gold",
+    "blue mantis":        "Gold",
+    "hitachi":            "Gold",
+    "tcl":                "Gold",
+    "it1":                "Gold",
+    "gevernova":          "Gold",
+    "ge vernova":         "Gold",
+    # Silver
+    "getronics":          "Silver",
+    "cloud-kinetics":     "Silver",
+    "cloud kinetics":     "Silver",
+    "cloudelligent":      "Silver",
+    "aliando":            "Silver",
+    "virtusa":            "Silver",
+    "sonata":             "Silver",
+    "sonata-software":    "Silver",
+    "sonata software":    "Silver",
+    "damac":              "Silver",
+    "nbf":                "Silver",
+    "ntt":                "Silver",
+    "microland":          "Silver",
 }
 
 DISPLAY_NAMES: dict[str, str] = {
-    "neurealm":        "Neurealm",
-    "otsuka":          "Otsuka",
-    "otsuka-us":       "Otsuka",
-    "kyndryl":         "Kyndryl",
+    "neurealm":           "Neurealm",
+    "taylor farms":       "Taylor Farms",
+    "taylor_farms":       "Taylor Farms",
+    "otsuka":             "Otsuka",
+    "otsuka-us":          "Otsuka",
+    "kyndryl":            "Kyndryl",
     "tatacommunications": "Tata Communications",
-    "tata communications": "Tata Communications",
-    "au.logicalis":    "Logicalis",
-    "logicalis":       "Logicalis",
-    "synopsys":        "Synopsys",
-    "synoptek":        "Synoptek",
-    "getronics":       "Getronics",
-    "cloud-kinetics":  "Cloud Kinetics",
-    "cloud kinetics":  "Cloud Kinetics",
-    "sonata-software": "Sonata",
-    "sonata software": "Sonata",
-    "ltts":            "LTTS",
-    "gevernova":       "GE Vernova",
-    "ge vernova":      "GE Vernova",
-    "core42":          "Core42",
-    "blackstone":      "Blackstone",
+    "tata communications":"Tata Communications",
+    "au.logicalis":       "Logicalis",
+    "logicalis":          "Logicalis",
+    "synopsys":           "Synopsys",
+    "synoptek":           "Synoptek",
+    "bluemantis":         "BlueMantis",
+    "blue mantis":        "BlueMantis",
+    "hitachi":            "Hitachi",
+    "tcl":                "TCL",
+    "it1":                "IT1",
+    "gevernova":          "GE Vernova",
+    "ge vernova":         "GE Vernova",
+    "getronics":          "Getronics",
+    "cloud-kinetics":     "Cloud Kinetics",
+    "cloud kinetics":     "Cloud Kinetics",
+    "cloudelligent":      "Cloudelligent",
+    "aliando":            "Aliando",
+    "virtusa":            "Virtusa",
+    "sonata":             "Sonata",
+    "sonata-software":    "Sonata",
+    "sonata software":    "Sonata",
+    "damac":              "Damac",
+    "nbf":                "NBF",
+    "ntt":                "NTT",
+    "microland":          "Microland",
+    "ltts":               "LTTS",
+    "core42":             "Core42",
+    "blackstone":         "Blackstone",
 }
 
 BLACKSTONE_KEYWORDS = ["blackstone"]
@@ -65,8 +103,8 @@ def _norm(s: str) -> str:
 
 def get_band(account_name: str) -> str:
     key = _norm(account_name)
-    if key == "neurealm":
-        return "Platinum"
+    if not key:
+        return "Bronze"
     for k, band in ACCOUNT_BAND.items():
         if k in key or key in k:
             return band
@@ -599,31 +637,27 @@ def generate_html(tickets: list[dict], today: date) -> str:
             '</table></td></tr></table></td></tr>'
         )
 
-    # Build grouped sections (Platinum → Gold → Silver → Blackstone)
+    # HTML shows only Platinum / Gold / Silver (Bronze goes to Excel only)
     plat_grp:   dict[str, list] = defaultdict(list)
     gold_grp:   dict[str, list] = defaultdict(list)
     silver_grp: dict[str, list] = defaultdict(list)
-    blackstone: list[dict]      = []
 
     for t in tickets:
-        if t["band"] == "Blackstone-Bronze":
-            blackstone.append(t)
-        elif t["band"] == "Platinum":
+        if t["band"] == "Platinum":
             plat_grp[t["display"]].append(t)
         elif t["band"] == "Gold":
             gold_grp[t["display"]].append(t)
         elif t["band"] == "Silver":
             silver_grp[t["display"]].append(t)
+        # Bronze / Unknown / Blackstone-Bronze excluded from HTML
 
     sections = ""
-    for name, lst in plat_grp.items():
+    for name, lst in sorted(plat_grp.items()):
         sections += _account_block(name, "Platinum", lst)
-    for name, lst in gold_grp.items():
+    for name, lst in sorted(gold_grp.items()):
         sections += _account_block(name, "Gold", lst)
-    for name, lst in silver_grp.items():
+    for name, lst in sorted(silver_grp.items()):
         sections += _account_block(name, "Silver", lst)
-    if blackstone:
-        sections += _account_block("Blackstone", "Bronze", blackstone)
 
     # ── Assemble full HTML ────────────────────────────────────────────────────
     return (
