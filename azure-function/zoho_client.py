@@ -86,7 +86,10 @@ def fetch_all_active_tickets() -> list[dict]:
             # Merge cf and any extra fields from detail into the list ticket
             ticket["cf"] = detail.get("cf") or {}
             ticket["customFields"] = detail.get("customFields") or {}
-            # Keep resolution / reasonForOnHold if available
+            if detail.get("contact"):
+                ticket["contact"] = detail["contact"]
+            if detail.get("account"):
+                ticket["account"] = detail["account"]
             if detail.get("resolution") and not ticket.get("resolution"):
                 ticket["resolution"] = detail["resolution"]
         except Exception as exc:

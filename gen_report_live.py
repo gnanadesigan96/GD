@@ -116,6 +116,10 @@ def main():
             detail = fetch_detail(str(tid), token)
             t["cf"] = detail.get("cf") or {}
             t["customFields"] = detail.get("customFields") or {}
+            if detail.get("contact"):
+                t["contact"] = detail["contact"]
+            if detail.get("account"):
+                t["account"] = detail["account"]
             if detail.get("resolution") and not t.get("resolution"):
                 t["resolution"] = detail["resolution"]
         except Exception as e:

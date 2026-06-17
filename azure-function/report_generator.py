@@ -110,6 +110,17 @@ def parse_ticket(raw: dict, today: date) -> dict:
         account_raw = raw.get("accountName", "")
     if not account_raw:
         account_raw = cf.get("cf_customer") or custom_fields.get("Customer") or ""
+    # Last resort: derive from contact email domain
+    if not account_raw:
+        email = raw.get("email") or ""
+        domain = email.split("@")[-1].split(".")[0] if "@" in email else ""
+        _domain_map = {
+            "neurealm": "Neurealm", "otsuka": "Otsuka", "otsuka-us": "Otsuka",
+            "kyndryl": "Kyndryl", "synopsys": "Synopsys", "synoptek": "Synoptek",
+            "getronics": "Getronics", "corestack": "CoreStack",
+            "logicalis": "Logicalis", "tata": "Tata Communications",
+        }
+        account_raw = _domain_map.get(domain.lower(), "")
 
     # ADO — cf_ado_reference holds a full Azure DevOps URL; extract the work item number
     ado = ""
