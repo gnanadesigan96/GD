@@ -107,10 +107,18 @@ def parse_ticket(raw: dict, today: date) -> dict:
     # ADO — stored in custom field; field names vary, try common keys
     ado = ""
     cf = raw.get("cf") or {}
-    for key in ("cf_ado_number", "cf_ado", "cf_adoNumber", "cf_ado_link", "cf_azure_devops"):
+    for key in ("cf_ado_number", "cf_ado", "cf_adoNumber", "cf_ado_link",
+                "cf_azure_devops", "cf_ado_id", "cf_adoid", "cf_ADO_Number"):
         if cf.get(key):
             ado = str(cf[key]).strip()
             break
+    # Also try customFields list format: [{"apiName": "cf_ado_number", "value": "12345"}, ...]
+    if not ado:
+        for field in (raw.get("customFields") or []):
+            api_name = (field.get("apiName") or "").lower()
+            if "ado" in api_name and field.get("value"):
+                ado = str(field["value"]).strip()
+                break
     # Also try top-level
     if not ado:
         for key in ("adoNumber", "ado_number", "ado"):
