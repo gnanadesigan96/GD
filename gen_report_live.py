@@ -141,15 +141,6 @@ def main():
         enriched = [f.result() for f in as_completed(futures)]
     logging.info("Enrichment done.")
 
-    # Debug: find ticket 211895
-    for _t in enriched:
-        if str(_t.get("ticketNumber","")) == "211895":
-            logging.info("DEBUG 211895 cf_customer=%s account=%s email=%s",
-                _t.get("cf",{}).get("cf_customer"),
-                (_t.get("account") or {}).get("accountName") if _t.get("account") else None,
-                _t.get("email"))
-            break
-
     tickets = [parse_ticket(t, today) for t in enriched]
 
     # Count tickets with ADO

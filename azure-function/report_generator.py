@@ -149,14 +149,19 @@ def parse_ticket(raw: dict, today: date) -> dict:
     if not account_raw:
         account_raw = cf.get("cf_customer") or custom_fields.get("Customer") or ""
     # Last resort: derive from contact email domain
+    # Treat generic/internal values as unknown — fall through to email domain
+    _IGNORE_ACCOUNTS = {"internal", "corestack", "corestack internal", "unknown", "n/a", "na"}
+    if _norm(account_raw) in _IGNORE_ACCOUNTS:
+        account_raw = ""
+
     if not account_raw:
         email = raw.get("email") or ""
         domain = email.split("@")[-1].split(".")[0] if "@" in email else ""
         _domain_map = {
             "neurealm": "Neurealm", "otsuka": "Otsuka", "otsuka-us": "Otsuka",
             "kyndryl": "Kyndryl", "synopsys": "Synopsys", "synoptek": "Synoptek",
-            "getronics": "Getronics", "corestack": "CoreStack",
-            "logicalis": "Logicalis", "tata": "Tata Communications",
+            "getronics": "Getronics", "logicalis": "Logicalis",
+            "tata": "Tata Communications", "synoptek": "Synoptek",
         }
         account_raw = _domain_map.get(domain.lower(), "")
 
