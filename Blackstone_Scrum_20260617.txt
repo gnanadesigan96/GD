@@ -1,0 +1,73 @@
+
+  Blackstone — daily scrum update  US East
+  Wednesday, June 17, 2026   ·   Report generated 11:07 PM IST
+════════════════════════════════════════════════════════════════════════
+
+  At a glance
+────────────────────────────────────────────────────────────────────────
+  Compliance             API requests         Slow req ≥30s      Open incidents
+  100%                   522                  0                  3
+                         Max 3.76s resp.                         #134003, #131077, #131076
+
+  Platform performance — US East   (N-2 metric)
+────────────────────────────────────────────────────────────────────────
+  Metric                              Value
+  Total accounts                      175
+  Completed jobs (24h)                524
+  Tenants impacted                    0
+  Pending N-2 accts                   0
+  Older backlog                       0
+  Compliance %                        100%
+
+  Service metric (COST)
+────────────────────────────────────────────────────────────────────────
+  Metric                              Value
+  Total requests (24h)                522
+  Max response time                   3.76 sec
+  Slow requests ≥30s                  0
+  Users impacted                      0
+  Health status                       Good
+
+  Pendo engagement — Blackstone segment  ·  last 3 days (15 Jun – 17 Jun)
+────────────────────────────────────────────────────────────────────────
+  Source: Blackstone Pendo segment only.  cs.support.blackstone@corestack.io excluded.
+  Grey rows = segment members with no activity in this window.
+
+  Visitor                      Domain                  Events  Days    Min  Last seen
+········································································
+  robert young                 bluemantis.com             152     1     10  16 Jun
+  timo pantsari                blackstone.com               —     —      —  15 Jun
+  adam schutska                bluemantis.com               —     —      —  15 Jun
+  bhavana prabhuswamy          bluemantis.com               —     —      —  15 Jun
+  rj gravel                    bluemantis.com               —     —      —  19 May
+  abagchi                      corestack.io                 —     —      —  2 Jun
+  cspbillingapi                bluemantis.com               —     —      —  26 May
+  alex                         aliando.com                  —     —      —  1 Jun
+  dipali koche                 bluemantis.com               —     —      —  1 Jun
+  chris                        aliando.com                  —     —      —  4 Jun
+  dene donovan                 ingrammicro.com              —     —      —  9 Jun
+
+  Top pages visited
+  Page                                      Views
+········································································
+  Cloud Account Governance                     52
+  Unified Governance                            9
+  Inventory                                     4
+  Tenants                                       2
+  Optimize Rate                                 2
+  Policies                                      1
+  FinOps NexGen Reports                         1
+
+  Blackstone incidents — ADO status
+────────────────────────────────────────────────────────────────────────
+  ADO query: https://dev.azure.com/CoreStack-Tech/Product_Mgmt/_workitems?filter=tags+eq+'Blackstone'
+
+  ID        Title                                            Assigned to            Pri  State           Type
+········································································
+  134003    Assessment Report UI Error Despite Successful    Zubair                 P2   In Progress     Bug
+  131077    Blackstone - Rover - Forecast data missing       Aadhithya Shanmugapr   P2   Active          Bug
+  131076    Blackstone - RBAC permission issue on tenant v   Aadhithya Shanmugapr   P3   Active          Bug
+
+════════════════════════════════════════════════════════════════════════
+  CoreStack · Cloud Operations Intelligence · Daily scrum report
+  N-2 = jobs created 24h–48h ago  ·  Slow = request ≥30s
