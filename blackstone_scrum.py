@@ -27,9 +27,10 @@ ADO_ORG     = "CoreStack-Tech"
 ADO_PROJECT = "Product_Mgmt"
 ADO_PAT     = os.environ.get("ADO_PAT", "YOUR_PAT_HERE")  # <-- paste your PAT here
 
-PENDO_API_KEY           = os.environ.get("PENDO_API_KEY", "YOUR_PENDO_API_KEY")
-PENDO_SEGMENT_ID_EU     = os.environ.get("PENDO_SEGMENT_ID_EU", "YOUR_EU_SEGMENT_ID")
-PENDO_SEGMENT_ID_USEAST = os.environ.get("PENDO_SEGMENT_ID_USEAST", "YOUR_USEAST_SEGMENT_ID")
+PENDO_API_KEY           = os.environ.get("PENDO_API_KEY", "YOUR_PENDO_API_KEY")  # <-- paste your key here
+PENDO_SUBSCRIPTION_ID   = "5122158603141120"
+PENDO_SEGMENT_ID_USEAST = "dJzveERO2XLsAMSv8nEAKmftlVQ"
+PENDO_SEGMENT_ID_EU     = os.environ.get("PENDO_SEGMENT_ID_EU", "YOUR_EU_SEGMENT_ID")   # <-- add EU segment ID if separate
 
 # Exclude this visitor from all counts (internal support account)
 PENDO_EXCLUDED_EMAIL = "cs.support.blackstone@corestack.io"
