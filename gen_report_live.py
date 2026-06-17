@@ -70,7 +70,12 @@ def fetch_by_status(status: str, token: str) -> list[dict]:
 
 
 def fetch_detail(ticket_id: str, token: str) -> dict:
-    resp = requests.get(f"{ZOHO_API_BASE}/tickets/{ticket_id}", headers=headers(token), timeout=30)
+    resp = requests.get(
+        f"{ZOHO_API_BASE}/tickets/{ticket_id}",
+        headers=headers(token),
+        params={"include": "contacts,assignee"},
+        timeout=30,
+    )
     resp.raise_for_status()
     return resp.json()
 
@@ -116,8 +121,12 @@ def main():
             detail = fetch_detail(str(tid), token)
             t["cf"] = detail.get("cf") or {}
             t["customFields"] = detail.get("customFields") or {}
+            if detail.get("contacts"):
+                t["contacts"] = detail["contacts"]
             if detail.get("contact"):
                 t["contact"] = detail["contact"]
+            if detail.get("assignee"):
+                t["assignee"] = detail["assignee"]
             if detail.get("account"):
                 t["account"] = detail["account"]
             if detail.get("resolution") and not t.get("resolution"):

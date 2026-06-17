@@ -55,10 +55,11 @@ def fetch_tickets_by_status(status: str, token: str) -> list[dict]:
 
 
 def fetch_ticket_detail(ticket_id: str, token: str) -> dict:
-    """Fetch full ticket detail including custom fields (cf object)."""
+    """Fetch full ticket detail including custom fields, contact, and assignee."""
     resp = requests.get(
         f"{ZOHO_API_BASE}/tickets/{ticket_id}",
         headers=_headers(token),
+        params={"include": "contacts,assignee"},
         timeout=30,
     )
     resp.raise_for_status()
@@ -86,8 +87,12 @@ def fetch_all_active_tickets() -> list[dict]:
             # Merge cf and any extra fields from detail into the list ticket
             ticket["cf"] = detail.get("cf") or {}
             ticket["customFields"] = detail.get("customFields") or {}
+            if detail.get("contacts"):
+                ticket["contacts"] = detail["contacts"]
             if detail.get("contact"):
                 ticket["contact"] = detail["contact"]
+            if detail.get("assignee"):
+                ticket["assignee"] = detail["assignee"]
             if detail.get("account"):
                 ticket["account"] = detail["account"]
             if detail.get("resolution") and not ticket.get("resolution"):

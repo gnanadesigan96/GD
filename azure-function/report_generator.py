@@ -190,13 +190,20 @@ def parse_ticket(raw: dict, today: date) -> dict:
                   "Jul","Aug","Sep","Oct","Nov","Dec"]
         return f"{months[d.month-1]} {d.day:02d}"
 
-    # Contact
+    # Contact — detail API returns contacts as list (include=contacts) or single object
     contact = ""
-    if raw.get("contact"):
+    contacts_list = raw.get("contacts") or []
+    if contacts_list and isinstance(contacts_list, list):
+        c = contacts_list[0]
+        contact = (c.get("firstName", "") + " " + c.get("lastName", "")).strip()
+    if not contact and raw.get("contact"):
         c = raw["contact"]
         contact = (c.get("firstName", "") + " " + c.get("lastName", "")).strip()
     if not contact:
-        contact = raw.get("contactName") or raw.get("requesterName") or raw.get("email") or ""
+        contact = raw.get("contactName") or raw.get("requesterName") or ""
+    # Strip email fallback — show name only, not email address
+    if not contact or "@" in contact:
+        contact = raw.get("contactName") or raw.get("requesterName") or ""
 
     # Assignee — map known IDs to names
     _assignee_map = {
