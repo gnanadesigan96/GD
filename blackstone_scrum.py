@@ -19,7 +19,13 @@ import os
 import base64
 import json
 import datetime
+import io
 import requests
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.gridspec import GridSpec
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 
@@ -72,7 +78,7 @@ def fetch_ado_blackstone_incidents():
             FROM WorkItems
             WHERE [System.TeamProject] = @project
               AND [System.Tags] CONTAINS 'Blackstone'
-              AND [System.State] NOT IN ('Closed', 'Removed', 'Done')
+              AND [System.State] IN ('New', 'In Progress', 'Awaiting Deployment')
             ORDER BY [Microsoft.VSTS.Common.Priority] ASC,
                      [System.ChangedDate] DESC
         """
@@ -129,7 +135,7 @@ def _fake_ado_data():
             "id": 131077,
             "title": "Blackstone - Rover - Forecast data missing",
             "assignedTo": "Aadhithya Shanmugapriyan",
-            "state": "Active",
+            "state": "New",
             "priority": 2,
             "tags": "Blackstone; FinOps",
             "workItemType": "Bug",
@@ -139,7 +145,7 @@ def _fake_ado_data():
             "id": 131076,
             "title": "Blackstone - RBAC permission issue on tenant view",
             "assignedTo": "Aadhithya Shanmugapriyan",
-            "state": "Active",
+            "state": "Awaiting Deployment",
             "priority": 3,
             "tags": "Blackstone; Core",
             "workItemType": "Bug",
@@ -354,6 +360,148 @@ def fetch_platform_metrics():
         },
     }
 
+# ─── CHART GENERATORS ────────────────────────────────────────────────────────
+
+BRAND_COLORS = ["#1F6FBF", "#2EA8CC", "#5CC8A0", "#F4A460", "#E05C5C", "#9B59B6", "#F39C12", "#1ABC9C"]
+FONT_FAMILY  = "DejaVu Sans"
+
+def _chart_png(fig) -> io.BytesIO:
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+    plt.close(fig)
+    buf.seek(0)
+    return buf
+
+
+def chart_pendo_top_pages(pages: list) -> io.BytesIO:
+    """Horizontal bar chart — top pages by views."""
+    names  = [p["page"] for p in pages]
+    views  = [p["views"] for p in pages]
+    colors = [BRAND_COLORS[i % len(BRAND_COLORS)] for i in range(len(names))]
+
+    fig, ax = plt.subplots(figsize=(6, max(2.5, len(names) * 0.45)))
+    bars = ax.barh(names[::-1], views[::-1], color=colors[::-1], edgecolor="none", height=0.6)
+    for bar, val in zip(bars, views[::-1]):
+        ax.text(bar.get_width() + 0.3, bar.get_y() + bar.get_height() / 2,
+                str(val), va="center", ha="left", fontsize=9, color="#444")
+    ax.set_xlabel("Page views", fontsize=9)
+    ax.set_title("Top pages visited", fontsize=11, fontweight="bold", pad=10, color="#1F2937")
+    ax.spines[["top", "right", "left"]].set_visible(False)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.tick_params(axis="x", labelsize=8)
+    ax.set_xlim(0, max(views) * 1.25 if views else 10)
+    ax.xaxis.grid(True, linestyle="--", alpha=0.4)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    return _chart_png(fig)
+
+
+def chart_pendo_visitor_activity(visitors: list) -> io.BytesIO:
+    """Bar chart — events per active visitor (only those with events)."""
+    active = [(v["visitor"].title(), v["events"]) for v in visitors if v["events"] != "—"]
+    if not active:
+        # Return a simple "no activity" placeholder chart
+        fig, ax = plt.subplots(figsize=(5, 1.5))
+        ax.text(0.5, 0.5, "No visitor activity in this window",
+                ha="center", va="center", fontsize=10, color="#999", transform=ax.transAxes)
+        ax.axis("off")
+        return _chart_png(fig)
+
+    names  = [a[0] for a in active]
+    events = [a[1] for a in active]
+
+    fig, ax = plt.subplots(figsize=(max(4, len(names) * 1.2), 3.2))
+    bars = ax.bar(names, events, color=BRAND_COLORS[0], edgecolor="none", width=0.55)
+    for bar, val in zip(bars, events):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.5,
+                str(val), ha="center", va="bottom", fontsize=9, color="#444")
+    ax.set_ylabel("Events (3-day window)", fontsize=9)
+    ax.set_title("Visitor activity", fontsize=11, fontweight="bold", pad=10, color="#1F2937")
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.tick_params(axis="x", labelsize=9, rotation=15)
+    ax.tick_params(axis="y", labelsize=8)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.4)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    return _chart_png(fig)
+
+
+def chart_ado_by_state(ado_items: list) -> io.BytesIO:
+    """Donut chart — work items by state."""
+    state_order  = ["New", "In Progress", "Awaiting Deployment"]
+    state_colors = {"New": "#2EA8CC", "In Progress": "#1F6FBF", "Awaiting Deployment": "#5CC8A0"}
+
+    counts = {s: 0 for s in state_order}
+    for item in ado_items:
+        s = item["state"]
+        if s in counts:
+            counts[s] += 1
+
+    labels = [s for s in state_order if counts[s] > 0]
+    sizes  = [counts[s] for s in labels]
+    colors = [state_colors[s] for s in labels]
+
+    fig, ax = plt.subplots(figsize=(4.5, 3.2))
+    if not sizes:
+        ax.text(0.5, 0.5, "No items", ha="center", va="center",
+                fontsize=11, color="#999", transform=ax.transAxes)
+        ax.axis("off")
+    else:
+        wedges, texts, autotexts = ax.pie(
+            sizes, labels=None, colors=colors, autopct="%1.0f%%",
+            startangle=90, wedgeprops={"width": 0.55, "edgecolor": "white", "linewidth": 2},
+            pctdistance=0.75,
+        )
+        for at in autotexts:
+            at.set_fontsize(10)
+            at.set_color("white")
+            at.set_fontweight("bold")
+        legend_patches = [mpatches.Patch(color=colors[i], label=f"{labels[i]} ({sizes[i]})")
+                          for i in range(len(labels))]
+        ax.legend(handles=legend_patches, loc="lower center", bbox_to_anchor=(0.5, -0.18),
+                  ncol=len(labels), fontsize=8.5, frameon=False)
+    ax.set_title("ADO items by state", fontsize=11, fontweight="bold", pad=10, color="#1F2937")
+    fig.tight_layout()
+    return _chart_png(fig)
+
+
+def chart_ado_by_priority(ado_items: list) -> io.BytesIO:
+    """Bar chart — work items by priority."""
+    priority_map = {1: "P1 – Critical", 2: "P2 – High", 3: "P3 – Medium", 4: "P4 – Low"}
+    pri_colors   = {"P1 – Critical": "#E05C5C", "P2 – High": "#F4A460",
+                    "P3 – Medium": "#2EA8CC",   "P4 – Low": "#5CC8A0"}
+
+    counts: dict = {}
+    for item in ado_items:
+        label = priority_map.get(item["priority"], f"P{item['priority']}" if item["priority"] else "—")
+        counts[label] = counts.get(label, 0) + 1
+
+    ordered = [p for p in priority_map.values() if p in counts]
+    values  = [counts[p] for p in ordered]
+    colors  = [pri_colors.get(p, "#aaa") for p in ordered]
+
+    fig, ax = plt.subplots(figsize=(4.5, 3.2))
+    if not ordered:
+        ax.text(0.5, 0.5, "No items", ha="center", va="center",
+                fontsize=11, color="#999", transform=ax.transAxes)
+        ax.axis("off")
+    else:
+        bars = ax.bar(ordered, values, color=colors, edgecolor="none", width=0.5)
+        for bar, val in zip(bars, values):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.05,
+                    str(val), ha="center", va="bottom", fontsize=10, fontweight="bold", color="#444")
+        ax.set_ylabel("Work items", fontsize=9)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.tick_params(axis="x", labelsize=8.5)
+        ax.tick_params(axis="y", labelsize=8)
+        ax.yaxis.grid(True, linestyle="--", alpha=0.4)
+        ax.set_axisbelow(True)
+        ax.set_ylim(0, max(values) + 1)
+    ax.set_title("ADO items by priority", fontsize=11, fontweight="bold", pad=10, color="#1F2937")
+    fig.tight_layout()
+    return _chart_png(fig)
+
+
 # ─── DOCX HELPERS ────────────────────────────────────────────────────────────
 
 from docx import Document
@@ -470,7 +618,7 @@ def build_region_section(doc, ado_items, visitors, pages, metrics, region):
     pendo_start = today - datetime.timedelta(days=PENDO_WINDOW_DAYS - 1)
     pendo_range = f"{pendo_start.strftime('%-d %b')} – {pendo_end.strftime('%-d %b')}"
 
-    open_incidents = [i for i in ado_items if i["state"] not in ("Closed", "Removed", "Done", "Resolved")]
+    open_incidents = [i for i in ado_items if i["state"] in ("New", "In Progress", "Awaiting Deployment")]
     n2  = metrics["n2"]
     svc = metrics["cost"]
 
@@ -570,6 +718,23 @@ def build_region_section(doc, ado_items, visitors, pages, metrics, region):
     )
     doc.add_paragraph()
 
+    # Pendo charts side-by-side (visitor activity + top pages)
+    activity_img = chart_pendo_visitor_activity(visitors)
+    pages_img    = chart_pendo_top_pages(pages)
+
+    chart_tbl = doc.add_table(rows=1, cols=2)
+    chart_tbl.style = "Table Grid"
+    chart_tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+    left_cell  = chart_tbl.rows[0].cells[0]
+    right_cell = chart_tbl.rows[0].cells[1]
+    _set_cell_bg(left_cell,  C_WHITE)
+    _set_cell_bg(right_cell, C_WHITE)
+    left_cell.paragraphs[0].add_run().add_picture(activity_img, width=Inches(3.3))
+    right_cell.paragraphs[0].add_run().add_picture(pages_img,   width=Inches(3.3))
+    for cell in [left_cell, right_cell]:
+        cell.width = Inches(3.4)
+    doc.add_paragraph()
+
     _heading(doc, "Top pages visited", level_size=10)
     _add_table(doc,
         headers=["Page", "Views"],
@@ -609,6 +774,23 @@ def build_region_section(doc, ado_items, visitors, pages, metrics, region):
         rows=ado_rows,
         col_widths=[0.6, 2.8, 1.4, 0.9, 0.4, 1.0, 0.7],
     )
+    doc.add_paragraph()
+
+    # ADO charts side-by-side (state donut + priority bar)
+    state_img = chart_ado_by_state(ado_items)
+    pri_img   = chart_ado_by_priority(ado_items)
+
+    ado_chart_tbl = doc.add_table(rows=1, cols=2)
+    ado_chart_tbl.style = "Table Grid"
+    ado_chart_tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+    sc = ado_chart_tbl.rows[0].cells[0]
+    pc = ado_chart_tbl.rows[0].cells[1]
+    _set_cell_bg(sc, C_WHITE)
+    _set_cell_bg(pc, C_WHITE)
+    sc.paragraphs[0].add_run().add_picture(state_img, width=Inches(3.3))
+    pc.paragraphs[0].add_run().add_picture(pri_img,   width=Inches(3.3))
+    for cell in [sc, pc]:
+        cell.width = Inches(3.4)
 
 
 def render_docx(regions_data):
