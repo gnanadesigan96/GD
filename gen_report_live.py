@@ -1,7 +1,7 @@
 """
 gen_report_live.py
 Run this locally to generate today's CS Daily Incident Report with live Zoho data
-including ADO numbers.
+including ADO numbers, then upload to SharePoint.
 
 Usage:
     pip install requests openpyxl
@@ -10,6 +10,15 @@ Usage:
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "azure-function"))
 
+# ── SharePoint credentials — update these before running ──────────────────────
+os.environ.setdefault("SHAREPOINT_TENANT_ID",     "YOUR_TENANT_ID_HERE")
+os.environ.setdefault("SHAREPOINT_CLIENT_ID",     "abb2a8fa-4603-4aff-80b2-bf614beb173b")
+os.environ.setdefault("SHAREPOINT_CLIENT_SECRET", "YOUR_CLIENT_SECRET_HERE")
+os.environ.setdefault("SHAREPOINT_SITE_URL",      "cloudenablersinc.sharepoint.com/sites/SupportTeam")
+os.environ.setdefault("SHAREPOINT_HTML_FOLDER",   "General/Daily-Incident-Report/Template")
+os.environ.setdefault("SHAREPOINT_EXCEL_FOLDER",  "General/Daily-Incident-Report/Template")
+# ─────────────────────────────────────────────────────────────────────────────
+
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timezone, timedelta
@@ -17,6 +26,7 @@ from datetime import date, datetime, timezone, timedelta
 import requests
 
 from report_generator import parse_ticket, generate_html, generate_excel
+from sharepoint_client import upload_file
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -163,6 +173,21 @@ def main():
     with open(excel_path, "wb") as f:
         f.write(generate_excel(tickets, today))
     logging.info("Excel written: %s", excel_path)
+
+    # Upload to SharePoint
+    sp_html_folder  = os.environ["SHAREPOINT_HTML_FOLDER"]
+    sp_excel_folder = os.environ["SHAREPOINT_EXCEL_FOLDER"]
+    try:
+        logging.info("Uploading HTML to SharePoint…")
+        html_url = upload_file(html_path, sp_html_folder, html_path)
+        logging.info("HTML uploaded: %s", html_url)
+
+        logging.info("Uploading Excel to SharePoint…")
+        excel_url = upload_file(excel_path, sp_excel_folder, excel_path)
+        logging.info("Excel uploaded: %s", excel_url)
+    except Exception as e:
+        logging.error("SharePoint upload failed: %s", e)
+        logging.info("Files saved locally — upload manually if needed.")
 
     logging.info("Done. %d tickets in report.", len(tickets))
 
