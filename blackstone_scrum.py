@@ -228,16 +228,16 @@ def _fetch_blackstone_accounts() -> dict:
             print(f"  [Pendo] account REST sample keys: {list(acct_data.keys())}")
             metadata = acct_data.get("metadata", {})
             print(f"  [Pendo] account metadata keys: {list(metadata.keys())}")
-            for meta_type in ("auto", "agent", "custom"):
-                fields = metadata.get(meta_type, {})
-                if fields:
-                    print(f"  [Pendo] account metadata.{meta_type} fields: {list(fields.keys())}")
-                    for k, v in fields.items():
-                        vl = str(v).lower()
-                        if any(x in vl for x in ("eu", "useast", "us east", "europe", "portal", "environment", "region")):
-                            env_field = f"account.metadata.{meta_type}.{k}"
-                            print(f"  [Pendo] → using environment field: {env_field} = {v}")
-                            break
+            for meta_type, fields in metadata.items():
+                if not isinstance(fields, dict):
+                    continue
+                print(f"  [Pendo] account metadata.{meta_type} fields: {list(fields.keys())}")
+                for k, v in fields.items():
+                    vl = str(v).lower()
+                    if any(x in vl for x in ("eu", "useast", "us east", "europe", "portal", "environment", "region")):
+                        env_field = f"account.metadata.{meta_type}.{k}"
+                        print(f"  [Pendo] → using environment field: {env_field} = {v}")
+                        break
                 if env_field:
                     break
 
@@ -325,6 +325,11 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         }},
     ], "visitors")
     print(f"  [Pendo] total visitors in subscription: {len(visitor_rows)}")
+    if visitor_rows and acct_set:
+        sample_v_acct = next((r.get("accountId") for r in visitor_rows if r.get("accountId")), None)
+        sample_seg_acct = next(iter(acct_set))
+        print(f"  [Pendo] visitor accountId sample:  {repr(sample_v_acct)}")
+        print(f"  [Pendo] segment accountId sample:  {repr(sample_seg_acct)}")
 
     # ── Query 2: event totals per visitor for the window ─────────────────────
     event_rows = _pendo_agg([
