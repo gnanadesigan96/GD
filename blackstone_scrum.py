@@ -424,10 +424,18 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         else:
             region = "unknown"
 
+        # Visitor label: agent.name or email username; domain from email
+        visitor_label = v.get("name") or ""
+        if not visitor_label and email:
+            visitor_label = email.split("@")[0]
+        if not visitor_label:
+            visitor_label = v.get("visitorId", "—")
+        domain = email.split("@")[1] if "@" in email else (acct or "—")
+
         results.append({
             "visitorId":  v.get("visitorId", ""),
-            "visitor":    v.get("name") or email or v.get("visitorId", "—"),
-            "domain":     acct or "—",
+            "visitor":    visitor_label,
+            "domain":     domain,
             "events":     ev.get("numEvents") or "—",
             "daysActive": ev.get("daysActive") or "—",
             "minutes":    int(ev.get("numMinutes") or 0) or "—",
@@ -912,16 +920,15 @@ def render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, 
     _heading(doc, "Active visitors", level_size=10)
     visitor_rows = []
     for v in all_visitors:
-        ev = str(v["events"])     if v["events"]     != "—" else "—"
-        da = str(v["daysActive"]) if v["daysActive"] != "—" else "—"
-        mn = str(v["minutes"])    if v["minutes"]    != "—" else "—"
-        region_lbl = "EU" if v["region"] == "eu" else ("USEast" if v["region"] == "useast" else "—")
-        visitor_rows.append((v["visitor"], v["domain"], region_lbl, ev, da, mn, v["lastSeen"]))
+        ev = str(v["events"])     if v["events"]     != "—" else "-"
+        da = str(v["daysActive"]) if v["daysActive"] != "—" else "-"
+        mn = str(v["minutes"])    if v["minutes"]    != "—" else "-"
+        visitor_rows.append((v["visitor"], v["domain"], ev, da, mn, v["lastSeen"]))
 
     _add_table(doc,
-        headers=["Visitor (Blackstone segment)", "Domain", "Region", "Events (3d)", "Days active", "Minutes", "Last seen"],
-        rows=visitor_rows or [("—", "No activity in this window.", "", "", "", "", "")],
-        col_widths=[1.6, 1.5, 0.7, 0.9, 0.9, 0.7, 0.9],
+        headers=["Visitor (Blackstone segment)", "Domain", "Events (3d)", "Days active", "Minutes", "Last seen"],
+        rows=visitor_rows or [("—", "No activity in this window.", "", "", "", "")],
+        col_widths=[1.8, 1.8, 1.0, 1.0, 0.8, 0.9],
     )
     doc.add_paragraph()
 
