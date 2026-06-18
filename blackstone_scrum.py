@@ -675,34 +675,93 @@ def _add_table(doc, headers, rows, col_widths=None, zebra=True, header_bg=C_DARK
 
 # ─── REPORT RENDERER ─────────────────────────────────────────────────────────
 
-def build_region_section(doc, ado_items, visitors, pages, metrics, region):
-    today     = datetime.date.today()
-    now_ist   = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=5, minutes=30)
-    date_str  = fmt_date(today)
-    time_str  = now_ist.strftime("%I:%M %p IST").lstrip("0")
+def _build_pendo_section(doc, visitors, pages, region_label, pendo_range):
+    """Renders one Pendo sub-section (EU or USEast) into doc."""
+    _heading(doc, f"Pendo engagement — {region_label}  ·  last {PENDO_WINDOW_DAYS} days ({pendo_range})")
+    note_p = doc.add_paragraph()
+    _para_fmt(note_p, space_before=0, space_after=4)
+    _run(note_p,
+         f"Source: Blackstone Pendo segment only.  {PENDO_EXCLUDED_EMAIL} excluded.  "
+         f"Grey rows = segment members with no activity in this window.",
+         size=8, italic=True, color=C_MUTED)
+
+    visitor_rows = []
+    for v in visitors:
+        ev = str(v["events"])     if v["events"]     != "—" else "—"
+        da = str(v["daysActive"]) if v["daysActive"] != "—" else "—"
+        mn = str(v["minutes"])    if v["minutes"]    != "—" else "—"
+        visitor_rows.append((v["visitor"], v["domain"], ev, da, mn, v["lastSeen"]))
+
+    _add_table(doc,
+        headers=["Visitor", "Domain", "Events (3d)", "Days active", "Minutes", "Last seen"],
+        rows=visitor_rows or [("—", "No activity in this window.", "", "", "", "")],
+        col_widths=[1.8, 1.8, 1.0, 1.0, 0.9, 0.9],
+    )
+    doc.add_paragraph()
+
+    activity_img = chart_pendo_visitor_activity(visitors)
+    pages_img    = chart_pendo_top_pages(pages)
+
+    chart_tbl = doc.add_table(rows=1, cols=2)
+    chart_tbl.style = "Table Grid"
+    chart_tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+    left_cell  = chart_tbl.rows[0].cells[0]
+    right_cell = chart_tbl.rows[0].cells[1]
+    _set_cell_bg(left_cell,  C_WHITE)
+    _set_cell_bg(right_cell, C_WHITE)
+    left_cell.paragraphs[0].add_run().add_picture(activity_img, width=Inches(3.3))
+    right_cell.paragraphs[0].add_run().add_picture(pages_img,   width=Inches(3.3))
+    for cell in [left_cell, right_cell]:
+        cell.width = Inches(3.4)
+    doc.add_paragraph()
+
+    _heading(doc, f"Top pages — {region_label}", level_size=10)
+    _add_table(doc,
+        headers=["Page", "Views"],
+        rows=[(p["page"], p["views"]) for p in pages] or [("—", "—")],
+        col_widths=[4.5, 0.8],
+    )
+    doc.add_paragraph()
+
+
+def render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics):
+    """Renders a single-page scrum report with Pendo split by EU / USEast."""
+    doc = Document()
+
+    section = doc.sections[0]
+    section.top_margin    = Cm(1.5)
+    section.bottom_margin = Cm(1.5)
+    section.left_margin   = Cm(1.8)
+    section.right_margin  = Cm(1.8)
+
+    style = doc.styles["Normal"]
+    style.font.name = "Calibri"
+    style.font.size = Pt(10)
+
+    today    = datetime.date.today()
+    now_ist  = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=5, minutes=30)
+    date_str = fmt_date(today)
+    time_str = now_ist.strftime("%I:%M %p IST").lstrip("0")
 
     pendo_end   = today
     pendo_start = today - datetime.timedelta(days=PENDO_WINDOW_DAYS - 1)
     pendo_range = f"{fmt_mon(pendo_start)} – {fmt_mon(pendo_end)}"
 
-    open_incidents = [i for i in ado_items if i["state"] in ("New", "In Progress", "Awaiting Deployment")]
     n2  = metrics["n2"]
     svc = metrics["cost"]
+    open_incidents = [i for i in ado_items if i["state"] in ("New", "In Progress", "Awaiting Deployment")]
 
-    # ── Page title ─────────────────────────────────────────────────────────────
+    # ── Title ─────────────────────────────────────────────────────────────────
     title_p = doc.add_paragraph()
     _para_fmt(title_p, space_before=0, space_after=2)
-    _run(title_p, f"Blackstone — daily scrum update  {region}",
-         bold=True, size=16, color=C_DARK)
+    _run(title_p, "Blackstone — daily scrum update", bold=True, size=16, color=C_DARK)
 
     sub_p = doc.add_paragraph()
     _para_fmt(sub_p, space_before=0, space_after=6)
-    _run(sub_p, f"{date_str}   ·   Report generated {time_str}",
-         size=9, color=C_MUTED)
+    _run(sub_p, f"{date_str}   ·   Report generated {time_str}", size=9, color=C_MUTED)
 
-    # ── At a glance KPI row ────────────────────────────────────────────────────
+    # ── At a glance KPI ───────────────────────────────────────────────────────
     _heading(doc, "At a glance")
-
     kpi_tbl = doc.add_table(rows=2, cols=4)
     kpi_tbl.style = "Table Grid"
     kpi_tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
@@ -728,11 +787,10 @@ def build_region_section(doc, ado_items, visitors, pages, metrics, region):
     for row in kpi_tbl.rows:
         for i, w in enumerate(kpi_w):
             row.cells[i].width = Inches(w)
-
     doc.add_paragraph()
 
-    # ── Platform performance ───────────────────────────────────────────────────
-    _heading(doc, f"Platform performance — {region}   (N-2 metric)")
+    # ── Platform performance ──────────────────────────────────────────────────
+    _heading(doc, "Platform performance  (N-2 metric)")
     _add_table(doc,
         headers=["Metric", "Value"],
         rows=[
@@ -762,53 +820,11 @@ def build_region_section(doc, ado_items, visitors, pages, metrics, region):
     )
     doc.add_paragraph()
 
-    # ── Pendo engagement ──────────────────────────────────────────────────────
-    _heading(doc, f"Pendo engagement — Blackstone segment  ·  last {PENDO_WINDOW_DAYS} days ({pendo_range})")
-    note_p = doc.add_paragraph()
-    _para_fmt(note_p, space_before=0, space_after=4)
-    _run(note_p,
-         f"Source: Blackstone Pendo segment only.  {PENDO_EXCLUDED_EMAIL} excluded.  "
-         f"Grey rows = segment members with no activity in this window.",
-         size=8, italic=True, color=C_MUTED)
+    # ── Pendo — EU ────────────────────────────────────────────────────────────
+    _build_pendo_section(doc, eu_visitors, pages, "EU (portal.corestack.io)", pendo_range)
 
-    visitor_rows = []
-    for v in visitors:
-        ev = str(v["events"])    if v["events"]    != "—" else "—"
-        da = str(v["daysActive"]) if v["daysActive"] != "—" else "—"
-        mn = str(v["minutes"])   if v["minutes"]   != "—" else "—"
-        visitor_rows.append((v["visitor"], v["domain"], ev, da, mn, v["lastSeen"]))
-
-    _add_table(doc,
-        headers=["Visitor", "Domain", "Events (3d)", "Days active", "Minutes", "Last seen"],
-        rows=visitor_rows,
-        col_widths=[1.8, 1.8, 1.0, 1.0, 0.9, 0.9],
-    )
-    doc.add_paragraph()
-
-    # Pendo charts side-by-side (visitor activity + top pages)
-    activity_img = chart_pendo_visitor_activity(visitors)
-    pages_img    = chart_pendo_top_pages(pages)
-
-    chart_tbl = doc.add_table(rows=1, cols=2)
-    chart_tbl.style = "Table Grid"
-    chart_tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
-    left_cell  = chart_tbl.rows[0].cells[0]
-    right_cell = chart_tbl.rows[0].cells[1]
-    _set_cell_bg(left_cell,  C_WHITE)
-    _set_cell_bg(right_cell, C_WHITE)
-    left_cell.paragraphs[0].add_run().add_picture(activity_img, width=Inches(3.3))
-    right_cell.paragraphs[0].add_run().add_picture(pages_img,   width=Inches(3.3))
-    for cell in [left_cell, right_cell]:
-        cell.width = Inches(3.4)
-    doc.add_paragraph()
-
-    _heading(doc, "Top pages visited", level_size=10)
-    _add_table(doc,
-        headers=["Page", "Views"],
-        rows=[(p["page"], p["views"]) for p in pages],
-        col_widths=[4.5, 0.8],
-    )
-    doc.add_paragraph()
+    # ── Pendo — USEast ────────────────────────────────────────────────────────
+    _build_pendo_section(doc, useast_visitors, pages, "USEast (useast.corestack.io)", pendo_range)
 
     # ── ADO incidents ─────────────────────────────────────────────────────────
     ado_url = (
@@ -834,7 +850,7 @@ def build_region_section(doc, ado_items, visitors, pages, metrics, region):
             item["workItemType"],
         ))
     if not ado_rows:
-        ado_rows = [("—", "No active Blackstone work items found.", "", "", "", "", "")]
+        ado_rows = [("—", "No active Blackstone incidents found.", "", "", "", "", "")]
 
     _add_table(doc,
         headers=["ID", "Title", "Assigned to", "Bundle", "Pri", "State", "Type"],
@@ -843,7 +859,6 @@ def build_region_section(doc, ado_items, visitors, pages, metrics, region):
     )
     doc.add_paragraph()
 
-    # ADO charts side-by-side (state donut + priority bar)
     state_img = chart_ado_by_state(ado_items)
     pri_img   = chart_ado_by_priority(ado_items)
 
@@ -859,32 +874,7 @@ def build_region_section(doc, ado_items, visitors, pages, metrics, region):
     for cell in [sc, pc]:
         cell.width = Inches(3.4)
 
-
-def render_docx(regions_data):
-    """
-    regions_data: list of (region_label, ado_items, visitors, pages, metrics)
-    Returns a Document object.
-    """
-    doc = Document()
-
-    # Page margins
-    section = doc.sections[0]
-    section.top_margin    = Cm(1.5)
-    section.bottom_margin = Cm(1.5)
-    section.left_margin   = Cm(1.8)
-    section.right_margin  = Cm(1.8)
-
-    # Default paragraph style
-    style = doc.styles["Normal"]
-    style.font.name = "Calibri"
-    style.font.size = Pt(10)
-
-    for idx, (region_label, ado_items, visitors, pages, metrics) in enumerate(regions_data):
-        if idx > 0:
-            doc.add_page_break()
-        build_region_section(doc, ado_items, visitors, pages, metrics, region_label)
-
-    # Footer note
+    # ── Footer ────────────────────────────────────────────────────────────────
     footer_p = doc.add_paragraph()
     _para_fmt(footer_p, space_before=12, space_after=0)
     _run(footer_p,
@@ -898,7 +888,6 @@ def render_docx(regions_data):
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 def main():
-    # ── Startup key check ────────────────────────────────────────────────────
     using_fake = []
     if not ADO_PAT:
         using_fake.append("ADO   → using FAKE data  (add ADO_PAT to credentials.py)")
@@ -919,7 +908,7 @@ def main():
     print("Fetching ADO Blackstone work items...")
     ado_items = fetch_ado_blackstone_incidents()
 
-    print("Fetching Pendo engagement (all visitors, splitting by server field)...")
+    print("Fetching Pendo engagement...")
     acct_ids     = _fetch_blackstone_account_ids()
     all_visitors = fetch_pendo_all_visitors(account_ids=acct_ids or None)
     eu_visitors, useast_visitors, _ = split_visitors_by_region(all_visitors)
@@ -928,13 +917,9 @@ def main():
     print("Fetching platform metrics...")
     metrics = fetch_platform_metrics()
 
-    pages_useast = fetch_pendo_top_pages(account_ids=acct_ids or None)
-    pages_eu     = pages_useast  # same data; region split by pageId not yet available
+    pages = fetch_pendo_top_pages(account_ids=acct_ids or None)
 
-    doc = render_docx([
-        ("US East", ado_items, useast_visitors, pages_useast, metrics),
-        ("EU",      ado_items, eu_visitors,     pages_eu,     metrics),
-    ])
+    doc = render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics)
 
     out_file = f"Blackstone_Scrum_{datetime.date.today().strftime('%Y%m%d')}.docx"
     doc.save(out_file)
