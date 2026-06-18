@@ -341,14 +341,13 @@ def fetch_pendo_top_pages(account_ids: list = None,
     url = "https://app.pendo.io/api/v1/aggregation"
     acct_set = set(account_ids) if account_ids else set()
 
-    # Fetch raw page events grouped by accountId + pageId so we can filter in Python
+    # Use pageviews source — only contains page view events, has accountId + pageId
     pipeline = [
-        {"source": {"events": None,
+        {"source": {"pageviews": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
-        {"filter": "pageId != null"},
         {"group": {
             "group": ["accountId", "pageId"],
-            "fields": [{"views": {"sum": "numEvents"}}]
+            "fields": [{"views": {"count": "*"}}]
         }},
     ]
 
@@ -675,7 +674,7 @@ def _add_table(doc, headers, rows, col_widths=None, zebra=True, header_bg=C_DARK
 
 # ─── REPORT RENDERER ─────────────────────────────────────────────────────────
 
-def render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics):
+def render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, metrics):
     """
     Single-page scrum report matching the June 17 layout.
     Pendo section shows all visitors (EU + USEast combined) with a Region column
@@ -775,8 +774,8 @@ def render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics):
     )
     doc.add_paragraph()
 
-    # ── Pendo engagement (combined EU + USEast) ───────────────────────────────
-    all_visitors = eu_visitors + useast_visitors
+    # ── Pendo engagement (all visitors; EU + USEast counted separately) ──────
+    all_visitors = eu_visitors + useast_visitors + other_visitors
     _heading(doc, f"Pendo engagement — Blackstone segment  ·  last {PENDO_WINDOW_DAYS} days ({pendo_range})")
 
     note_p = doc.add_paragraph()
@@ -894,16 +893,6 @@ def render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics):
 
     return doc
 
-    # ── Footer ────────────────────────────────────────────────────────────────
-    footer_p = doc.add_paragraph()
-    _para_fmt(footer_p, space_before=12, space_after=0)
-    _run(footer_p,
-         "CoreStack · Cloud Operations Intelligence · Daily scrum report   "
-         "N-2 = jobs created 24h–48h ago  ·  Slow = request ≥30s",
-         size=8, color=C_MUTED, italic=True)
-
-    return doc
-
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 
@@ -931,15 +920,15 @@ def main():
     print("Fetching Pendo engagement...")
     acct_ids     = _fetch_blackstone_account_ids()
     all_visitors = fetch_pendo_all_visitors(account_ids=acct_ids or None)
-    eu_visitors, useast_visitors, _ = split_visitors_by_region(all_visitors)
-    print(f"  → EU visitors: {len(eu_visitors)}  |  USEast visitors: {len(useast_visitors)}")
+    eu_visitors, useast_visitors, other_visitors = split_visitors_by_region(all_visitors)
+    print(f"  → EU visitors: {len(eu_visitors)}  |  USEast visitors: {len(useast_visitors)}  |  unclassified: {len(other_visitors)}")
 
     print("Fetching platform metrics...")
     metrics = fetch_platform_metrics()
 
     pages = fetch_pendo_top_pages(account_ids=acct_ids or None)
 
-    doc = render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics)
+    doc = render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, metrics)
 
     out_file = f"Blackstone_Scrum_{datetime.date.today().strftime('%Y%m%d')}.docx"
     doc.save(out_file)
