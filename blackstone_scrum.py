@@ -387,9 +387,11 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     accounts = accounts or {}
     acct_set = set(accounts.keys())
 
-    # ── Events with accountId (reliable) ─────────────────────────────────────
+    # ── Events scoped to Blackstone segment ──────────────────────────────────
+    # segmentId on the events source properly limits to segment members.
     event_rows = _pendo_agg([
         {"source": {"events": None,
+                    "segmentId": PENDO_SEGMENT_ID,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
         {"group": {
             "group": ["visitorId", "accountId"],
@@ -400,12 +402,10 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
                 {"lastSeenAt": {"max": "day"}},
             ]
         }},
-    ], "events")
-    print(f"  [Pendo] total event rows (all accounts): {len(event_rows)}")
+    ], "events_segment")
+    print(f"  [Pendo] active Blackstone visitors in window: {len(event_rows)}")
 
-    # Filter to Blackstone accounts
-    bs_events = [r for r in event_rows if (r.get("accountId") or "") in acct_set]
-    print(f"  [Pendo] active Blackstone visitors in window: {len(bs_events)}")
+    bs_events = event_rows  # already segment-filtered
 
     results = []
     for ev in bs_events:
@@ -502,12 +502,13 @@ def fetch_pendo_top_pages(accounts: dict = None,
     start_ms = end_ms - (window_days * 86400 * 1000)
     acct_set = set((accounts or {}).keys())
 
-    # Events source grouped by (accountId, pageId) — filter Blackstone accounts in Python
+    # Events scoped to Blackstone segment, grouped by pageId
     raw = _pendo_agg([
         {"source": {"events": None,
+                    "segmentId": PENDO_SEGMENT_ID,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
         {"group": {
-            "group": ["accountId", "pageId"],
+            "group": ["pageId"],
             "fields": [{"views": {"sum": "numEvents"}}]
         }},
     ], "pages")
@@ -515,8 +516,6 @@ def fetch_pendo_top_pages(accounts: dict = None,
     SYNTHETIC = {"allevents", "allfeatures", None, ""}
     page_views: dict = {}
     for r in raw:
-        if acct_set and r.get("accountId") not in acct_set:
-            continue
         pid = r.get("pageId")
         if pid in SYNTHETIC:
             continue
