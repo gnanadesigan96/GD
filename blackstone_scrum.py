@@ -204,62 +204,97 @@ def _fetch_blackstone_accounts() -> dict:
     """
     Fetches Blackstone accounts from the segment with their metadata.
     Returns {accountId: {"name": ..., "environment": ...}}.
-    Environment field is probed across common Pendo metadata paths.
+    Uses REST API on the first account to discover the environment field name.
     """
+    # Step 1: get all account IDs from segment
+    id_rows = _pendo_agg([
+        {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
+        {"select": {"accountId": "accountId"}},
+    ], "accounts")
+
+    if not id_rows:
+        return {}
+
+    account_ids = [r["accountId"] for r in id_rows if r.get("accountId")]
+    print(f"  [Pendo] account IDs in segment: {len(account_ids)}")
+
+    # Step 2: use REST API on first account to discover all metadata field names
+    env_field = None
+    if account_ids:
+        rest_url = f"https://app.pendo.io/api/v1/account/{requests.utils.quote(account_ids[0], safe='')}"
+        r = requests.get(rest_url, headers=pendo_headers())
+        if r.ok:
+            acct_data = r.json()
+            print(f"  [Pendo] account REST sample keys: {list(acct_data.keys())}")
+            metadata = acct_data.get("metadata", {})
+            print(f"  [Pendo] account metadata keys: {list(metadata.keys())}")
+            for meta_type in ("auto", "agent", "custom"):
+                fields = metadata.get(meta_type, {})
+                if fields:
+                    print(f"  [Pendo] account metadata.{meta_type} fields: {list(fields.keys())}")
+                    for k, v in fields.items():
+                        vl = str(v).lower()
+                        if any(x in vl for x in ("eu", "useast", "us east", "europe", "portal", "environment", "region")):
+                            env_field = f"account.metadata.{meta_type}.{k}"
+                            print(f"  [Pendo] → using environment field: {env_field} = {v}")
+                            break
+                if env_field:
+                    break
+
+    if not env_field:
+        print("  [Pendo] ⚠ Could not detect environment field — all visitors will be 'unclassified'")
+        return {aid: {"name": "", "environment": ""} for aid in account_ids}
+
+    # Step 3: fetch all accounts with discovered environment field
     rows = _pendo_agg([
         {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
         {"select": {
             "accountId":   "accountId",
             "name":        "account.name",
-            # Try common paths — whichever is populated wins
-            "env_auto":    "account.metadata.auto.Environment",
-            "env_agent":   "account.metadata.agent.Environment",
-            "env_auto_lc": "account.metadata.auto.environment",
-            "env_region":  "account.metadata.auto.Region",
-            "env_region2": "account.metadata.auto.region",
+            "environment": env_field,
         }},
-    ], "accounts")
+    ], "account_meta")
 
-    if not rows:
-        return {}
-
-    print(f"  [Pendo] account IDs in segment: {len(rows)}")
-    # Print first non-trivial sample to confirm which field holds environment
-    for r in rows[:5]:
-        env_fields = {k: v for k, v in r.items() if k != "accountId" and v}
-        if env_fields:
-            print(f"  [Pendo] account sample: {r}")
-            break
-
-    result = {}
-    for r in rows:
-        if not r.get("accountId"):
-            continue
-        # Pick first non-empty environment value across probed fields
-        env = (
-            r.get("env_auto") or r.get("env_agent") or
-            r.get("env_auto_lc") or r.get("env_region") or
-            r.get("env_region2") or ""
-        ).lower()
-        result[r["accountId"]] = {
+    return {
+        r["accountId"]: {
             "name":        r.get("name") or "",
-            "environment": env,
+            "environment": (r.get("environment") or "").lower(),
         }
-    return result
-
-
-def _pendo_agg(pipeline, label=""):
-    """Run a Pendo aggregation pipeline, return results list or []."""
-    url = "https://app.pendo.io/api/v1/aggregation"
-    payload = {
-        "response": {"mimeType": "application/json"},
-        "request": {"pipeline": pipeline},
+        for r in rows if r.get("accountId")
     }
-    resp = requests.post(url, headers=pendo_headers(), json=payload)
-    if not resp.ok:
-        print(f"  [Pendo{' ' + label if label else ''}] {resp.status_code}: {resp.text[:400]}")
-        return []
-    return resp.json().get("results", [])
+
+
+def _pendo_agg(pipeline, label="", rows_per_page=5000):
+    """
+    Run a Pendo aggregation pipeline with pagination, return all results.
+    Pendo defaults to 1 row per page — must paginate to get full data.
+    """
+    url = "https://app.pendo.io/api/v1/aggregation"
+    all_results = []
+    start_row = 0
+
+    while True:
+        payload = {
+            "response": {
+                "mimeType": "application/json",
+                "rowsPerPage": rows_per_page,
+                "startRow": start_row,
+            },
+            "request": {"pipeline": pipeline},
+        }
+        resp = requests.post(url, headers=pendo_headers(), json=payload)
+        if not resp.ok:
+            print(f"  [Pendo{' ' + label if label else ''}] {resp.status_code}: {resp.text[:400]}")
+            break
+        data = resp.json()
+        page_results = data.get("results", [])
+        all_results.extend(page_results)
+        total = data.get("total", len(all_results))
+        if len(all_results) >= total or not page_results:
+            break
+        start_row += rows_per_page
+
+    return all_results
 
 
 def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WINDOW_DAYS):
