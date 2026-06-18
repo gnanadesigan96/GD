@@ -23,6 +23,10 @@ ACCOUNT_BAND: dict[str, str] = {
     "neurealm":           "Platinum",
     "taylor farms":       "Platinum",
     "taylor_farms":       "Platinum",
+    "taylorfarms":        "Platinum",
+    "taylor farm":        "Platinum",
+    # Platinum — named strategic accounts
+    "blackstone":         "Platinum",
     # Gold
     "otsuka":             "Gold",
     "otsuka-us":          "Gold",
@@ -60,6 +64,8 @@ DISPLAY_NAMES: dict[str, str] = {
     "neurealm":           "Neurealm",
     "taylor farms":       "Taylor Farms",
     "taylor_farms":       "Taylor Farms",
+    "taylorfarms":        "Taylor Farms",
+    "taylor farm":        "Taylor Farms",
     "otsuka":             "Otsuka",
     "otsuka-us":          "Otsuka",
     "kyndryl":            "Kyndryl",
@@ -94,7 +100,7 @@ DISPLAY_NAMES: dict[str, str] = {
     "blackstone":         "Blackstone",
 }
 
-BLACKSTONE_KEYWORDS = ["blackstone"]
+BLACKSTONE_KEYWORDS = []  # now handled via ACCOUNT_BAND as Platinum
 
 
 def _norm(s: str) -> str:
@@ -240,12 +246,21 @@ def parse_ticket(raw: dict, today: date) -> dict:
     age_days = (today - created_date).days
     bkt = _bucket(age_days)
 
-    band = get_band(account_raw)
-    # Blackstone override
-    if any(kw in _norm(account_raw) for kw in BLACKSTONE_KEYWORDS) or \
-       any(kw in _norm(subject) for kw in BLACKSTONE_KEYWORDS):
-        band = "Blackstone-Bronze"
+    # If account still empty, try to detect known customer names in subject line
+    if not account_raw:
+        _subj_lower = _norm(subject)
+        _SUBJ_KEYWORDS = [
+            "taylor farms", "taylor_farms", "blackstone", "neurealm",
+            "otsuka", "kyndryl", "logicalis", "synopsys", "synoptek",
+            "bluemantis", "hitachi", "getronics", "virtusa", "microland",
+            "tata communications", "ge vernova",
+        ]
+        for kw in _SUBJ_KEYWORDS:
+            if kw in _subj_lower:
+                account_raw = kw
+                break
 
+    band = get_band(account_raw)
     display = get_display(account_raw)
 
     return {
@@ -295,8 +310,7 @@ STATUS_STYLES = {"Open":("DBEAFE","1D4ED8"), "In Progress":("DCFCE7","15803D"),
                  "On Hold":("FEF9C3","B45309"),
                  "Awaiting Resolution Confirmation":("EDE9FE","6D28D9")}
 BAND_STYLES   = {"Platinum":("CBD5E1","1E293B"), "Gold":("FEF9C3","92400E"),
-                 "Silver":("DBEAFE","1E4976"),   "Bronze":("FFF7ED","9A3412"),
-                 "Blackstone-Bronze":("FFF7ED","9A3412")}
+                 "Silver":("DBEAFE","1E4976"),   "Bronze":("FFF7ED","9A3412")}
 BAND_BADGE    = {"Platinum":"Platinum","Gold":"Gold","Silver":"Silver",
                  "Bronze":"Bronze","Blackstone-Bronze":"Bronze"}
 
@@ -650,7 +664,7 @@ def generate_html(tickets: list[dict], today: date) -> str:
             '</table></td></tr></table></td></tr>'
         )
 
-    # HTML shows only Platinum / Gold / Silver (Bronze goes to Excel only)
+    # HTML shows Platinum / Gold / Silver (Bronze goes to Excel only)
     plat_grp:   dict[str, list] = defaultdict(list)
     gold_grp:   dict[str, list] = defaultdict(list)
     silver_grp: dict[str, list] = defaultdict(list)
@@ -662,7 +676,7 @@ def generate_html(tickets: list[dict], today: date) -> str:
             gold_grp[t["display"]].append(t)
         elif t["band"] == "Silver":
             silver_grp[t["display"]].append(t)
-        # Bronze / Unknown / Blackstone-Bronze excluded from HTML
+        # Bronze / Unknown excluded from HTML
 
     sections = ""
     for name, lst in sorted(plat_grp.items()):
