@@ -844,6 +844,24 @@ def render_docx(regions_data):
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 def main():
+    # ── Startup key check ────────────────────────────────────────────────────
+    using_fake = []
+    if ADO_PAT == "YOUR_PAT_HERE":
+        using_fake.append("ADO  → using FAKE data  (set env var: export ADO_PAT=...)")
+    else:
+        print("✓ ADO PAT detected — will fetch live work items")
+
+    if PENDO_API_KEY == "YOUR_PENDO_API_KEY":
+        using_fake.append("Pendo → using FAKE data  (set env var: export PENDO_API_KEY=...)")
+    else:
+        print("✓ Pendo API key detected — will fetch live visitors")
+
+    if using_fake:
+        print("\n⚠️  WARNING — missing credentials:")
+        for msg in using_fake:
+            print(f"   {msg}")
+        print()
+
     print("Fetching ADO Blackstone work items...")
     ado_items = fetch_ado_blackstone_incidents()
 
