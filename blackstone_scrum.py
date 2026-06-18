@@ -343,6 +343,8 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
                     datetime.datetime.fromtimestamp(hour_ms / 1000, PACIFIC).strftime("%Y-%m-%d"))
     days_active = {v: len(d) for v, d in day_sets.items()}
     print(f"  [Pendo] visitors active in window: {len(ev_sum)}")
+    servers = {(r.get("server") or "").lower() for r in member_rows}
+    print(f"  [Pendo] distinct lastservername values: {sorted(servers)[:10]}")
 
     # ── Step 3: build result rows (one per member row = one per account) ──────
     results = []
@@ -534,7 +536,7 @@ def chart_pendo_top_pages(pages: list) -> io.BytesIO:
 
 def chart_pendo_visitor_activity(visitors: list) -> io.BytesIO:
     """Bar chart — events per active visitor (only those with events)."""
-    active = [(v["visitor"].title(), v["events"]) for v in visitors if v["events"] != "—"]
+    active = [(v["visitor"].title(), v["events"]) for v in visitors if isinstance(v["events"], int)]
     if not active:
         # Return a simple "no activity" placeholder chart
         fig, ax = plt.subplots(figsize=(5, 1.5))
