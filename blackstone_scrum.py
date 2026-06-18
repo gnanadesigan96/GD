@@ -471,7 +471,12 @@ def fetch_pendo_top_pages(accounts: dict = None, window_days: int = PENDO_WINDOW
         except Exception:
             pass
 
-    return [{"page": all_pages.get(pid, pid), "views": v} for pid, v in sorted_pages]
+    result = []
+    for pid, v in sorted_pages:
+        name = all_pages.get(pid, "")
+        if name:                          # skip pages with no resolvable name
+            result.append({"page": name, "views": v})
+    return result[:top_n]
 
 
 def _fake_pendo_visitors():
