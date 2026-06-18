@@ -104,6 +104,7 @@ def fetch_ado_blackstone_incidents():
             FROM WorkItems
             WHERE [System.TeamProject] = @project
               AND [System.Tags] CONTAINS 'Blackstone'
+              AND [System.WorkItemType] = 'Incident'
               AND [System.State] IN ('New', 'In Progress', 'Awaiting Deployment')
             ORDER BY [Microsoft.VSTS.Common.Priority] ASC,
                      [System.ChangedDate] DESC
