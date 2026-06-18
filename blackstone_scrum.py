@@ -250,7 +250,9 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
     }
 
     resp = requests.post(url, headers=pendo_headers(), json=payload)
-    resp.raise_for_status()
+    if not resp.ok:
+        print(f"  [Pendo visitors] {resp.status_code}: {resp.text[:500]}")
+        resp.raise_for_status()
     raw = resp.json().get("results", [])
     print(f"  [Pendo] raw visitor count from API: {len(raw)}")
     if raw:
