@@ -200,96 +200,114 @@ def pendo_headers():
         "Content-Type": "application/json",
     }
 
-def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
+def _fetch_blackstone_account_ids() -> list:
     """
-    Fetches all visitors in the Blackstone segment with engagement metrics
-    for the last N days. Includes the visitor's 'server' metadata field so
-    callers can split into EU / USEast groups.
-    Returns list of dicts, each with a 'region' key.
+    Tries to get Blackstone account IDs from the segment.
+    Falls back to empty list if segment is visitor-based or unsupported.
     """
-    if not PENDO_API_KEY:
-        return _fake_pendo_visitors()
-
-    now_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
-    end_ms   = now_ms
-    start_ms = end_ms - (window_days * 86400 * 1000)
-
     url = "https://app.pendo.io/api/v1/aggregation"
     payload = {
         "response": {"mimeType": "application/json"},
         "request": {
             "pipeline": [
-                {"source": {"visitors": {"segmentId": PENDO_SEGMENT_ID}}},
-                {
-                    "select": {
-                        "visitorId":  "visitorId",
-                        "email":      "visitor.email",
-                        "lastName":   "visitor.lastName",
-                        "firstName":  "visitor.firstName",
-                        "domain":     "visitor.accountId",
-                        "lastSeenAt": "visitor.lastSeenAt",
-                        "server":     f"visitor.auto.{PENDO_SERVER_FIELD}",
-                    }
-                },
-                {
-                    "join": {
-                        "kind": "left",
-                        "pipeline": [
-                            {"source": {"events": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
-                            {"group": {"group": ["visitorId"], "fields": [
-                                {"numEvents":  {"sum": "numEvents"}},
-                                {"numMinutes": {"sum": "numMinutes"}},
-                                {"daysActive": {"count": "day"}},
-                            ]}}
-                        ],
-                        "keys": ["visitorId"],
-                    }
-                },
+                {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
+                {"select": {"accountId": "accountId"}},
             ]
         }
     }
-
     resp = requests.post(url, headers=pendo_headers(), json=payload)
     if not resp.ok:
-        print(f"  [Pendo visitors] {resp.status_code}: {resp.text[:500]}")
-        resp.raise_for_status()
-    raw = resp.json().get("results", [])
-    print(f"  [Pendo] visitor count: {len(raw)}")
-    if raw:
-        print(f"  [Pendo] sample keys: {list(raw[0].keys())}")
-        print(f"  [Pendo] sample server: {raw[0].get('server')!r}")
-        print(f"  [Pendo] full sample row: {raw[0]}")
+        print(f"  [Pendo accounts] {resp.status_code}: {resp.text[:200]}")
+        return []
+    ids = [r["accountId"] for r in resp.json().get("results", []) if r.get("accountId")]
+    print(f"  [Pendo] account IDs in segment: {ids}")
+    return ids
+
+
+def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_WINDOW_DAYS):
+    """
+    Fetches all Blackstone visitors with engagement metrics for the last N days.
+    Uses events filtered by server (portal.corestack.io / useast.corestack.io)
+    and optionally by account_ids to scope to Blackstone accounts only.
+    Returns list of dicts, each with a 'region' key.
+    """
+    if not PENDO_API_KEY:
+        return _fake_pendo_visitors()
+
+    end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+    start_ms = end_ms - (window_days * 86400 * 1000)
+    url = "https://app.pendo.io/api/v1/aggregation"
 
     results = []
-    for row in raw:
-        email = row.get("email", "")
-        if email == PENDO_EXCLUDED_EMAIL:
-            continue
-        last_seen_ms = row.get("lastSeenAt")
-        last_seen = (
-            fmt_mon(datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc))
-            if last_seen_ms else "—"
-        )
-        server = (row.get("server") or "").lower()
-        print(f"  [Pendo] visitor={row.get('visitorId')!r}  server={server!r}")
-        if PENDO_REGION_EU in server:
-            region = "eu"
-        elif PENDO_REGION_USEAST in server:
-            region = "useast"
-        else:
-            region = server or "unknown"
+    for region_key, server_val in [("eu", PENDO_REGION_EU), ("useast", PENDO_REGION_USEAST)]:
+        server_filter = f'server == "{server_val}"'
+        if account_ids:
+            acct_list = json.dumps(account_ids)
+            server_filter += f" && accountId in {acct_list}"
 
-        name = ((row.get("firstName") or "") + " " + (row.get("lastName") or "")).strip() or row.get("visitorId", "—")
-        results.append({
-            "visitorId":  row.get("visitorId", ""),
-            "visitor":    name,
-            "domain":     row.get("domain", "—"),
-            "events":     row.get("numEvents") or "—",
-            "daysActive": row.get("daysActive") or "—",
-            "minutes":    int(row.get("numMinutes") or 0) or "—",
-            "lastSeen":   last_seen,
-            "region":     region,
-        })
+        payload = {
+            "response": {"mimeType": "application/json"},
+            "request": {
+                "pipeline": [
+                    {"source": {"events": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
+                    {"filter": server_filter},
+                    {"group": {
+                        "group": ["visitorId"],
+                        "fields": [
+                            {"numEvents":  {"sum": "numEvents"}},
+                            {"numMinutes": {"sum": "numMinutes"}},
+                            {"daysActive": {"count": "day"}},
+                            {"lastSeenAt": {"max": "day"}},
+                        ]
+                    }},
+                    {"join": {
+                        "kind": "left",
+                        "pipeline": [
+                            {"source": {"visitors": None}},
+                            {"select": {
+                                "visitorId":  "visitorId",
+                                "email":      "visitor.email",
+                                "lastName":   "visitor.lastName",
+                                "firstName":  "visitor.firstName",
+                                "domain":     "visitor.accountId",
+                            }},
+                        ],
+                        "keys": ["visitorId"],
+                    }},
+                ]
+            }
+        }
+
+        resp = requests.post(url, headers=pendo_headers(), json=payload)
+        if not resp.ok:
+            print(f"  [Pendo {region_key}] {resp.status_code}: {resp.text[:400]}")
+            continue
+
+        raw = resp.json().get("results", [])
+        print(f"  [Pendo {region_key}] visitor count: {len(raw)}")
+        if raw:
+            print(f"  [Pendo {region_key}] sample: {raw[0]}")
+
+        for row in raw:
+            email = row.get("email", "") or ""
+            if email == PENDO_EXCLUDED_EMAIL:
+                continue
+            last_seen_ms = row.get("lastSeenAt")
+            last_seen = (
+                fmt_mon(datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc))
+                if last_seen_ms else "—"
+            )
+            name = ((row.get("firstName") or "") + " " + (row.get("lastName") or "")).strip() or row.get("visitorId", "—")
+            results.append({
+                "visitorId":  row.get("visitorId", ""),
+                "visitor":    name,
+                "domain":     row.get("domain", "—"),
+                "events":     row.get("numEvents") or "—",
+                "daysActive": row.get("daysActive") or "—",
+                "minutes":    int(row.get("numMinutes") or 0) or "—",
+                "lastSeen":   last_seen,
+                "region":     region_key,
+            })
     return results
 
 
@@ -301,10 +319,11 @@ def split_visitors_by_region(visitors):
     return eu, useast, other
 
 
-def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10):
+def fetch_pendo_top_pages(server_val: str = None, account_ids: list = None,
+                          window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10):
     """
-    Fetches top pages for the Blackstone segment in the last N days.
-    If region_visitor_ids is provided, filters to only those visitor IDs (for EU/USEast split).
+    Fetches top pages for a given server (EU or USEast) in the last N days.
+    Optionally filters to account_ids to scope to Blackstone accounts only.
     """
     if not PENDO_API_KEY:
         return _fake_pendo_pages()
@@ -314,19 +333,21 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
 
     url = "https://app.pendo.io/api/v1/aggregation"
 
+    page_filter = None
+    if server_val:
+        page_filter = f'server == "{server_val}"'
+        if account_ids:
+            acct_list = json.dumps(account_ids)
+            page_filter += f" && accountId in {acct_list}"
+
     pipeline = [
-        {
-            "source": {
-                "pageEvents": None,
-                "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms},
-            }
-        },
+        {"source": {"events": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
     ]
-    if region_visitor_ids:
-        id_list = json.dumps(region_visitor_ids)
-        pipeline.append({"filter": f"visitorId in {id_list}"})
+    if page_filter:
+        pipeline.append({"filter": page_filter})
 
     pipeline += [
+        {"filter": "pageId != null"},
         {"group": {"group": ["pageId"], "fields": [{"views": {"sum": "numEvents"}}]}},
         {"sort": [{"views": -1}]},
         {"limit": top_n},
@@ -342,12 +363,8 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
         print(f"  [Pendo pages] {resp.status_code} error: {resp.text[:600]}")
         return []
 
-    results = []
-    for r in resp.json().get("results", []):
-        page_id = r.get("pageId", "?")
-        # try to resolve page name from a second call only if needed; use id as fallback
-        results.append({"page": page_id, "views": r.get("views", 0)})
-    return results
+    return [{"page": r.get("pageId", "?"), "views": r.get("views", 0)}
+            for r in resp.json().get("results", [])]
 
 
 def _fake_pendo_visitors():
@@ -894,18 +911,16 @@ def main():
     ado_items = fetch_ado_blackstone_incidents()
 
     print("Fetching Pendo engagement (all visitors, splitting by server field)...")
-    all_visitors = fetch_pendo_all_visitors()
+    acct_ids     = _fetch_blackstone_account_ids()
+    all_visitors = fetch_pendo_all_visitors(account_ids=acct_ids or None)
     eu_visitors, useast_visitors, _ = split_visitors_by_region(all_visitors)
     print(f"  → EU visitors: {len(eu_visitors)}  |  USEast visitors: {len(useast_visitors)}")
 
     print("Fetching platform metrics...")
     metrics = fetch_platform_metrics()
 
-    useast_ids = [v.get("visitorId") for v in useast_visitors if v.get("visitorId")]
-    eu_ids     = [v.get("visitorId") for v in eu_visitors     if v.get("visitorId")]
-
-    pages_useast = fetch_pendo_top_pages(region_visitor_ids=useast_ids or None)
-    pages_eu     = fetch_pendo_top_pages(region_visitor_ids=eu_ids     or None)
+    pages_useast = fetch_pendo_top_pages(server_val=PENDO_REGION_USEAST, account_ids=acct_ids or None)
+    pages_eu     = fetch_pendo_top_pages(server_val=PENDO_REGION_EU,     account_ids=acct_ids or None)
 
     doc = render_docx([
         ("US East", ado_items, useast_visitors, pages_useast, metrics),
