@@ -227,7 +227,8 @@ def _fetch_blackstone_account_ids() -> list:
 def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_WINDOW_DAYS):
     """
     Fetches all Blackstone visitors with engagement metrics for the last N days.
-    Uses segmentId on the events source to scope to Blackstone accounts.
+    Fetches all events for the window, joins with visitor metadata, then filters
+    in Python to only rows whose accountId is in the Blackstone segment.
     Region is derived from the visitor's server metadata field.
     """
     if not PENDO_API_KEY:
@@ -237,14 +238,13 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
     start_ms = end_ms - (window_days * 86400 * 1000)
     url = "https://app.pendo.io/api/v1/aggregation"
 
-    pipeline = [
-        {"source": {"events": {"segmentId": PENDO_SEGMENT_ID},
-                    "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
-    ]
+    acct_set = set(account_ids) if account_ids else set()
 
-    pipeline += [
+    pipeline = [
+        {"source": {"events": None,
+                    "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
         {"group": {
-            "group": ["visitorId"],
+            "group": ["visitorId", "accountId"],
             "fields": [
                 {"numEvents":  {"sum": "numEvents"}},
                 {"numMinutes": {"sum": "numMinutes"}},
@@ -261,7 +261,6 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
                     "email":      "visitor.email",
                     "lastName":   "visitor.lastName",
                     "firstName":  "visitor.firstName",
-                    "domain":     "visitor.accountId",
                     "server":     f"visitor.auto.{PENDO_SERVER_FIELD}",
                 }},
             ],
@@ -280,12 +279,13 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
         return _fake_pendo_visitors()
 
     raw = resp.json().get("results", [])
-    print(f"  [Pendo] visitor count: {len(raw)}")
-    if raw:
-        print(f"  [Pendo] sample: {raw[0]}")
+    print(f"  [Pendo] total visitor rows before filter: {len(raw)}")
 
     results = []
     for row in raw:
+        # Filter to Blackstone accounts only
+        if acct_set and row.get("accountId") not in acct_set:
+            continue
         email = row.get("email", "") or ""
         if email == PENDO_EXCLUDED_EMAIL:
             continue
@@ -306,13 +306,14 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
         results.append({
             "visitorId":  row.get("visitorId", ""),
             "visitor":    name,
-            "domain":     row.get("domain", "—"),
+            "domain":     row.get("accountId", "—"),
             "events":     row.get("numEvents") or "—",
             "daysActive": row.get("daysActive") or "—",
             "minutes":    int(row.get("numMinutes") or 0) or "—",
             "lastSeen":   last_seen,
             "region":     region,
         })
+    print(f"  [Pendo] Blackstone visitors after filter: {len(results)}")
     return results
 
 
@@ -328,8 +329,8 @@ def fetch_pendo_top_pages(account_ids: list = None,
                           server_val: str = None,
                           window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10):
     """
-    Fetches top pages for a given server (EU or USEast) in the last N days.
-    Optionally filters to account_ids to scope to Blackstone accounts only.
+    Fetches top pages for Blackstone accounts in the last N days.
+    Fetches all page events for the window, then filters to Blackstone accounts in Python.
     """
     if not PENDO_API_KEY:
         return _fake_pendo_pages()
@@ -338,16 +339,17 @@ def fetch_pendo_top_pages(account_ids: list = None,
     start_ms = end_ms - (window_days * 86400 * 1000)
 
     url = "https://app.pendo.io/api/v1/aggregation"
+    acct_set = set(account_ids) if account_ids else set()
 
+    # Fetch raw page events grouped by accountId + pageId so we can filter in Python
     pipeline = [
-        {"source": {"events": {"segmentId": PENDO_SEGMENT_ID},
+        {"source": {"events": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
-    ]
-
-    pipeline += [
-        {"group": {"group": ["pageId"], "fields": [{"views": {"sum": "numEvents"}}]}},
-        {"sort": [{"views": -1}]},
-        {"limit": top_n},
+        {"filter": "pageId != null"},
+        {"group": {
+            "group": ["accountId", "pageId"],
+            "fields": [{"views": {"sum": "numEvents"}}]
+        }},
     ]
 
     payload = {
@@ -360,8 +362,18 @@ def fetch_pendo_top_pages(account_ids: list = None,
         print(f"  [Pendo pages] {resp.status_code} error: {resp.text[:600]}")
         return []
 
-    return [{"page": r.get("pageId", "?"), "views": r.get("views", 0)}
-            for r in resp.json().get("results", [])]
+    raw = resp.json().get("results", [])
+
+    # Filter to Blackstone accounts and aggregate by pageId
+    page_views: dict = {}
+    for r in raw:
+        if acct_set and r.get("accountId") not in acct_set:
+            continue
+        pid = r.get("pageId") or "?"
+        page_views[pid] = page_views.get(pid, 0) + (r.get("views") or 0)
+
+    sorted_pages = sorted(page_views.items(), key=lambda x: x[1], reverse=True)[:top_n]
+    return [{"page": pid, "views": views} for pid, views in sorted_pages]
 
 
 def _fake_pendo_visitors():
