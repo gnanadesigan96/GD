@@ -183,7 +183,8 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
     if PENDO_API_KEY == "YOUR_PENDO_API_KEY":
         return _fake_pendo_visitors()
 
-    end_ms   = int(datetime.datetime.utcnow().timestamp() * 1000)
+    now_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+    end_ms   = now_ms
     start_ms = end_ms - (window_days * 86400 * 1000)
 
     url = "https://app.pendo.io/api/v1/aggregation"
@@ -191,12 +192,8 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
         "response": {"mimeType": "application/json"},
         "request": {
             "pipeline": [
-                {
-                    "identified": {
-                        "visitor": True,
-                        "segmentId": PENDO_SEGMENT_ID,
-                    }
-                },
+                {"source": {"visitors": None}},
+                {"filter": f"segment.id == \"{PENDO_SEGMENT_ID}\""},
                 {
                     "select": {
                         "visitorId":  "visitorId",
@@ -214,7 +211,7 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
                         "pipeline": [
                             {"source": {"events": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
                             {"group": {"group": ["visitorId"], "fields": [
-                                {"numEvents": {"sum": "numEvents"}},
+                                {"numEvents":  {"sum": "numEvents"}},
                                 {"numMinutes": {"sum": "numMinutes"}},
                                 {"daysActive": {"count": "day"}},
                             ]}}
@@ -235,7 +232,7 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
             continue
         last_seen_ms = row.get("lastSeenAt")
         last_seen = (
-            datetime.datetime.utcfromtimestamp(last_seen_ms / 1000).strftime("%-d %b")
+            datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc).strftime("%d %b").lstrip("0")
             if last_seen_ms else "—"
         )
         server = (row.get("server") or "").lower()
@@ -274,7 +271,7 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
     if PENDO_API_KEY == "YOUR_PENDO_API_KEY":
         return _fake_pendo_pages()
 
-    end_ms   = int(datetime.datetime.utcnow().timestamp() * 1000)
+    end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     start_ms = end_ms - (window_days * 86400 * 1000)
 
     url = "https://app.pendo.io/api/v1/aggregation"
@@ -610,13 +607,13 @@ def _add_table(doc, headers, rows, col_widths=None, zebra=True, header_bg=C_DARK
 
 def build_region_section(doc, ado_items, visitors, pages, metrics, region):
     today     = datetime.date.today()
-    now_ist   = datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
-    date_str  = today.strftime("%A, %B %-d, %Y")
+    now_ist   = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=5, minutes=30)
+    date_str  = today.strftime("%A, %B %d, %Y").replace(' 0', ' ')
     time_str  = now_ist.strftime("%I:%M %p IST")
 
     pendo_end   = today
     pendo_start = today - datetime.timedelta(days=PENDO_WINDOW_DAYS - 1)
-    pendo_range = f"{pendo_start.strftime('%-d %b')} – {pendo_end.strftime('%-d %b')}"
+    pendo_range = f"{pendo_start.strftime('%d %b').lstrip('0')} – {pendo_end.strftime('%d %b').lstrip('0')}"
 
     open_incidents = [i for i in ado_items if i["state"] in ("New", "In Progress", "Awaiting Deployment")]
     n2  = metrics["n2"]
