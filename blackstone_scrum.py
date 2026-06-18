@@ -251,8 +251,13 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
 
     resp = requests.post(url, headers=pendo_headers(), json=payload)
     resp.raise_for_status()
+    raw = resp.json().get("results", [])
+    print(f"  [Pendo] raw visitor count from API: {len(raw)}")
+    if raw:
+        print(f"  [Pendo] sample row keys: {list(raw[0].keys())}")
+        print(f"  [Pendo] sample server value: {raw[0].get('server')!r}")
     results = []
-    for row in resp.json().get("results", []):
+    for row in raw:
         email = row.get("email", "")
         if email == PENDO_EXCLUDED_EMAIL:
             continue
@@ -262,6 +267,7 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
             if last_seen_ms else "—"
         )
         server = (row.get("server") or "").lower()
+        print(f"  [Pendo] visitor={row.get('visitorId')!r}  server={server!r}")
         if PENDO_REGION_EU in server:
             region = "eu"
         elif PENDO_REGION_USEAST in server:
@@ -327,7 +333,9 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
     }
 
     resp = requests.post(url, headers=pendo_headers(), json=payload)
-    resp.raise_for_status()
+    if not resp.ok:
+        print(f"  [Pendo pages] {resp.status_code} error: {resp.text[:300]}")
+        return []
     return [{"page": r.get("pageName", r.get("pageId", "?")), "views": r.get("views", 0)}
             for r in resp.json().get("results", [])]
 
