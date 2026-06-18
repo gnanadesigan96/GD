@@ -218,8 +218,7 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
         "response": {"mimeType": "application/json"},
         "request": {
             "pipeline": [
-                {"source": {"visitors": None}},
-                {"filter": f"inSegment(\"{PENDO_SEGMENT_ID}\")"},
+                {"source": {"visitors": {"segmentId": PENDO_SEGMENT_ID}}},
                 {
                     "select": {
                         "visitorId":  "visitorId",
