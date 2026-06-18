@@ -42,7 +42,7 @@ SHAREPOINT_EXCEL_FOLDER  = os.environ.get("SHAREPOINT_EXCEL_FOLDER",  "General/D
 
 # ── Local credentials override (create credentials.py — see docstring above) ──
 try:
-    from credentials import (          # type: ignore
+    from credentials_zoho import (     # type: ignore
         SHAREPOINT_TENANT_ID     as _T,
         SHAREPOINT_CLIENT_SECRET as _S,
     )
