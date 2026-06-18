@@ -200,34 +200,6 @@ def pendo_headers():
         "Content-Type": "application/json",
     }
 
-_VISITOR_AUTO_BUCKET = None  # discovered at runtime from REST API
-
-def _discover_visitor_auto_bucket() -> str:
-    """Find the auto_XXXXXXXX metadata bucket on visitors that contains lastservername."""
-    global _VISITOR_AUTO_BUCKET
-    if _VISITOR_AUTO_BUCKET:
-        return _VISITOR_AUTO_BUCKET
-    # Fetch any one visitor via aggregation to get a sample visitorId
-    rows = _pendo_agg([
-        {"source": {"visitors": None}},
-        {"select": {"visitorId": "visitorId"}},
-    ], "visitor_sample", rows_per_page=1)
-    if not rows or not rows[0].get("visitorId"):
-        return ""
-    vid = rows[0]["visitorId"]
-    r = requests.get(
-        f"https://app.pendo.io/api/v1/visitor/{requests.utils.quote(str(vid), safe='')}",
-        headers=pendo_headers()
-    )
-    if not r.ok:
-        return ""
-    for mtype, fields in r.json().get("metadata", {}).items():
-        if isinstance(fields, dict) and "lastservername" in fields:
-            _VISITOR_AUTO_BUCKET = mtype
-            print(f"  [Pendo] visitor server bucket: {mtype} → lastservername")
-            return mtype
-    return ""
-
 
 def _fetch_blackstone_accounts() -> dict:
     """
@@ -303,14 +275,14 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     accounts = accounts or {}
     acct_set = set(accounts.keys())
 
-    auto_bucket  = _discover_visitor_auto_bucket()
-    server_field = f"visitor.{auto_bucket}.lastservername" if auto_bucket else "visitor.auto.lastservername"
+    # Field paths confirmed via pendo_debug.py: metadata.agent.* and metadata.auto.*
+    server_field = "metadata.auto.lastservername"
 
     # ── Q1: all visitors that have an email (human users) ────────────────────
     # Anonymous API callers have no email; real users always do.
     sel = {"visitorId": "visitorId",
-           "email":     "visitor.agent.email",
-           "name":      "visitor.agent.name",
+           "email":     "metadata.agent.email",
+           "name":      "metadata.agent.name",
            "server":    server_field,
            "accountId": "accountId"}
     all_visitors = _pendo_agg([
