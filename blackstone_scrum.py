@@ -297,10 +297,12 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     end_ms   = int(now.timestamp() * 1000)
 
     # ── Step 1: list all segment members ─────────────────────────────────────
-    acct_filter = " || ".join(f'metadata.auto.accountid=="{a}"' for a in acct_set)
+    # visitor source uses metadata.auto.accountid; events source uses top-level accountId
+    visitor_filter = " || ".join(f'metadata.auto.accountid=="{a}"' for a in acct_set)
+    events_filter  = " || ".join(f'accountId=="{a}"' for a in acct_set)
     member_rows = _pendo_agg([
         {"source": {"visitors": None}},
-        {"filter": acct_filter},
+        {"filter": visitor_filter},
         {"select": {
             "visitorId": "visitorId",
             "email":     "metadata.agent.email",
@@ -326,7 +328,7 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         src = {"events": ({"appId": app} if app is not None else None), "timeSeries": ts}
         rows = _pendo_agg([
             {"source": src},
-            {"filter": acct_filter},
+            {"filter": events_filter},   # top-level accountId for events source
             {"identified": "visitorId"},
         ], f"events_app_{app}")
         for r in rows:
@@ -352,10 +354,14 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         if PENDO_EXCLUDED_EMAIL and email == PENDO_EXCLUDED_EMAIL:
             continue
 
-        # display name: full name if multi-word, else email prefix (matches dashboard)
+        # mirrors working script's display_name(): full name if multi-word, else email prefix
         name = (meta.get("name") or "").strip()
-        if not (name and " " in name):
-            name = email.split("@")[0] if email else (name or vid)
+        if name and " " in name:
+            display = name
+        elif email and "@" in email:
+            display = email.split("@")[0]
+        else:
+            display = name or vid
         domain = email.split("@")[1] if "@" in email else "—"
 
         server = (meta.get("server") or "").lower()
@@ -367,7 +373,7 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         num_events = ev_sum.get(vid, 0)
         results.append({
             "visitorId":  vid,
-            "visitor":    name,
+            "visitor":    display,
             "domain":     domain,
             "events":     num_events if num_events else "-",
             "daysActive": days_active.get(vid, 0) if num_events else "-",
