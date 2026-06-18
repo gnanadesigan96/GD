@@ -224,27 +224,55 @@ def _fetch_blackstone_account_ids() -> list:
     return ids
 
 
+def _pendo_agg(pipeline, label=""):
+    """Run a Pendo aggregation pipeline, return results list or []."""
+    url = "https://app.pendo.io/api/v1/aggregation"
+    payload = {
+        "response": {"mimeType": "application/json"},
+        "request": {"pipeline": pipeline},
+    }
+    resp = requests.post(url, headers=pendo_headers(), json=payload)
+    if not resp.ok:
+        print(f"  [Pendo{' ' + label if label else ''}] {resp.status_code}: {resp.text[:400]}")
+        return []
+    return resp.json().get("results", [])
+
+
 def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_WINDOW_DAYS):
     """
-    Fetches all Blackstone visitors with engagement metrics for the last N days.
-    Fetches all events for the window, joins with visitor metadata, then filters
-    in Python to only rows whose accountId is in the Blackstone segment.
-    Region is derived from the visitor's server metadata field.
+    Two-query approach:
+    1. Fetch ALL visitors with metadata (accountId, email, name, server).
+    2. Fetch event totals for the window (only visitors who had events).
+    Join in Python, keep only Blackstone accounts, show "—" for inactive visitors.
+    This matches the June 17 reference doc which showed all segment members.
     """
     if not PENDO_API_KEY:
         return _fake_pendo_visitors()
 
     end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     start_ms = end_ms - (window_days * 86400 * 1000)
-    url = "https://app.pendo.io/api/v1/aggregation"
-
     acct_set = set(account_ids) if account_ids else set()
 
-    pipeline = [
+    # ── Query 1: all visitors metadata ───────────────────────────────────────
+    visitor_rows = _pendo_agg([
+        {"source": {"visitors": None}},
+        {"select": {
+            "visitorId":  "visitorId",
+            "email":      "visitor.email",
+            "firstName":  "visitor.firstName",
+            "lastName":   "visitor.lastName",
+            "accountId":  "visitor.accountId",
+            "server":     f"visitor.auto.{PENDO_SERVER_FIELD}",
+        }},
+    ], "visitors")
+    print(f"  [Pendo] total visitors in subscription: {len(visitor_rows)}")
+
+    # ── Query 2: event totals per visitor for the window ─────────────────────
+    event_rows = _pendo_agg([
         {"source": {"events": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
         {"group": {
-            "group": ["visitorId", "accountId"],
+            "group": ["visitorId"],
             "fields": [
                 {"numEvents":  {"sum": "numEvents"}},
                 {"numMinutes": {"sum": "numMinutes"}},
@@ -252,50 +280,29 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
                 {"lastSeenAt": {"max": "day"}},
             ]
         }},
-        {"limit": 50000},
-        {"join": {
-            "kind": "left",
-            "pipeline": [
-                {"source": {"visitors": None}},
-                {"select": {
-                    "visitorId":  "visitorId",
-                    "email":      "visitor.email",
-                    "lastName":   "visitor.lastName",
-                    "firstName":  "visitor.firstName",
-                    "server":     f"visitor.auto.{PENDO_SERVER_FIELD}",
-                }},
-            ],
-            "keys": ["visitorId"],
-        }},
-    ]
+    ], "events")
+    print(f"  [Pendo] visitors with events in window: {len(event_rows)}")
 
-    payload = {
-        "response": {"mimeType": "application/json"},
-        "request": {"pipeline": pipeline},
-    }
-
-    resp = requests.post(url, headers=pendo_headers(), json=payload)
-    if not resp.ok:
-        print(f"  [Pendo visitors] {resp.status_code}: {resp.text[:600]}")
-        return _fake_pendo_visitors()
-
-    raw = resp.json().get("results", [])
-    print(f"  [Pendo] total visitor rows before filter: {len(raw)}")
+    # Index event data by visitorId
+    event_by_visitor = {r["visitorId"]: r for r in event_rows if r.get("visitorId")}
 
     results = []
-    for row in raw:
-        # Filter to Blackstone accounts only
-        if acct_set and row.get("accountId") not in acct_set:
+    for v in visitor_rows:
+        vid = v.get("visitorId", "")
+        acct = v.get("accountId", "") or ""
+        if acct_set and acct not in acct_set:
             continue
-        email = row.get("email", "") or ""
+        email = v.get("email", "") or ""
         if email == PENDO_EXCLUDED_EMAIL:
             continue
-        last_seen_ms = row.get("lastSeenAt")
+
+        ev = event_by_visitor.get(vid, {})
+        last_seen_ms = ev.get("lastSeenAt")
         last_seen = (
             fmt_mon(datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc))
             if last_seen_ms else "—"
         )
-        server = (row.get("server") or "").lower()
+        server = (v.get("server") or "").lower()
         if PENDO_REGION_EU in server:
             region = "eu"
         elif PENDO_REGION_USEAST in server:
@@ -303,18 +310,21 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
         else:
             region = "unknown"
 
-        name = ((row.get("firstName") or "") + " " + (row.get("lastName") or "")).strip() or row.get("visitorId", "—")
+        name = ((v.get("firstName") or "") + " " + (v.get("lastName") or "")).strip() or vid or "—"
         results.append({
-            "visitorId":  row.get("visitorId", ""),
+            "visitorId":  vid,
             "visitor":    name,
-            "domain":     row.get("accountId", "—"),
-            "events":     row.get("numEvents") or "—",
-            "daysActive": row.get("daysActive") or "—",
-            "minutes":    int(row.get("numMinutes") or 0) or "—",
+            "domain":     acct or "—",
+            "events":     ev.get("numEvents") or "—",
+            "daysActive": ev.get("daysActive") or "—",
+            "minutes":    int(ev.get("numMinutes") or 0) or "—",
             "lastSeen":   last_seen,
             "region":     region,
         })
-    print(f"  [Pendo] Blackstone visitors after filter: {len(results)}")
+
+    # Sort: active visitors first (those with event data), then by visitor name
+    results.sort(key=lambda r: (r["events"] == "—", str(r["visitor"]).lower()))
+    print(f"  [Pendo] Blackstone visitors: {len(results)}")
     return results
 
 
@@ -338,40 +348,30 @@ def fetch_pendo_top_pages(account_ids: list = None,
 
     end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     start_ms = end_ms - (window_days * 86400 * 1000)
-
-    url = "https://app.pendo.io/api/v1/aggregation"
     acct_set = set(account_ids) if account_ids else set()
 
-    # Use events source; filter out null pageId and synthetic Pendo catch-all IDs
     pipeline = [
         {"source": {"events": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
-        {"filter": "pageId != null && pageId != 'allevents'"},
         {"group": {
             "group": ["accountId", "pageId"],
             "fields": [{"views": {"sum": "numEvents"}}]
         }},
-        {"limit": 50000},
     ]
 
-    payload = {
-        "response": {"mimeType": "application/json"},
-        "request": {"pipeline": pipeline},
-    }
-
-    resp = requests.post(url, headers=pendo_headers(), json=payload)
-    if not resp.ok:
-        print(f"  [Pendo pages] {resp.status_code} error: {resp.text[:600]}")
+    raw = _pendo_agg(pipeline, "pages")
+    if not raw:
         return []
 
-    raw = resp.json().get("results", [])
-
-    # Filter to Blackstone accounts and aggregate by pageId
+    # Filter in Python: Blackstone accounts only, exclude null/synthetic pageIds
+    SYNTHETIC = {"allevents", "allfeatures", None, ""}
     page_views: dict = {}
     for r in raw:
         if acct_set and r.get("accountId") not in acct_set:
             continue
-        pid = r.get("pageId") or "?"
+        pid = r.get("pageId")
+        if pid in SYNTHETIC:
+            continue
         page_views[pid] = page_views.get(pid, 0) + (r.get("views") or 0)
 
     sorted_pages = sorted(page_views.items(), key=lambda x: x[1], reverse=True)[:top_n]
