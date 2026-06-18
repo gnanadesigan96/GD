@@ -218,8 +218,8 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
         "response": {"mimeType": "application/json"},
         "request": {
             "pipeline": [
-                {"source": {"visitors": None}},
-                {"filter": f"segment.id == \"{PENDO_SEGMENT_ID}\""},
+                {"source": {"visitors": None, "identified": True}},
+                {"filter": f"inSegment(\"{PENDO_SEGMENT_ID}\")"},
                 {
                     "select": {
                         "visitorId":  "visitorId",
@@ -310,7 +310,7 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
 
     pipeline = [
         {"source": {"pageEvents": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
-        {"filter": f"segmentId == \"{PENDO_SEGMENT_ID}\""},
+        {"filter": f"inSegment(\"{PENDO_SEGMENT_ID}\")"},
     ]
     if region_visitor_ids:
         id_list = json.dumps(region_visitor_ids)
