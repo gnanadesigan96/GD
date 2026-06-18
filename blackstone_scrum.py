@@ -252,6 +252,7 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
                 {"lastSeenAt": {"max": "day"}},
             ]
         }},
+        {"limit": 50000},
         {"join": {
             "kind": "left",
             "pipeline": [
@@ -269,7 +270,7 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
     ]
 
     payload = {
-        "response": {"mimeType": "application/json", "rowsPerPage": 10000},
+        "response": {"mimeType": "application/json"},
         "request": {"pipeline": pipeline},
     }
 
@@ -350,10 +351,11 @@ def fetch_pendo_top_pages(account_ids: list = None,
             "group": ["accountId", "pageId"],
             "fields": [{"views": {"sum": "numEvents"}}]
         }},
+        {"limit": 50000},
     ]
 
     payload = {
-        "response": {"mimeType": "application/json", "rowsPerPage": 10000},
+        "response": {"mimeType": "application/json"},
         "request": {"pipeline": pipeline},
     }
 
