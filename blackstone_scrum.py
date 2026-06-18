@@ -437,7 +437,7 @@ def fetch_pendo_top_pages(accounts: dict = None, window_days: int = PENDO_WINDOW
     if not sorted_pages:
         return []
 
-    # Resolve page IDs → names: fetch pages for every discovered app
+    # Step 1: bulk fetch pages for default app + each discovered app
     all_pages = {}
     endpoints = ["https://app.pendo.io/api/v1/page"]
     for app in apps:
@@ -447,13 +447,30 @@ def fetch_pendo_top_pages(accounts: dict = None, window_days: int = PENDO_WINDOW
         try:
             resp = requests.get(ep, headers=pendo_headers(), timeout=15)
             if resp.ok:
-                for p in resp.json():
-                    pid = p.get("id")
-                    name = p.get("name") or ""
-                    if pid and name and pid not in all_pages:
-                        all_pages[pid] = name
+                data = resp.json()
+                if isinstance(data, list):
+                    for p in data:
+                        pid = p.get("id")
+                        name = p.get("name") or ""
+                        if pid and name:
+                            all_pages[pid] = name
         except Exception:
             pass
+
+    # Step 2: for any still-unresolved IDs, fetch individually
+    unresolved = [pid for pid, _ in sorted_pages if pid not in all_pages]
+    for pid in unresolved:
+        try:
+            resp = requests.get(
+                f"https://app.pendo.io/api/v1/page/{requests.utils.quote(str(pid), safe='')}",
+                headers=pendo_headers(), timeout=10)
+            if resp.ok:
+                name = resp.json().get("name") or ""
+                if name:
+                    all_pages[pid] = name
+        except Exception:
+            pass
+
     return [{"page": all_pages.get(pid, pid), "views": v} for pid, v in sorted_pages]
 
 
