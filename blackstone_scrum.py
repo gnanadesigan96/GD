@@ -228,7 +228,7 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
                         "firstName":  "visitor.firstName",
                         "domain":     "visitor.accountId",
                         "lastSeenAt": "visitor.lastSeenAt",
-                        "server":     f"visitor.metadata.auto.{PENDO_SERVER_FIELD}",
+                        "server":     f"visitor.auto.{PENDO_SERVER_FIELD}",
                     }
                 },
                 {
@@ -258,6 +258,7 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
     if raw:
         print(f"  [Pendo] sample keys: {list(raw[0].keys())}")
         print(f"  [Pendo] sample server: {raw[0].get('server')!r}")
+        print(f"  [Pendo] full sample row: {raw[0]}")
 
     results = []
     for row in raw:
@@ -316,7 +317,7 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
     pipeline = [
         {
             "source": {
-                "pageEvents": {"segmentId": PENDO_SEGMENT_ID},
+                "pageEvents": None,
                 "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms},
             }
         },
