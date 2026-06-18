@@ -229,7 +229,9 @@ def _pendo_agg(pipeline, label="", rows_per_page=5000):
 def _fetch_blackstone_accounts() -> dict:
     """
     Resolve the 2 Blackstone accounts via metadata.custom.environment.
-    Returns {accountId: region_label} where region is "eu" or "useast".
+    Returns {accountId: {"region": ..., "name": ...}}.
+      Blackstone-USeast  → Private Equity (USEast)
+      Blackstone-Useast  → Real Estate (EU/portal)
     """
     flt = " || ".join(f'metadata.custom.environment=="{v}"' for v in PENDO_ENV_VALUES)
     rows = _pendo_agg([
@@ -240,10 +242,13 @@ def _fetch_blackstone_accounts() -> dict:
     result = {}
     for r in rows:
         aid = r.get("accountId")
-        env = (r.get("env") or "").lower()
-        region = "useast" if "useast" in env else "eu"
-        result[aid] = region
-    print(f"  [Pendo] Blackstone accounts found: {len(result)}")
+        env = r.get("env") or ""
+        # USeast (capital E) = Private Equity; Useast (lower e) = Real Estate
+        if env.endswith("USeast"):
+            result[aid] = {"region": "useast", "name": "Private Equity"}
+        else:
+            result[aid] = {"region": "eu",     "name": "Real Estate"}
+    print(f"  [Pendo] Blackstone accounts found: {[(aid, v['name']) for aid, v in result.items()]}")
     return result
 
 
@@ -367,9 +372,12 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         domain = email.split("@")[1] if "@" in email else "—"
 
         server = (meta.get("server") or "").lower()
+        aid    = meta.get("accountId") or ""
+        acct   = accounts.get(aid, {})
         region = ("eu"     if PENDO_REGION_EU    in server else
                   "useast" if PENDO_REGION_USEAST in server else
-                  accounts.get(meta.get("accountId"), "unknown"))
+                  acct.get("region", "unknown"))
+        account_name = acct.get("name", "")
 
         last_seen  = fmt_month_day(meta.get("last"))   # "June 18" format
         num_events = ev_sum.get(vid, 0)
@@ -377,6 +385,7 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
             "visitorId":  vid,
             "visitor":    display,
             "domain":     domain,
+            "account":    account_name,
             "events":     num_events if num_events else "-",
             "daysActive": days_active.get(vid, 0) if num_events else "-",
             "minutes":    int(min_sum.get(vid, 0)) if num_events else "-",
@@ -905,12 +914,12 @@ def render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, 
         ev = str(v["events"])     if isinstance(v["events"],     int) else "-"
         da = str(v["daysActive"]) if isinstance(v["daysActive"], int) else "-"
         mn = str(v["minutes"])    if isinstance(v["minutes"],    int) else "-"
-        visitor_rows.append((v["visitor"], v["domain"], ev, da, mn, v["lastSeen"]))
+        visitor_rows.append((v["visitor"], v["domain"], v.get("account", ""), ev, da, mn, v["lastSeen"]))
 
     _add_table(doc,
-        headers=["Visitor (Blackstone segment)", "Domain", "Events (3d)", "Days active", "Minutes", "Last seen"],
-        rows=visitor_rows or [("—", "No activity in this window.", "", "", "", "")],
-        col_widths=[1.8, 1.8, 1.0, 1.0, 0.8, 0.9],
+        headers=["Visitor (Blackstone segment)", "Domain", "Account", "Events (3d)", "Days active", "Minutes", "Last seen"],
+        rows=visitor_rows or [("—", "No activity in this window.", "", "", "", "", "")],
+        col_widths=[1.7, 1.5, 1.2, 0.9, 0.9, 0.7, 0.9],
     )
     doc.add_paragraph()
 
