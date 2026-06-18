@@ -16,6 +16,7 @@ Required env vars (or edit the CONFIG block below):
 """
 
 import os
+import sys
 import base64
 import json
 import datetime
@@ -26,6 +27,21 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.gridspec import GridSpec
+
+
+def fmt_day(dt) -> str:
+    """Format day without leading zero — works on Linux, macOS, Windows."""
+    return str(dt.day)
+
+
+def fmt_date(dt) -> str:
+    """e.g. Wednesday, June 18, 2026 — cross-platform."""
+    return f"{dt.strftime('%A, %B')} {fmt_day(dt)}, {dt.year}"
+
+
+def fmt_mon(dt) -> str:
+    """e.g. '18 Jun' — cross-platform."""
+    return f"{fmt_day(dt)} {dt.strftime('%b')}"
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 
@@ -232,7 +248,7 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
             continue
         last_seen_ms = row.get("lastSeenAt")
         last_seen = (
-            datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc).strftime("%d %b").lstrip("0")
+            fmt_mon(datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc))
             if last_seen_ms else "—"
         )
         server = (row.get("server") or "").lower()
@@ -608,12 +624,12 @@ def _add_table(doc, headers, rows, col_widths=None, zebra=True, header_bg=C_DARK
 def build_region_section(doc, ado_items, visitors, pages, metrics, region):
     today     = datetime.date.today()
     now_ist   = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=5, minutes=30)
-    date_str  = today.strftime("%A, %B %d, %Y").replace(' 0', ' ')
-    time_str  = now_ist.strftime("%I:%M %p IST")
+    date_str  = fmt_date(today)
+    time_str  = now_ist.strftime("%I:%M %p IST").lstrip("0")
 
     pendo_end   = today
     pendo_start = today - datetime.timedelta(days=PENDO_WINDOW_DAYS - 1)
-    pendo_range = f"{pendo_start.strftime('%d %b').lstrip('0')} – {pendo_end.strftime('%d %b').lstrip('0')}"
+    pendo_range = f"{fmt_mon(pendo_start)} – {fmt_mon(pendo_end)}"
 
     open_incidents = [i for i in ado_items if i["state"] in ("New", "In Progress", "Awaiting Deployment")]
     n2  = metrics["n2"]
