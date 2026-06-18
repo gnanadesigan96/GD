@@ -227,7 +227,7 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
                         "firstName":  "visitor.firstName",
                         "domain":     "visitor.accountId",
                         "lastSeenAt": "visitor.lastSeenAt",
-                        "server":     f"visitor.{PENDO_SERVER_FIELD}",
+                        "server":     f"visitor.metadata.auto.{PENDO_SERVER_FIELD}",
                     }
                 },
                 {
@@ -313,7 +313,12 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
     url = "https://app.pendo.io/api/v1/aggregation"
 
     pipeline = [
-        {"source": {"pageEvents": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
+        {
+            "source": {
+                "pageEvents": {"segmentId": PENDO_SEGMENT_ID},
+                "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms},
+            }
+        },
     ]
     if region_visitor_ids:
         id_list = json.dumps(region_visitor_ids)
@@ -321,11 +326,6 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
 
     pipeline += [
         {"group": {"group": ["pageId"], "fields": [{"views": {"sum": "numEvents"}}]}},
-        {"join": {
-            "kind": "left",
-            "pipeline": [{"source": {"pages": None}}, {"select": {"pageId": "id", "pageName": "name"}}],
-            "keys": ["pageId"],
-        }},
         {"sort": [{"views": -1}]},
         {"limit": top_n},
     ]
@@ -337,10 +337,15 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
 
     resp = requests.post(url, headers=pendo_headers(), json=payload)
     if not resp.ok:
-        print(f"  [Pendo pages] {resp.status_code} error: {resp.text[:300]}")
+        print(f"  [Pendo pages] {resp.status_code} error: {resp.text[:600]}")
         return []
-    return [{"page": r.get("pageName", r.get("pageId", "?")), "views": r.get("views", 0)}
-            for r in resp.json().get("results", [])]
+
+    results = []
+    for r in resp.json().get("results", []):
+        page_id = r.get("pageId", "?")
+        # try to resolve page name from a second call only if needed; use id as fallback
+        results.append({"page": page_id, "views": r.get("views", 0)})
+    return results
 
 
 def _fake_pendo_visitors():
