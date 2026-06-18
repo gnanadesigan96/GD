@@ -269,7 +269,7 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
     ]
 
     payload = {
-        "response": {"mimeType": "application/json"},
+        "response": {"mimeType": "application/json", "rowsPerPage": 10000},
         "request": {"pipeline": pipeline},
     }
 
@@ -341,18 +341,19 @@ def fetch_pendo_top_pages(account_ids: list = None,
     url = "https://app.pendo.io/api/v1/aggregation"
     acct_set = set(account_ids) if account_ids else set()
 
-    # Use pageviews source — only contains page view events, has accountId + pageId
+    # Use events source; filter out null pageId and synthetic Pendo catch-all IDs
     pipeline = [
-        {"source": {"pageviews": None,
+        {"source": {"events": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
+        {"filter": "pageId != null && pageId != 'allevents'"},
         {"group": {
             "group": ["accountId", "pageId"],
-            "fields": [{"views": {"count": "*"}}]
+            "fields": [{"views": {"sum": "numEvents"}}]
         }},
     ]
 
     payload = {
-        "response": {"mimeType": "application/json"},
+        "response": {"mimeType": "application/json", "rowsPerPage": 10000},
         "request": {"pipeline": pipeline},
     }
 
