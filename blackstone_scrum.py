@@ -231,87 +231,26 @@ def _discover_visitor_auto_bucket() -> str:
 
 def _fetch_blackstone_accounts() -> dict:
     """
-    Fetches Blackstone accounts from the segment with their metadata.
-    Returns {accountId: {"name": ..., "environment": ...}}.
-    Uses REST API on the first account to discover the environment field name.
+    Derives Blackstone account IDs from the visitor segment (segments are
+    visitor-based in Pendo; querying accounts with a segmentId returns 403).
+    Returns {accountId: {"name": "", "environment": ""}} for every account
+    that has at least one visitor in the Blackstone segment.
     """
-    # Step 1: get all account IDs from segment
+    # Get all visitor accountIds from the segment
     id_rows = _pendo_agg([
-        {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
-        {"select": {"accountId": "accountId"}},
+        {"source": {"visitors": {"segmentId": PENDO_SEGMENT_ID}}},
+        {"select": {"visitorId": "visitorId", "accountId": "accountId"}},
     ], "accounts")
 
     if not id_rows:
         return {}
 
-    account_ids = [r["accountId"] for r in id_rows if r.get("accountId")]
+    account_ids = list({r["accountId"] for r in id_rows if r.get("accountId")})
     print(f"  [Pendo] account IDs in segment: {len(account_ids)}")
 
-    # Step 2: use REST API on first account to discover all metadata field names
-    env_field = None
-    if account_ids:
-        rest_url = f"https://app.pendo.io/api/v1/account/{requests.utils.quote(account_ids[0], safe='')}"
-        r = requests.get(rest_url, headers=pendo_headers())
-        if r.ok:
-            acct_data = r.json()
-            print(f"  [Pendo] account REST sample keys: {list(acct_data.keys())}")
-            metadata = acct_data.get("metadata", {})
-            print(f"  [Pendo] account metadata keys: {list(metadata.keys())}")
-            for meta_type, fields in metadata.items():
-                if not isinstance(fields, dict):
-                    continue
-                print(f"  [Pendo] account metadata.{meta_type} fields: {list(fields.keys())}")
-                for k, v in fields.items():
-                    vl = str(v).lower()
-                    if any(x in vl for x in ("eu", "useast", "us east", "europe", "portal", "environment", "region")):
-                        env_field = f"account.metadata.{meta_type}.{k}"
-                        print(f"  [Pendo] → using environment field: {env_field} = {v}")
-                        break
-                if env_field:
-                    break
-
-    if not env_field:
-        # Fall back: fetch account names — region may be embedded in name or ID
-        name_rows = _pendo_agg([
-            {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
-            {"select": {"accountId": "accountId", "name": "account.name"}},
-        ], "account_names")
-        print("  [Pendo] ⚠ No env field found. Sample account names/IDs:")
-        for r in name_rows[:10]:
-            print(f"           id={r.get('accountId')}  name={r.get('name')}")
-        # Use account name to infer region
-        result = {}
-        for r in name_rows:
-            aid = r.get("accountId")
-            if not aid:
-                continue
-            name = (r.get("name") or "").lower()
-            if any(x in name for x in ("eu", "europe", "portal")):
-                env = "eu"
-            elif any(x in name for x in ("useast", "us east", "us-east", "united states", "usa")):
-                env = "useast"
-            else:
-                env = ""
-            result[aid] = {"name": r.get("name") or "", "environment": env}
-        return result
-
-    # Step 3: fetch all accounts with discovered environment field
-    rows = _pendo_agg([
-        {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
-        {"select": {
-            "accountId":   "accountId",
-            "name":        "account.name",
-            "environment": env_field,
-        }},
-    ], "account_meta")
-
-    return {
-        r["accountId"]: {
-            "name":        r.get("name") or "",
-            "environment": (r.get("environment") or "").lower(),
-        }
-        for r in rows if r.get("accountId")
-    }
+    # Return a minimal map — name/environment lookup not needed here;
+    # region is determined per-visitor via lastservername in fetch_pendo_all_visitors
+    return {aid: {"name": "", "environment": ""} for aid in account_ids}
 
 
 def _pendo_agg(pipeline, label="", rows_per_page=5000):
