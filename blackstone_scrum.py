@@ -204,32 +204,48 @@ def _fetch_blackstone_accounts() -> dict:
     """
     Fetches Blackstone accounts from the segment with their metadata.
     Returns {accountId: {"name": ..., "environment": ...}}.
-    Environment is read from account metadata to determine EU vs USEast.
+    Environment field is probed across common Pendo metadata paths.
     """
     rows = _pendo_agg([
         {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
         {"select": {
             "accountId":   "accountId",
             "name":        "account.name",
-            "environment": "account.metadata.auto.Environment",
+            # Try common paths — whichever is populated wins
+            "env_auto":    "account.metadata.auto.Environment",
+            "env_agent":   "account.metadata.agent.Environment",
+            "env_auto_lc": "account.metadata.auto.environment",
+            "env_region":  "account.metadata.auto.Region",
+            "env_region2": "account.metadata.auto.region",
         }},
     ], "accounts")
 
     if not rows:
         return {}
 
-    # Print one sample so we can verify field names if environment is empty
-    sample = rows[0]
-    print(f"  [Pendo] account sample: {sample}")
     print(f"  [Pendo] account IDs in segment: {len(rows)}")
+    # Print first non-trivial sample to confirm which field holds environment
+    for r in rows[:5]:
+        env_fields = {k: v for k, v in r.items() if k != "accountId" and v}
+        if env_fields:
+            print(f"  [Pendo] account sample: {r}")
+            break
 
-    return {
-        r["accountId"]: {
+    result = {}
+    for r in rows:
+        if not r.get("accountId"):
+            continue
+        # Pick first non-empty environment value across probed fields
+        env = (
+            r.get("env_auto") or r.get("env_agent") or
+            r.get("env_auto_lc") or r.get("env_region") or
+            r.get("env_region2") or ""
+        ).lower()
+        result[r["accountId"]] = {
             "name":        r.get("name") or "",
-            "environment": (r.get("environment") or "").lower(),
+            "environment": env,
         }
-        for r in rows if r.get("accountId")
-    }
+    return result
 
 
 def _pendo_agg(pipeline, label=""):
@@ -312,9 +328,9 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         )
         # Derive region from account-level environment metadata
         env = accounts.get(acct, {}).get("environment", "").lower()
-        if "eu" in env or PENDO_REGION_EU in env:
+        if any(x in env for x in ("eu", "europe", "portal.corestack")):
             region = "eu"
-        elif "useast" in env or "us east" in env or PENDO_REGION_USEAST in env:
+        elif any(x in env for x in ("useast", "us east", "us-east", "useast.corestack", "united states")):
             region = "useast"
         else:
             region = "unknown"
