@@ -43,6 +43,14 @@ def fmt_mon(dt) -> str:
     """e.g. '18 Jun' — cross-platform."""
     return f"{fmt_day(dt)} {dt.strftime('%b')}"
 
+
+def fmt_month_day(ms) -> str:
+    """e.g. 'June 18' (no leading zero) — matches working script output."""
+    if not ms:
+        return "—"
+    d = datetime.datetime.fromtimestamp(ms / 1000, PACIFIC)
+    return d.strftime("%B %d").replace(" 0", " ")
+
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 
 ADO_ORG     = "CoreStack-Tech"
@@ -62,7 +70,7 @@ except ImportError:
     pass
 PENDO_REGION_EU      = "portal.corestack.io"
 PENDO_REGION_USEAST  = "useast.corestack.io"
-PENDO_EXCLUDED_EMAIL = "cs.support.blackstone@corestack.io"
+PENDO_EXCLUDED_EMAIL = None   # set to an email string to exclude, or None to include all
 PENDO_WINDOW_DAYS    = 3
 
 # ─── ADO ─────────────────────────────────────────────────────────────────────
@@ -264,27 +272,31 @@ def _discover_apps(acct_ids: list) -> list:
 def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WINDOW_DAYS):
     """
     Fetch all Blackstone segment members + their activity for the window.
-    Uses confirmed field paths: metadata.agent.email, metadata.auto.accountid.
-    Aggregates events/minutes/days across all discovered apps (matches dashboard).
+    Logic mirrors generate_blackstone_pendo_report.py exactly:
+      - members listed per-account (same visitor appears once per Blackstone account)
+      - events/minutes/days summed across all discovered apps (hourRange, matches dashboard)
+      - display name: full name if it has a space, else email prefix
+      - last seen: "June 18" format (US Pacific)
+      - support email included (PENDO_EXCLUDED_EMAIL=None by default)
     """
     if not PENDO_API_KEY:
         return _fake_pendo_visitors()
 
     accounts  = accounts or {}
     acct_set  = set(accounts.keys())
-
-    # ── Window (US Pacific day buckets, same as dashboard) ───────────────────
-    now       = datetime.datetime.now(datetime.timezone.utc)
-    today_pt  = datetime.datetime.now(PACIFIC).date()
-    start_pt  = datetime.datetime.combine(
-        today_pt - datetime.timedelta(days=window_days - 1),
-        datetime.time(0, 0), PACIFIC)
-    start_ms  = int(start_pt.timestamp() * 1000)
-    end_ms    = int(now.timestamp() * 1000)
-
-    # ── Step 1: list all segment members (filter by accountId) ───────────────
     if not acct_set:
         return []
+
+    # ── Window: US Pacific day buckets, same as dashboard ────────────────────
+    now      = datetime.datetime.now(datetime.timezone.utc)
+    today_pt = datetime.datetime.now(PACIFIC).date()
+    start_pt = datetime.datetime.combine(
+        today_pt - datetime.timedelta(days=window_days - 1),
+        datetime.time(0, 0), PACIFIC)
+    start_ms = int(start_pt.timestamp() * 1000)
+    end_ms   = int(now.timestamp() * 1000)
+
+    # ── Step 1: list all segment members ─────────────────────────────────────
     acct_filter = " || ".join(f'metadata.auto.accountid=="{a}"' for a in acct_set)
     member_rows = _pendo_agg([
         {"source": {"visitors": None}},
@@ -300,10 +312,9 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     ], "members")
     print(f"  [Pendo] segment members found: {len(member_rows)}")
 
-    meta_by_vid = {r["visitorId"]: r for r in member_rows if r.get("visitorId")}
-    member_vids = set(meta_by_vid)
+    member_vids = {r["visitorId"] for r in member_rows if r.get("visitorId")}
 
-    # ── Step 2: discover apps then sum events/minutes/days per visitor ────────
+    # ── Step 2: sum events/minutes/days across all apps ───────────────────────
     apps = _discover_apps(list(acct_set))
     print(f"  [Pendo] apps (All Apps): {apps}")
     from collections import defaultdict
@@ -326,48 +337,49 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
             min_sum[vid] += r.get("numMinutes", 0)
             hour_ms = r.get("hour")
             if hour_ms:
-                day_str = datetime.datetime.fromtimestamp(
-                    hour_ms / 1000, PACIFIC).strftime("%Y-%m-%d")
-                day_sets[vid].add(day_str)
+                day_sets[vid].add(
+                    datetime.datetime.fromtimestamp(hour_ms / 1000, PACIFIC).strftime("%Y-%m-%d"))
     days_active = {v: len(d) for v, d in day_sets.items()}
     print(f"  [Pendo] visitors active in window: {len(ev_sum)}")
 
-    # ── Step 3: build result rows ─────────────────────────────────────────────
+    # ── Step 3: build result rows (one per member row = one per account) ──────
     results = []
-    for vid, meta in meta_by_vid.items():
+    for meta in member_rows:
+        vid   = meta.get("visitorId")
         email = (meta.get("email") or "").strip()
-        if email == PENDO_EXCLUDED_EMAIL:
+        if not vid:
             continue
+        if PENDO_EXCLUDED_EMAIL and email == PENDO_EXCLUDED_EMAIL:
+            continue
+
+        # display name: full name if multi-word, else email prefix (matches dashboard)
+        name = (meta.get("name") or "").strip()
+        if not (name and " " in name):
+            name = email.split("@")[0] if email else (name or vid)
+        domain = email.split("@")[1] if "@" in email else "—"
 
         server = (meta.get("server") or "").lower()
         region = ("eu"     if PENDO_REGION_EU    in server else
                   "useast" if PENDO_REGION_USEAST in server else
                   accounts.get(meta.get("accountId"), "unknown"))
 
-        name = (meta.get("name") or "").strip()
-        if not name and email:
-            name = email.split("@")[0]
-        domain = email.split("@")[1] if "@" in email else "—"
-
-        last_ms   = meta.get("last")
-        last_seen = (fmt_mon(datetime.datetime.fromtimestamp(last_ms / 1000, tz=PACIFIC))
-                     if last_ms else "—")
-
+        last_seen  = fmt_month_day(meta.get("last"))   # "June 18" format
         num_events = ev_sum.get(vid, 0)
         results.append({
             "visitorId":  vid,
-            "visitor":    name or vid,
+            "visitor":    name,
             "domain":     domain,
-            "events":     num_events if num_events else "—",
-            "daysActive": days_active.get(vid, 0) if num_events else "—",
-            "minutes":    int(min_sum.get(vid, 0)) if num_events else "—",
+            "events":     num_events if num_events else "-",
+            "daysActive": days_active.get(vid, 0) if num_events else "-",
+            "minutes":    int(min_sum.get(vid, 0)) if num_events else "-",
             "lastSeen":   last_seen,
             "region":     region,
         })
 
+    # active first (events desc), then inactive alphabetically
     results.sort(key=lambda r: (-(r["events"] if isinstance(r["events"], int) else 0),
                                 str(r["visitor"]).lower()))
-    print(f"  [Pendo] total Blackstone visitors: {len(results)}")
+    print(f"  [Pendo] total Blackstone visitor rows: {len(results)}")
     return results
 
 
@@ -850,9 +862,9 @@ def render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, 
     _heading(doc, "Active visitors", level_size=10)
     visitor_rows = []
     for v in all_visitors:
-        ev = str(v["events"])     if v["events"]     != "—" else "-"
-        da = str(v["daysActive"]) if v["daysActive"] != "—" else "-"
-        mn = str(v["minutes"])    if v["minutes"]    != "—" else "-"
+        ev = str(v["events"])     if isinstance(v["events"],     int) else "-"
+        da = str(v["daysActive"]) if isinstance(v["daysActive"], int) else "-"
+        mn = str(v["minutes"])    if isinstance(v["minutes"],    int) else "-"
         visitor_rows.append((v["visitor"], v["domain"], ev, da, mn, v["lastSeen"]))
 
     _add_table(doc,
