@@ -213,24 +213,13 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
     end_ms   = now_ms
     start_ms = end_ms - (window_days * 86400 * 1000)
 
-    # Step 1: get segment members via REST endpoint
-    seg_url  = f"https://app.pendo.io/api/v1/segment/{PENDO_SEGMENT_ID}/visitors"
-    seg_resp = requests.get(seg_url, headers=pendo_headers())
-    if not seg_resp.ok:
-        print(f"  [Pendo segment] {seg_resp.status_code}: {seg_resp.text[:300]}")
-        seg_resp.raise_for_status()
-    members = seg_resp.json()
-    print(f"  [Pendo] segment member count: {len(members)}")
-    if members:
-        print(f"  [Pendo] sample member keys: {list(members[0].keys())}")
-
-    # Step 2: enrich with engagement metrics via aggregation
-    agg_url = "https://app.pendo.io/api/v1/aggregation"
-    agg_payload = {
+    url = "https://app.pendo.io/api/v1/aggregation"
+    payload = {
         "response": {"mimeType": "application/json"},
         "request": {
             "pipeline": [
                 {"source": {"visitors": None}},
+                {"filter": f"inSegment(\"{PENDO_SEGMENT_ID}\")"},
                 {
                     "select": {
                         "visitorId":  "visitorId",
@@ -260,34 +249,28 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
         }
     }
 
-    agg_resp = requests.post(agg_url, headers=pendo_headers(), json=agg_payload)
-    if not agg_resp.ok:
-        print(f"  [Pendo agg] {agg_resp.status_code}: {agg_resp.text[:300]}")
-        agg_resp.raise_for_status()
-
-    # Index aggregation rows by visitorId
-    member_ids = {m.get("visitorId") or m.get("id") for m in members}
-    enriched   = {r["visitorId"]: r for r in agg_resp.json().get("results", []) if r.get("visitorId") in member_ids}
-    print(f"  [Pendo] enriched {len(enriched)} of {len(members)} members with engagement data")
-    if enriched:
-        sample = next(iter(enriched.values()))
-        print(f"  [Pendo] sample enriched keys: {list(sample.keys())}")
-        print(f"  [Pendo] sample server value: {sample.get('server')!r}")
+    resp = requests.post(url, headers=pendo_headers(), json=payload)
+    if not resp.ok:
+        print(f"  [Pendo visitors] {resp.status_code}: {resp.text[:500]}")
+        resp.raise_for_status()
+    raw = resp.json().get("results", [])
+    print(f"  [Pendo] visitor count: {len(raw)}")
+    if raw:
+        print(f"  [Pendo] sample keys: {list(raw[0].keys())}")
+        print(f"  [Pendo] sample server: {raw[0].get('server')!r}")
 
     results = []
-    for m in members:
-        vid   = m.get("visitorId") or m.get("id", "")
-        row   = enriched.get(vid, {})
-        email = row.get("email") or m.get("email", "")
+    for row in raw:
+        email = row.get("email", "")
         if email == PENDO_EXCLUDED_EMAIL:
             continue
-        last_seen_ms = row.get("lastSeenAt") or m.get("lastSeenAt")
+        last_seen_ms = row.get("lastSeenAt")
         last_seen = (
             fmt_mon(datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc))
             if last_seen_ms else "—"
         )
-        server = (row.get("server") or m.get(PENDO_SERVER_FIELD, "")).lower()
-        print(f"  [Pendo] visitor={vid!r}  server={server!r}")
+        server = (row.get("server") or "").lower()
+        print(f"  [Pendo] visitor={row.get('visitorId')!r}  server={server!r}")
         if PENDO_REGION_EU in server:
             region = "eu"
         elif PENDO_REGION_USEAST in server:
@@ -295,11 +278,11 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
         else:
             region = server or "unknown"
 
-        name = ((row.get("firstName") or "") + " " + (row.get("lastName") or "")).strip() or vid
+        name = ((row.get("firstName") or "") + " " + (row.get("lastName") or "")).strip() or row.get("visitorId", "—")
         results.append({
-            "visitorId":  vid,
+            "visitorId":  row.get("visitorId", ""),
             "visitor":    name,
-            "domain":     row.get("domain") or m.get("accountId", "—"),
+            "domain":     row.get("domain", "—"),
             "events":     row.get("numEvents") or "—",
             "daysActive": row.get("daysActive") or "—",
             "minutes":    int(row.get("numMinutes") or 0) or "—",
