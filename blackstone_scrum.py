@@ -408,6 +408,11 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     meta_by_vid = {r["visitorId"]: r for r in visitor_rows if r.get("visitorId") in active_vids}
     print(f"  [Pendo] visitor metadata matched: {len(meta_by_vid)}")
 
+    # Debug: show sample emails and server values to diagnose region split
+    sample = list(meta_by_vid.values())[:10]
+    for m in sample:
+        print(f"    email={m.get('email')}  server={m.get('server')}")
+
     results = []
     for vid in active_vids:
         ev   = event_by_vid.get(vid, {})
