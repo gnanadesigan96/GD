@@ -240,10 +240,11 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
 
     results = []
     for region_key, server_val in [("eu", PENDO_REGION_EU), ("useast", PENDO_REGION_USEAST)]:
-        server_filter = f'server == "{server_val}"'
+        server_filter = f"server == '{server_val}'"
         if account_ids:
-            acct_list = json.dumps(account_ids)
-            server_filter += f" && accountId in {acct_list}"
+            # Pendo PQL: use || chain for account IDs (accountId in [...] not supported)
+            # With hundreds of accounts, just filter by server — both servers are Blackstone-specific
+            pass  # server filter alone is sufficient
 
         payload = {
             "response": {"mimeType": "application/json"},
@@ -335,10 +336,7 @@ def fetch_pendo_top_pages(server_val: str = None, account_ids: list = None,
 
     page_filter = None
     if server_val:
-        page_filter = f'server == "{server_val}"'
-        if account_ids:
-            acct_list = json.dumps(account_ids)
-            page_filter += f" && accountId in {acct_list}"
+        page_filter = f"server == '{server_val}'"
 
     pipeline = [
         {"source": {"events": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
@@ -347,7 +345,7 @@ def fetch_pendo_top_pages(server_val: str = None, account_ids: list = None,
         pipeline.append({"filter": page_filter})
 
     pipeline += [
-        {"filter": "pageId != null"},
+        {"filter": "pageId != null && numEvents > 0"},
         {"group": {"group": ["pageId"], "fields": [{"views": {"sum": "numEvents"}}]}},
         {"sort": [{"views": -1}]},
         {"limit": top_n},
