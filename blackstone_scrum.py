@@ -347,48 +347,25 @@ def _pendo_agg(pipeline, label="", rows_per_page=5000):
     return all_results
 
 
-def _visitor_metadata(visitor_id: str) -> dict:
-    """Fetch email, name, lastservername for a single visitor via REST API."""
-    try:
-        r = requests.get(
-            f"https://app.pendo.io/api/v1/visitor/{requests.utils.quote(str(visitor_id), safe='')}",
-            headers=pendo_headers(), timeout=10
-        )
-        if not r.ok:
-            return {}
-        meta = r.json().get("metadata", {})
-        email = (meta.get("agent") or {}).get("email") or ""
-        name  = (meta.get("agent") or {}).get("name")  or ""
-        # Find lastservername in any auto_* bucket
-        server = ""
-        for bucket, fields in meta.items():
-            if isinstance(fields, dict) and "lastservername" in fields:
-                server = fields["lastservername"] or ""
-                break
-        return {"email": email, "name": name, "server": server}
-    except Exception:
-        return {}
-
-
 def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WINDOW_DAYS):
     """
     Fetch active Blackstone segment visitors.
 
-    Strategy:
-    1. Events source grouped by (visitorId, accountId) — accountId is reliable here.
-    2. Filter rows to Blackstone account IDs in Python → active Blackstone visitors.
-    3. REST API per visitor to get email, name, lastservername (only a few calls).
+    Q1: Events source with segmentId scoped to Blackstone segment, grouped by
+        (visitorId, accountId) — gives event counts for each active visitor.
+    Q2: Visitors source with segmentId to get email/name/server metadata.
+    Join on visitorId. All data comes from aggregation — no per-visitor REST calls.
     """
     if not PENDO_API_KEY:
         return _fake_pendo_visitors()
 
     end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     start_ms = end_ms - (window_days * 86400 * 1000)
-    accounts = accounts or {}
-    acct_set = set(accounts.keys())
 
-    # ── Events scoped to Blackstone segment ──────────────────────────────────
-    # segmentId on the events source properly limits to segment members.
+    auto_bucket = _discover_visitor_auto_bucket()
+    server_field = f"visitor.{auto_bucket}.lastservername" if auto_bucket else ""
+
+    # ── Q1: event counts scoped to Blackstone segment ─────────────────────────
     event_rows = _pendo_agg([
         {"source": {"events": None,
                     "segmentId": PENDO_SEGMENT_ID,
@@ -405,16 +382,32 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     ], "events_segment")
     print(f"  [Pendo] active Blackstone visitors in window: {len(event_rows)}")
 
-    bs_events = event_rows  # already segment-filtered
+    if not event_rows:
+        print("  [Pendo] ⚠ segmentId on events returned 0 — check segment ID or window")
+        return []
+
+    event_by_vid = {r["visitorId"]: r for r in event_rows if r.get("visitorId")}
+
+    # ── Q2: visitor metadata for segment members ──────────────────────────────
+    select = {
+        "visitorId": "visitorId",
+        "email":     "visitor.agent.email",
+        "name":      "visitor.agent.name",
+    }
+    if server_field:
+        select["server"] = server_field
+
+    visitor_rows = _pendo_agg([
+        {"source": {"visitors": {"segmentId": PENDO_SEGMENT_ID}}},
+        {"select": select},
+    ], "visitor_meta")
+    print(f"  [Pendo] segment visitor metadata rows: {len(visitor_rows)}")
+    meta_by_vid = {r["visitorId"]: r for r in visitor_rows if r.get("visitorId")}
 
     results = []
-    for ev in bs_events:
-        vid   = ev.get("visitorId", "")
-        if not vid:
-            continue
-
-        meta  = _visitor_metadata(vid)
-        email = meta.get("email", "") or ""
+    for vid, ev in event_by_vid.items():
+        meta  = meta_by_vid.get(vid, {})
+        email = (meta.get("email") or "").strip()
         if email == PENDO_EXCLUDED_EMAIL:
             continue
 
@@ -426,7 +419,7 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         else:
             region = "unknown"
 
-        visitor_label = meta.get("name") or ""
+        visitor_label = (meta.get("name") or "").strip()
         if not visitor_label and email:
             visitor_label = email.split("@")[0]
         if not visitor_label:
@@ -488,19 +481,16 @@ def _resolve_page_names(page_ids: list) -> dict:
     return result
 
 
-def fetch_pendo_top_pages(accounts: dict = None,
-                          window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10):
+def fetch_pendo_top_pages(window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10):
     """
     Fetches top pages for Blackstone segment visitors in the last N days.
-    Uses segment-scoped pageviews source; falls back to events source filtered in Python.
-    Resolves page IDs to human-readable page names via REST API.
+    Uses segmentId on events source; resolves page IDs to human-readable names.
     """
     if not PENDO_API_KEY:
         return _fake_pendo_pages()
 
     end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     start_ms = end_ms - (window_days * 86400 * 1000)
-    acct_set = set((accounts or {}).keys())
 
     # Events scoped to Blackstone segment, grouped by pageId
     raw = _pendo_agg([
@@ -1073,15 +1063,14 @@ def main():
     ado_items = fetch_ado_blackstone_incidents()
 
     print("Fetching Pendo engagement...")
-    accounts     = _fetch_blackstone_accounts()
-    all_visitors = fetch_pendo_all_visitors(accounts=accounts)
+    all_visitors = fetch_pendo_all_visitors()
     eu_visitors, useast_visitors, other_visitors = split_visitors_by_region(all_visitors)
     print(f"  → EU visitors: {len(eu_visitors)}  |  USEast visitors: {len(useast_visitors)}  |  unclassified: {len(other_visitors)}")
 
     print("Fetching platform metrics...")
     metrics = fetch_platform_metrics()
 
-    pages = fetch_pendo_top_pages(accounts=accounts)
+    pages = fetch_pendo_top_pages()
 
     doc = render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, metrics)
 
