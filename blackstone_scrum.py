@@ -364,12 +364,43 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     accounts = accounts or {}
     acct_set = set(accounts.keys())
 
-    # ── Q1: all event rows for window ─────────────────────────────────────────
+    auto_bucket  = _discover_visitor_auto_bucket()
+    server_field = f"visitor.{auto_bucket}.lastservername" if auto_bucket else "visitor.auto.lastservername"
+
+    # ── Q1: all visitors that have an email (human users) ────────────────────
+    # Anonymous API callers have no email; real users always do.
+    sel = {"visitorId": "visitorId",
+           "email":     "visitor.agent.email",
+           "name":      "visitor.agent.name",
+           "server":    server_field,
+           "accountId": "accountId"}
+    all_visitors = _pendo_agg([
+        {"source": {"visitors": None}},
+        {"select": sel},
+    ], "visitors_with_email")
+
+    # Keep only visitors with an email address (human users)
+    human_visitors = [v for v in all_visitors if v.get("email")]
+    print(f"  [Pendo] human visitors (with email) in subscription: {len(human_visitors)}")
+
+    # Filter to Blackstone accounts if we have them
+    if acct_set:
+        human_visitors = [v for v in human_visitors if (v.get("accountId") or "") in acct_set]
+        print(f"  [Pendo] human visitors in Blackstone accounts: {len(human_visitors)}")
+
+    if not human_visitors:
+        print("  [Pendo] ⚠ No human visitors found — check accountId field path")
+        return []
+
+    human_vids   = {v["visitorId"] for v in human_visitors if v.get("visitorId")}
+    meta_by_vid  = {v["visitorId"]: v for v in human_visitors if v.get("visitorId")}
+
+    # ── Q2: event counts for those human visitors ─────────────────────────────
     event_rows = _pendo_agg([
         {"source": {"events": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
         {"group": {
-            "group": ["visitorId", "accountId"],
+            "group": ["visitorId"],
             "fields": [
                 {"numEvents":  {"sum": "numEvents"}},
                 {"numMinutes": {"sum": "numMinutes"}},
@@ -378,60 +409,16 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
             ]
         }},
     ], "events")
-    print(f"  [Pendo] total event rows in window: {len(event_rows)}")
-
-    # Filter to Blackstone accounts
-    bs_events = [r for r in event_rows if (r.get("accountId") or "") in acct_set] if acct_set else event_rows
-    print(f"  [Pendo] active Blackstone visitors in window: {len(bs_events)}")
-    if not bs_events:
-        return []
-
-    active_vids = {r["visitorId"] for r in bs_events if r.get("visitorId")}
-    event_by_vid = {r["visitorId"]: r for r in bs_events if r.get("visitorId")}
-
-    # ── Q2: visitor metadata via aggregation (no REST calls) ──────────────────
-    auto_bucket = _discover_visitor_auto_bucket()
-    server_field = f"visitor.{auto_bucket}.lastservername" if auto_bucket else ""
-
-    # Try both field path conventions: with and without "visitor." prefix
-    select_attempts = [
-        {"visitorId": "visitorId", "email": "visitor.agent.email",
-         "name": "visitor.agent.name", "server": server_field or "visitor.auto.lastservername"},
-        {"visitorId": "visitorId", "email": "agent.email",
-         "name": "agent.name", "server": "auto.lastservername"},
-    ]
-    meta_by_vid = {}
-    for sel in select_attempts:
-        if not server_field:
-            sel.pop("server", None)
-        rows = _pendo_agg([
-            {"source": {"visitors": None}},
-            {"select": sel},
-        ], "visitor_meta")
-        matched = {r["visitorId"]: r for r in rows
-                   if r.get("visitorId") in active_vids and (r.get("email") or r.get("name"))}
-        print(f"  [Pendo] visitor metadata matched (paths={list(sel.values())[:2]}): {len(matched)}")
-        if matched:
-            meta_by_vid = matched
-            break
-    if not meta_by_vid:
-        # Fallback: use all rows even without email/name
-        all_rows = _pendo_agg([
-            {"source": {"visitors": None}},
-            {"select": select_attempts[0]},
-        ], "visitor_meta_fb")
-        meta_by_vid = {r["visitorId"]: r for r in all_rows if r.get("visitorId") in active_vids}
+    event_by_vid = {r["visitorId"]: r for r in event_rows
+                    if r.get("visitorId") in human_vids}
+    print(f"  [Pendo] human Blackstone visitors active in window: {len(event_by_vid)}")
 
     results = []
-    for vid in active_vids:
+    for vid in human_vids:
         ev   = event_by_vid.get(vid, {})
         meta = meta_by_vid.get(vid, {})
 
         email = (meta.get("email") or "").strip()
-        name  = (meta.get("name")  or "").strip()
-        # Skip anonymous/API visitors that have no identity at all
-        if not email and not name:
-            continue
         if email == PENDO_EXCLUDED_EMAIL:
             continue
 
