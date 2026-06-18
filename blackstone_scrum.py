@@ -366,10 +366,11 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     server_field = f"visitor.{auto_bucket}.lastservername" if auto_bucket else ""
 
     # ── Q1: event counts scoped to Blackstone segment ─────────────────────────
-    # segmentId goes inside the events object, timeSeries is a sibling of events
+    # Use filter stage with PQL segment membership expression
     event_rows = _pendo_agg([
-        {"source": {"events": {"segmentId": PENDO_SEGMENT_ID},
+        {"source": {"events": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
+        {"filter": f"accountId in segment('{PENDO_SEGMENT_ID}')"},
         {"group": {
             "group": ["visitorId", "accountId"],
             "fields": [
@@ -493,10 +494,11 @@ def fetch_pendo_top_pages(window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10)
     end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     start_ms = end_ms - (window_days * 86400 * 1000)
 
-    # Events scoped to Blackstone segment, grouped by pageId
+    # Events scoped to Blackstone segment via filter stage, grouped by pageId
     raw = _pendo_agg([
-        {"source": {"events": {"segmentId": PENDO_SEGMENT_ID},
+        {"source": {"events": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
+        {"filter": f"accountId in segment('{PENDO_SEGMENT_ID}')"},
         {"group": {
             "group": ["pageId"],
             "fields": [{"views": {"sum": "numEvents"}}]
