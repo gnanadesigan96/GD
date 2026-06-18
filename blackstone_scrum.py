@@ -675,57 +675,12 @@ def _add_table(doc, headers, rows, col_widths=None, zebra=True, header_bg=C_DARK
 
 # ─── REPORT RENDERER ─────────────────────────────────────────────────────────
 
-def _build_pendo_section(doc, visitors, pages, region_label, pendo_range):
-    """Renders one Pendo sub-section (EU or USEast) into doc."""
-    _heading(doc, f"Pendo engagement — {region_label}  ·  last {PENDO_WINDOW_DAYS} days ({pendo_range})")
-    note_p = doc.add_paragraph()
-    _para_fmt(note_p, space_before=0, space_after=4)
-    _run(note_p,
-         f"Source: Blackstone Pendo segment only.  {PENDO_EXCLUDED_EMAIL} excluded.  "
-         f"Grey rows = segment members with no activity in this window.",
-         size=8, italic=True, color=C_MUTED)
-
-    visitor_rows = []
-    for v in visitors:
-        ev = str(v["events"])     if v["events"]     != "—" else "—"
-        da = str(v["daysActive"]) if v["daysActive"] != "—" else "—"
-        mn = str(v["minutes"])    if v["minutes"]    != "—" else "—"
-        visitor_rows.append((v["visitor"], v["domain"], ev, da, mn, v["lastSeen"]))
-
-    _add_table(doc,
-        headers=["Visitor", "Domain", "Events (3d)", "Days active", "Minutes", "Last seen"],
-        rows=visitor_rows or [("—", "No activity in this window.", "", "", "", "")],
-        col_widths=[1.8, 1.8, 1.0, 1.0, 0.9, 0.9],
-    )
-    doc.add_paragraph()
-
-    activity_img = chart_pendo_visitor_activity(visitors)
-    pages_img    = chart_pendo_top_pages(pages)
-
-    chart_tbl = doc.add_table(rows=1, cols=2)
-    chart_tbl.style = "Table Grid"
-    chart_tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
-    left_cell  = chart_tbl.rows[0].cells[0]
-    right_cell = chart_tbl.rows[0].cells[1]
-    _set_cell_bg(left_cell,  C_WHITE)
-    _set_cell_bg(right_cell, C_WHITE)
-    left_cell.paragraphs[0].add_run().add_picture(activity_img, width=Inches(3.3))
-    right_cell.paragraphs[0].add_run().add_picture(pages_img,   width=Inches(3.3))
-    for cell in [left_cell, right_cell]:
-        cell.width = Inches(3.4)
-    doc.add_paragraph()
-
-    _heading(doc, f"Top pages — {region_label}", level_size=10)
-    _add_table(doc,
-        headers=["Page", "Views"],
-        rows=[(p["page"], p["views"]) for p in pages] or [("—", "—")],
-        col_widths=[4.5, 0.8],
-    )
-    doc.add_paragraph()
-
-
 def render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics):
-    """Renders a single-page scrum report with Pendo split by EU / USEast."""
+    """
+    Single-page scrum report matching the June 17 layout.
+    Pendo section shows all visitors (EU + USEast combined) with a Region column
+    and an EU / USEast count summary. ADO incidents appear once.
+    """
     doc = Document()
 
     section = doc.sections[0]
@@ -745,7 +700,7 @@ def render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics):
 
     pendo_end   = today
     pendo_start = today - datetime.timedelta(days=PENDO_WINDOW_DAYS - 1)
-    pendo_range = f"{fmt_mon(pendo_start)} – {fmt_mon(pendo_end)}"
+    pendo_range = f"{fmt_mon(pendo_start)}–{fmt_mon(pendo_end)}"
 
     n2  = metrics["n2"]
     svc = metrics["cost"]
@@ -820,11 +775,66 @@ def render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics):
     )
     doc.add_paragraph()
 
-    # ── Pendo — EU ────────────────────────────────────────────────────────────
-    _build_pendo_section(doc, eu_visitors, pages, "EU (portal.corestack.io)", pendo_range)
+    # ── Pendo engagement (combined EU + USEast) ───────────────────────────────
+    all_visitors = eu_visitors + useast_visitors
+    _heading(doc, f"Pendo engagement — Blackstone segment  ·  last {PENDO_WINDOW_DAYS} days ({pendo_range})")
 
-    # ── Pendo — USEast ────────────────────────────────────────────────────────
-    _build_pendo_section(doc, useast_visitors, pages, "USEast (useast.corestack.io)", pendo_range)
+    note_p = doc.add_paragraph()
+    _para_fmt(note_p, space_before=0, space_after=4)
+    _run(note_p,
+         f"Source: Blackstone Pendo segment only.  {PENDO_EXCLUDED_EMAIL} excluded from all counts.  "
+         f"Grey rows = segment members with no activity in this window.",
+         size=8, italic=True, color=C_MUTED)
+
+    # EU / USEast count summary line
+    trend_p = doc.add_paragraph()
+    _para_fmt(trend_p, space_before=0, space_after=6)
+    _run(trend_p, f"EU (portal.corestack.io): ", bold=True, size=9, color=C_DARK)
+    _run(trend_p, f"{len(eu_visitors)} active visitor{'s' if len(eu_visitors) != 1 else ''}",
+         size=9, color=C_ACCENT)
+    _run(trend_p, "     USEast (useast.corestack.io): ", bold=True, size=9, color=C_DARK)
+    _run(trend_p, f"{len(useast_visitors)} active visitor{'s' if len(useast_visitors) != 1 else ''}",
+         size=9, color=C_ACCENT)
+
+    _heading(doc, "Active visitors", level_size=10)
+    visitor_rows = []
+    for v in all_visitors:
+        ev = str(v["events"])     if v["events"]     != "—" else "—"
+        da = str(v["daysActive"]) if v["daysActive"] != "—" else "—"
+        mn = str(v["minutes"])    if v["minutes"]    != "—" else "—"
+        region_lbl = "EU" if v["region"] == "eu" else ("USEast" if v["region"] == "useast" else "—")
+        visitor_rows.append((v["visitor"], v["domain"], region_lbl, ev, da, mn, v["lastSeen"]))
+
+    _add_table(doc,
+        headers=["Visitor (Blackstone segment)", "Domain", "Region", "Events (3d)", "Days active", "Minutes", "Last seen"],
+        rows=visitor_rows or [("—", "No activity in this window.", "", "", "", "", "")],
+        col_widths=[1.6, 1.5, 0.7, 0.9, 0.9, 0.7, 0.9],
+    )
+    doc.add_paragraph()
+
+    activity_img = chart_pendo_visitor_activity(all_visitors)
+    pages_img    = chart_pendo_top_pages(pages)
+
+    chart_tbl = doc.add_table(rows=1, cols=2)
+    chart_tbl.style = "Table Grid"
+    chart_tbl.alignment = WD_TABLE_ALIGNMENT.LEFT
+    left_cell  = chart_tbl.rows[0].cells[0]
+    right_cell = chart_tbl.rows[0].cells[1]
+    _set_cell_bg(left_cell,  C_WHITE)
+    _set_cell_bg(right_cell, C_WHITE)
+    left_cell.paragraphs[0].add_run().add_picture(activity_img, width=Inches(3.3))
+    right_cell.paragraphs[0].add_run().add_picture(pages_img,   width=Inches(3.3))
+    for cell in [left_cell, right_cell]:
+        cell.width = Inches(3.4)
+    doc.add_paragraph()
+
+    _heading(doc, "Top pages visited", level_size=10)
+    _add_table(doc,
+        headers=["Page", "Views"],
+        rows=[(p["page"], p["views"]) for p in pages] or [("—", "—")],
+        col_widths=[4.5, 0.8],
+    )
+    doc.add_paragraph()
 
     # ── ADO incidents ─────────────────────────────────────────────────────────
     ado_url = (
@@ -853,7 +863,7 @@ def render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics):
         ado_rows = [("—", "No active Blackstone incidents found.", "", "", "", "", "")]
 
     _add_table(doc,
-        headers=["ID", "Title", "Assigned to", "Bundle", "Pri", "State", "Type"],
+        headers=["ID", "Title", "Assigned to", "Bundle", "Pri", "State", "Classification"],
         rows=ado_rows,
         col_widths=[0.6, 2.8, 1.4, 0.9, 0.4, 1.0, 0.7],
     )
@@ -873,6 +883,16 @@ def render_docx(ado_items, eu_visitors, useast_visitors, pages, metrics):
     pc.paragraphs[0].add_run().add_picture(pri_img,   width=Inches(3.3))
     for cell in [sc, pc]:
         cell.width = Inches(3.4)
+
+    # ── Footer ────────────────────────────────────────────────────────────────
+    footer_p = doc.add_paragraph()
+    _para_fmt(footer_p, space_before=12, space_after=0)
+    _run(footer_p,
+         "CoreStack · Cloud Operations Intelligence  ·  Daily scrum report  ·  "
+         "N-2 = jobs created 24h–48h ago  ·  Slow = request ≥30s",
+         size=8, color=C_MUTED, italic=True)
+
+    return doc
 
     # ── Footer ────────────────────────────────────────────────────────────────
     footer_p = doc.add_paragraph()
