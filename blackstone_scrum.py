@@ -320,11 +320,9 @@ def _pendo_agg(pipeline, label="", rows_per_page=5000):
 
 def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WINDOW_DAYS):
     """
-    Two-query approach:
-    1. Fetch ALL visitors with metadata (accountId, email, name, server).
-    2. Fetch event totals for the window (only visitors who had events).
-    Join in Python, keep only Blackstone accounts, show "—" for inactive visitors.
-    This matches the June 17 reference doc which showed all segment members.
+    Fetches Blackstone visitors active in the window using the events source
+    (which has both visitorId and accountId per event). Joins visitor metadata
+    in the same pipeline. Filters to Blackstone account IDs in Python.
     """
     if not PENDO_API_KEY:
         return _fake_pendo_visitors()
@@ -334,31 +332,12 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     accounts = accounts or {}
     acct_set = set(accounts.keys())
 
-    # ── Query 1: all visitors metadata ───────────────────────────────────────
-    # accountId is a top-level field on visitor records, not visitor.accountId
-    visitor_rows = _pendo_agg([
-        {"source": {"visitors": None}},
-        {"select": {
-            "visitorId":  "visitorId",
-            "accountId":  "accountId",
-            "email":      "visitor.email",
-            "firstName":  "visitor.firstName",
-            "lastName":   "visitor.lastName",
-        }},
-    ], "visitors")
-    print(f"  [Pendo] total visitors in subscription: {len(visitor_rows)}")
-    if visitor_rows and acct_set:
-        sample_v_acct = next((r.get("accountId") for r in visitor_rows if r.get("accountId")), None)
-        sample_seg_acct = next(iter(acct_set))
-        print(f"  [Pendo] visitor accountId sample:  {repr(sample_v_acct)}")
-        print(f"  [Pendo] segment accountId sample:  {repr(sample_seg_acct)}")
-
-    # ── Query 2: event totals per visitor for the window ─────────────────────
-    event_rows = _pendo_agg([
+    # Single pipeline: events (has accountId) → group → join visitor metadata
+    rows = _pendo_agg([
         {"source": {"events": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
         {"group": {
-            "group": ["visitorId"],
+            "group": ["visitorId", "accountId"],
             "fields": [
                 {"numEvents":  {"sum": "numEvents"}},
                 {"numMinutes": {"sum": "numMinutes"}},
@@ -366,52 +345,75 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
                 {"lastSeenAt": {"max": "day"}},
             ]
         }},
-    ], "events")
-    print(f"  [Pendo] visitors with events in window: {len(event_rows)}")
+        {"join": {
+            "kind": "left",
+            "pipeline": [
+                {"source": {"visitors": None}},
+                {"select": {
+                    "visitorId": "visitorId",
+                    "email":     "visitor.email",
+                    "firstName": "visitor.firstName",
+                    "lastName":  "visitor.lastName",
+                }},
+            ],
+            "keys": ["visitorId"],
+        }},
+    ], "visitors+events")
+    print(f"  [Pendo] event rows (all visitors, window): {len(rows)}")
 
-    # Index event data by visitorId
-    event_by_visitor = {r["visitorId"]: r for r in event_rows if r.get("visitorId")}
+    # Also fetch a sample visitor via REST to discover region field
+    sample_vid = next((r["visitorId"] for r in rows if r.get("visitorId")), None)
+    if sample_vid:
+        vr = requests.get(
+            f"https://app.pendo.io/api/v1/visitor/{requests.utils.quote(sample_vid, safe='')}",
+            headers=pendo_headers()
+        )
+        if vr.ok:
+            vmeta = vr.json().get("metadata", {})
+            print(f"  [Pendo] visitor metadata keys: {list(vmeta.keys())}")
+            for mtype, fields in vmeta.items():
+                if isinstance(fields, dict) and fields:
+                    print(f"  [Pendo] visitor.{mtype}: {dict(list(fields.items())[:8])}")
 
     results = []
-    for v in visitor_rows:
-        vid = v.get("visitorId", "")
-        acct = v.get("accountId", "") or ""
+    for row in rows:
+        acct = row.get("accountId") or ""
         if acct_set and acct not in acct_set:
             continue
-        email = v.get("email", "") or ""
+        email = row.get("email", "") or ""
         if email == PENDO_EXCLUDED_EMAIL:
             continue
 
-        ev = event_by_visitor.get(vid, {})
-        last_seen_ms = ev.get("lastSeenAt")
+        last_seen_ms = row.get("lastSeenAt")
         last_seen = (
             fmt_mon(datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc))
             if last_seen_ms else "—"
         )
-        # Derive region from account-level environment metadata
+
+        # Region from account environment (or "unknown" if not detected)
         env = accounts.get(acct, {}).get("environment", "").lower()
-        if any(x in env for x in ("eu", "europe", "portal.corestack")):
+        if any(x in env for x in ("eu", "europe", "portal")):
             region = "eu"
-        elif any(x in env for x in ("useast", "us east", "us-east", "useast.corestack", "united states")):
+        elif any(x in env for x in ("useast", "us east", "us-east")):
             region = "useast"
         else:
             region = "unknown"
 
-        name = ((v.get("firstName") or "") + " " + (v.get("lastName") or "")).strip() or vid or "—"
+        name = ((row.get("firstName") or "") + " " + (row.get("lastName") or "")).strip() \
+               or row.get("visitorId", "—")
         results.append({
-            "visitorId":  vid,
+            "visitorId":  row.get("visitorId", ""),
             "visitor":    name,
             "domain":     acct or "—",
-            "events":     ev.get("numEvents") or "—",
-            "daysActive": ev.get("daysActive") or "—",
-            "minutes":    int(ev.get("numMinutes") or 0) or "—",
+            "events":     row.get("numEvents") or "—",
+            "daysActive": row.get("daysActive") or "—",
+            "minutes":    int(row.get("numMinutes") or 0) or "—",
             "lastSeen":   last_seen,
             "region":     region,
         })
 
-    # Sort: active visitors first (those with event data), then by visitor name
     results.sort(key=lambda r: (r["events"] == "—", str(r["visitor"]).lower()))
-    print(f"  [Pendo] Blackstone visitors: {len(results)}")
+    print(f"  [Pendo] Blackstone active visitors: {len(results)}")
     return results
 
 
