@@ -242,8 +242,29 @@ def _fetch_blackstone_accounts() -> dict:
                     break
 
     if not env_field:
-        print("  [Pendo] ⚠ Could not detect environment field — all visitors will be 'unclassified'")
-        return {aid: {"name": "", "environment": ""} for aid in account_ids}
+        # Fall back: fetch account names — region may be embedded in name or ID
+        name_rows = _pendo_agg([
+            {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
+            {"select": {"accountId": "accountId", "name": "account.name"}},
+        ], "account_names")
+        print("  [Pendo] ⚠ No env field found. Sample account names/IDs:")
+        for r in name_rows[:10]:
+            print(f"           id={r.get('accountId')}  name={r.get('name')}")
+        # Use account name to infer region
+        result = {}
+        for r in name_rows:
+            aid = r.get("accountId")
+            if not aid:
+                continue
+            name = (r.get("name") or "").lower()
+            if any(x in name for x in ("eu", "europe", "portal")):
+                env = "eu"
+            elif any(x in name for x in ("useast", "us east", "us-east", "united states", "usa")):
+                env = "useast"
+            else:
+                env = ""
+            result[aid] = {"name": r.get("name") or "", "environment": env}
+        return result
 
     # Step 3: fetch all accounts with discovered environment field
     rows = _pendo_agg([
@@ -314,14 +335,15 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     acct_set = set(accounts.keys())
 
     # ── Query 1: all visitors metadata ───────────────────────────────────────
+    # accountId is a top-level field on visitor records, not visitor.accountId
     visitor_rows = _pendo_agg([
         {"source": {"visitors": None}},
         {"select": {
             "visitorId":  "visitorId",
+            "accountId":  "accountId",
             "email":      "visitor.email",
             "firstName":  "visitor.firstName",
             "lastName":   "visitor.lastName",
-            "accountId":  "visitor.accountId",
         }},
     ], "visitors")
     print(f"  [Pendo] total visitors in subscription: {len(visitor_rows)}")
