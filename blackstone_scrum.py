@@ -514,30 +514,310 @@ def _fake_pendo_pages():
         {"page": "FinOps NexGen Reports",    "views": 1},
     ]
 
-# ─── PLATFORM METRICS (plug in your source) ──────────────────────────────────
+# ─── PLATFORM METRICS (MongoDB — US East) ───────────────────────────────────
+
+MONGO_CFG = {
+    "host":        "52.154.142.32",
+    "port":        27017,
+    "username":    "demo",
+    "password":    "Fd7Wv5ftLO5}k8",
+    "auth_source": "admin",
+}
+MONGO_CONN_TIMEOUT_MS = 10000
+
+# Try loading override from credentials.py
+try:
+    from credentials import MONGO_CFG as _MC  # type: ignore
+    MONGO_CFG.update(_MC)
+except (ImportError, AttributeError):
+    pass
+
+MONGO_DB = {
+    "billing":   "billing_and_cost_analytics",
+    "heatstack": "heatstack",
+    "audit":     "audit_log",
+}
+MONGO_COLL = {
+    "jobs":  "background_jobs",
+    "sa":    "service_account_details",
+    "audit": "request_audit",
+}
+MONGO_FIELD_MAP = {
+    "background_job": {
+        "payload_type":       "payload.__type",
+        "payload_type_value": "BackgroundJobPayloadForCloudUsageBilling",
+        "status":             "status",
+        "status_completed":   "Completed",
+        "updated_at":         "updated_at",
+        "created_at":         "created_at",
+        "service_account_id": "payload.service_account_id",
+    },
+    "service_account_details": {
+        "id":        "_id",
+        "tenant_id": "tenant_id",
+    },
+    "request_audit": {
+        "created_at": "start_time",
+        "duration":   "duration",
+        "user":       "user_name",
+        "slow_s":     30,
+    },
+}
+
+AUDIT_HOURS     = 24
+AUDIT_EXECUTOR  = "COST"
+BILLING_PATHS   = [
+    "/v1/billing_plans", "/v1/billing_plans/batch_definitions",
+    "/v1/billing_plans/batch_versions", "/v1/cost/billing/aggregation/trend",
+    "/v1/cost/estimated_cost", "/v1/internal/dimension/validate_grouping_rule_filters",
+    "/v1/providers/billing/request_aggregate", "/v1/providers/billing/request_aggregate_trend",
+    "/v1/providers/billing/request_rate_aggregate_trend",
+    "/v1/providers/billing/request_usage_aggregate_trend",
+    "/v2/billing/aggregation", "/v2/billing/aggregation/batch",
+    "/v2/billing/aggregation/trend", "/v2/billing/extras",
+    "/v2/billing/line_items_summary", "/v2/billing/platform/tags",
+    "/v2/billing/tags", "/v2/billing_metrics/batch", "/v2/billing_metrics/list",
+    "/v2/budget/dashboard/list_cloud_account_type", "/v2/budget/view/cloud_account",
+    "/v2/budget/view/tenant", "/v2/budgets/threshold_alerts/view",
+    "/v2/cost_anomaly/billing_cost_anomaly", "/v2/cost_anomaly/billing_cost_anomaly_resources",
+    "/v3/budget/dashboard", "/v3/budget/dashboard/filters",
+    "/v3/budget/dashboard/list_budgets", "/v3/budget/dashboard/list_currency",
+    "/v3/budget/insights", "/v2/savings/filter", "/v2/savings/summary",
+]
+AUDIT_EXCLUDED_USERS = [
+    "admin", "automation_in", "cs-metering", "automation_us", "automation_user",
+    "automation_ingram", "validation", "qa_test", "apiautomation_produs",
+    "validation2", "qa_user", "automation_mea",
+]
+AUDIT_INTERNAL_USERNAMES = {
+    "admin.taylorfarms", "parthu_cs4cs", "cs-vidyasagar",
+    "ganeshan-cs-qa", "admin.otsuka", "admin.convergetech", "blackstone",
+}
+
+
+def _mongo_get_field(doc: dict, dotpath: str):
+    val = doc
+    for part in dotpath.split("."):
+        if not isinstance(val, dict):
+            return None
+        val = val.get(part)
+    return val
+
+
+def _make_mongo_client():
+    try:
+        from pymongo import MongoClient
+    except ImportError:
+        return None
+    cfg = MONGO_CFG
+    uri = (f"mongodb://{cfg['username']}:{cfg['password']}"
+           f"@{cfg['host']}:{cfg['port']}"
+           f"/?authSource={cfg['auth_source']}&directConnection=true")
+    return MongoClient(uri, serverSelectionTimeoutMS=MONGO_CONN_TIMEOUT_MS,
+                       socketTimeoutMS=30000)
+
 
 def fetch_platform_metrics():
     """
-    Replace this with real data from your monitoring system.
-    Expected keys match the N-2 / COST sections in the report.
+    Fetches N-2 compliance and COST audit metrics from MongoDB (US East).
+    Falls back to placeholder values if pymongo is not installed or connection fails.
     """
-    return {
-        "n2": {
-            "total_accounts":    175,
-            "completed_jobs_24h": 524,
-            "tenants_impacted":  0,
-            "pending_n2_accts":  0,
-            "older_backlog":     0,
-            "compliance_pct":    "100%",
-        },
-        "cost": {
-            "total_requests_24h": 522,
-            "max_response_sec":   3.76,
-            "slow_requests_30s":  0,
-            "users_impacted":     0,
-            "health_status":      "Good",
-        },
+    import datetime as _dt
+
+    now        = _dt.datetime.utcnow()
+    cutoff_24h = now - _dt.timedelta(hours=24)
+    cutoff_48h = now - _dt.timedelta(hours=48)
+
+    # ── N-2 job metrics ───────────────────────────────────────────────────────
+    n2 = {
+        "total_accounts": "—", "completed_jobs_24h": "—",
+        "tenants_impacted": "—", "pending_n2_accts": "—",
+        "older_backlog": "—", "compliance_pct": "—",
+        "pending_names": [], "error": None,
     }
+    # ── COST audit metrics ─────────────────────────────────────────────────────
+    cost = {
+        "total_requests_24h": "—", "max_response_sec": "—",
+        "slow_requests_30s": "—", "users_impacted": "—",
+        "external_users": "—", "internal_users": "—",
+        "avg_slow_s": "—", "health_status": "—", "error": None,
+    }
+
+    client = None
+    try:
+        client = _make_mongo_client()
+        if client is None:
+            raise RuntimeError("pymongo not installed")
+        # quick ping to catch VPN/network issues early
+        client.admin.command("ping")
+    except Exception as exc:
+        err = f"MongoDB unavailable: {exc}"
+        print(f"  [Mongo] {err}", file=sys.stderr)
+        n2["error"]   = err
+        cost["error"] = err
+        if client:
+            try: client.close()
+            except: pass
+        return {"n2": n2, "cost": cost}
+
+    # ── Section 1: N-2 jobs ───────────────────────────────────────────────────
+    try:
+        jf = MONGO_FIELD_MAP["background_job"]
+        sf = MONGO_FIELD_MAP["service_account_details"]
+        n2_window = {jf["created_at"]: {"$gt": cutoff_48h, "$lte": cutoff_24h}}
+        base      = {jf["payload_type"]: jf["payload_type_value"]}
+
+        jobs = client[MONGO_DB["billing"]][MONGO_COLL["jobs"]]
+        sa_c = client[MONGO_DB["heatstack"]][MONGO_COLL["sa"]]
+
+        all_n2_ids  = jobs.distinct(jf["service_account_id"], {**base, **n2_window})
+        total_accts = len([x for x in all_n2_ids if x is not None])
+
+        completed_24h = jobs.count_documents({
+            **base,
+            jf["status"]:     jf["status_completed"],
+            jf["updated_at"]: {"$gte": cutoff_24h},
+        })
+
+        n2_pending_docs = list(jobs.find(
+            {**base, jf["status"]: {"$in": ["Ready", "Pending", "Waiting"]}, **n2_window},
+            {jf["service_account_id"]: 1, "_id": 0},
+        ))
+        n2_pending_ids = {_mongo_get_field(d, jf["service_account_id"])
+                          for d in n2_pending_docs
+                          if _mongo_get_field(d, jf["service_account_id"]) is not None}
+
+        older_backlog_docs = list(jobs.find(
+            {**base, jf["status"]: {"$in": ["Ready", "Pending", "Waiting"]},
+             jf["created_at"]: {"$lt": cutoff_48h}},
+            {jf["service_account_id"]: 1, "_id": 0},
+        ))
+        older_backlog_ids = {_mongo_get_field(d, jf["service_account_id"])
+                             for d in older_backlog_docs
+                             if _mongo_get_field(d, jf["service_account_id"]) is not None}
+        older_backlog = len(older_backlog_docs)
+
+        combined_ids     = n2_pending_ids | older_backlog_ids
+        tenants_impacted = 0
+        pending_names    = []
+        if combined_ids:
+            sa_docs = list(sa_c.find(
+                {sf["id"]: {"$in": list(combined_ids)}},
+                {sf["id"]: 1, sf["tenant_id"]: 1, "name": 1},
+            ))
+            tenant_set       = {str(d[sf["tenant_id"]]) for d in sa_docs if d.get(sf["tenant_id"])}
+            tenants_impacted = len(tenant_set)
+            # names of N-2 pending accounts specifically
+            n2_sa_docs = list(sa_c.find(
+                {sf["id"]: {"$in": list(n2_pending_ids)}},
+                {sf["id"]: 1, "name": 1},
+            )) if n2_pending_ids else []
+            pending_names = [d["name"] for d in n2_sa_docs if d.get("name")]
+
+        n2_pending    = len(n2_pending_ids)
+        compliance_pct = (0.0 if total_accts == 0 else
+                          100.0 if n2_pending == 0 else
+                          round((1 - n2_pending / total_accts) * 100, 1))
+
+        n2.update({
+            "total_accounts":    total_accts,
+            "completed_jobs_24h": completed_24h,
+            "tenants_impacted":  tenants_impacted,
+            "pending_n2_accts":  n2_pending,
+            "older_backlog":     older_backlog,
+            "compliance_pct":    f"{compliance_pct}%",
+            "pending_names":     pending_names,
+        })
+        print(f"  [Mongo] N-2: total={total_accts} pending={n2_pending} backlog={older_backlog} "
+              f"compliance={compliance_pct}%")
+    except Exception as exc:
+        n2["error"] = str(exc)
+        print(f"  [Mongo] N-2 error: {exc}", file=sys.stderr)
+
+    # ── Section 2: COST audit metrics ─────────────────────────────────────────
+    try:
+        af     = MONGO_FIELD_MAP["request_audit"]
+        slow_s = af["slow_s"]
+        cutoff = now - _dt.timedelta(hours=AUDIT_HOURS)
+
+        coll   = client[MONGO_DB["audit"]][MONGO_COLL["audit"]]
+        time_q = {
+            af["created_at"]: {"$gte": cutoff, "$lte": now},
+            "executor":   AUDIT_EXECUTOR,
+            "path":       {"$in": BILLING_PATHS},
+            "user_name":  {"$exists": True, "$nin": AUDIT_EXCLUDED_USERS},
+            "source_ip":  {"$ne": "127.0.0.1"},
+        }
+
+        u_field = f"${af['user']}"
+        d_field = f"${af['duration']}"
+
+        def _is_internal_expr(uf):
+            return {"$or": [
+                {"$regexMatch": {"input": uf, "regex": "^cs\\."}},
+                {"$regexMatch": {"input": uf, "regex": "@corestack\\.io$"}},
+                {"$in": [uf, list(AUDIT_INTERNAL_USERNAMES)]},
+            ]}
+
+        agg_result = list(coll.aggregate([
+            {"$match": time_q},
+            {"$group": {
+                "_id":         None,
+                "total":       {"$sum": 1},
+                "max_dur":     {"$max": d_field},
+                "slow_count":  {"$sum": {"$cond": [{"$gte": [d_field, slow_s]}, 1, 0]}},
+                "slow_sum":    {"$sum": {"$cond": [{"$gte": [d_field, slow_s]}, d_field, 0]}},
+                "ext_users":   {"$addToSet": {"$cond": {
+                    "if":  {"$and": [{"$gte": [d_field, slow_s]},
+                                     {"$not": [_is_internal_expr(u_field)]}]},
+                    "then": u_field, "else": "$$REMOVE",
+                }}},
+                "int_users":   {"$addToSet": {"$cond": {
+                    "if":  {"$and": [{"$gte": [d_field, slow_s]},
+                                     _is_internal_expr(u_field)]},
+                    "then": u_field, "else": "$$REMOVE",
+                }}},
+            }},
+        ], allowDiskUse=True))
+
+        if agg_result:
+            row        = agg_result[0]
+            slow_count = row.get("slow_count") or 0
+            slow_sum   = row.get("slow_sum") or 0
+            ext_list   = [u for u in (row.get("ext_users") or []) if u]
+            int_list   = [u for u in (row.get("int_users") or []) if u]
+            avg_slow   = round(slow_sum / slow_count, 2) if slow_count else 0.0
+            max_s      = round(row.get("max_dur") or 0, 2)
+            total_imp  = len(ext_list) + len(int_list)
+            health     = "Bad" if slow_count > 0 else "Good"
+
+            cost.update({
+                "total_requests_24h": row.get("total") or 0,
+                "max_response_sec":   max_s,
+                "slow_requests_30s":  slow_count,
+                "avg_slow_s":         avg_slow,
+                "external_users":     len(ext_list),
+                "internal_users":     len(int_list),
+                "users_impacted":     total_imp,
+                "health_status":      health,
+            })
+            print(f"  [Mongo] COST: requests={cost['total_requests_24h']} "
+                  f"slow={slow_count} max={max_s}s health={health}")
+        else:
+            cost.update({
+                "total_requests_24h": 0, "max_response_sec": 0.0,
+                "slow_requests_30s": 0, "avg_slow_s": 0.0,
+                "external_users": 0, "internal_users": 0,
+                "users_impacted": 0, "health_status": "Good",
+            })
+    except Exception as exc:
+        cost["error"] = str(exc)
+        print(f"  [Mongo] COST error: {exc}", file=sys.stderr)
+    finally:
+        try: client.close()
+        except: pass
+
+    return {"n2": n2, "cost": cost}
 
 # ─── CHART GENERATORS ────────────────────────────────────────────────────────
 
@@ -835,9 +1115,9 @@ def render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, 
     kpi_headers = ["Compliance", "API requests", "Slow req ≥30s", "Open incidents"]
     open_ids    = ", ".join([f"#{i['id']}" for i in open_incidents[:3]]) or "None"
     kpi_vals    = [
-        n2["compliance_pct"],
-        f"{svc['total_requests_24h']}\nMax {svc['max_response_sec']}s resp.",
-        str(svc["slow_requests_30s"]),
+        n2.get("compliance_pct", "—"),
+        f"{svc.get('total_requests_24h','—')}\nMax {svc.get('max_response_sec','—')}s resp.",
+        str(svc.get("slow_requests_30s", "—")),
         f"{len(open_incidents)}\n{open_ids}",
     ]
     for i, h in enumerate(kpi_headers):
@@ -857,34 +1137,65 @@ def render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, 
     doc.add_paragraph()
 
     # ── Platform performance ──────────────────────────────────────────────────
-    _heading(doc, "Platform performance  (N-2 metric)")
-    _add_table(doc,
-        headers=["Metric", "Value"],
-        rows=[
-            ("Total accounts",       n2["total_accounts"]),
-            ("Completed jobs (24h)", n2["completed_jobs_24h"]),
-            ("Tenants impacted",     n2["tenants_impacted"]),
-            ("Pending N-2 accts",    n2["pending_n2_accts"]),
-            ("Older backlog",        n2["older_backlog"]),
-            ("Compliance %",         n2["compliance_pct"]),
-        ],
-        col_widths=[3.5, 1.5],
-    )
+    _heading(doc, "Platform performance  (N-2 metric — US East)")
+    n2_subtitle = doc.add_paragraph()
+    _para_fmt(n2_subtitle, space_before=0, space_after=4)
+    _run(n2_subtitle,
+         "N-2 window = billing jobs created 24h–48h ago  ·  "
+         "Compliance % = (1 – Pending N-2 Accts ÷ Total Accts) × 100",
+         size=8, italic=True, color=C_MUTED)
+
+    if n2.get("error"):
+        err_p = doc.add_paragraph()
+        _para_fmt(err_p, space_before=0, space_after=4)
+        _run(err_p, f"⚠ MongoDB unavailable — {n2['error'][:120]}", size=9, color=C_RED)
+    else:
+        pending_names = n2.get("pending_names", [])
+        pending_val   = str(n2["pending_n2_accts"])
+        if pending_names:
+            pending_val += "  (" + ", ".join(pending_names) + ")"
+        _add_table(doc,
+            headers=["Metric", "Value"],
+            rows=[
+                ("Total accounts (N-2 window)",  n2["total_accounts"]),
+                ("Completed jobs (24h)",          n2["completed_jobs_24h"]),
+                ("Tenants impacted",              n2["tenants_impacted"]),
+                ("Pending N-2 accounts",          pending_val),
+                ("Older backlog (>48h queued)",   n2["older_backlog"]),
+                ("Compliance %",                  n2["compliance_pct"]),
+            ],
+            col_widths=[3.5, 2.8],
+        )
     doc.add_paragraph()
 
     # ── Service metric (COST) ─────────────────────────────────────────────────
-    _heading(doc, "Service metric (COST)")
-    _add_table(doc,
-        headers=["Metric", "Value"],
-        rows=[
-            ("Total requests (24h)",  svc["total_requests_24h"]),
-            ("Max response time",     f"{svc['max_response_sec']} sec"),
-            ("Slow requests ≥30s",    svc["slow_requests_30s"]),
-            ("Users impacted",        svc["users_impacted"]),
-            ("Health status",         svc["health_status"]),
-        ],
-        col_widths=[3.5, 1.5],
-    )
+    _heading(doc, "Service metric (COST — US East)")
+    svc_subtitle = doc.add_paragraph()
+    _para_fmt(svc_subtitle, space_before=0, space_after=4)
+    _run(svc_subtitle,
+         f"Executor: COST  ·  Cost/billing endpoints only  ·  "
+         f"Real users only (system & automation excluded)  ·  Slow threshold ≥30s  ·  Last {AUDIT_HOURS}h",
+         size=8, italic=True, color=C_MUTED)
+
+    if svc.get("error"):
+        err_p = doc.add_paragraph()
+        _para_fmt(err_p, space_before=0, space_after=4)
+        _run(err_p, f"⚠ MongoDB unavailable — {svc['error'][:120]}", size=9, color=C_RED)
+    else:
+        avg_slow_str = (f"{svc['avg_slow_s']} sec" if svc.get("slow_requests_30s", 0) else "—")
+        _add_table(doc,
+            headers=["Metric", "Value"],
+            rows=[
+                (f"Total requests (last {AUDIT_HOURS}h)",  svc["total_requests_24h"]),
+                ("Max response time",                       f"{svc['max_response_sec']} sec"),
+                ("Avg slow request duration",               avg_slow_str),
+                ("Slow requests ≥30s",                      svc["slow_requests_30s"]),
+                ("External users impacted (slow req)",      svc["external_users"]),
+                ("Internal users impacted (slow req)",      svc["internal_users"]),
+                ("Health status",                           svc["health_status"]),
+            ],
+            col_widths=[3.5, 2.8],
+        )
     doc.add_paragraph()
 
     # ── Pendo engagement (all visitors; EU + USEast counted separately) ──────
