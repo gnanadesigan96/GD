@@ -47,9 +47,19 @@ def fmt_mon(dt) -> str:
 
 ADO_ORG     = "CoreStack-Tech"
 ADO_PROJECT = "Product_Mgmt"
-ADO_PAT     = os.environ.get("ADO_PAT", "YOUR_PAT_HERE")  # <-- paste your PAT here
+ADO_PAT       = os.environ.get("ADO_PAT", "")
+PENDO_API_KEY = os.environ.get("PENDO_API_KEY", "")
 
-PENDO_API_KEY           = os.environ.get("PENDO_API_KEY", "YOUR_PENDO_API_KEY")  # <-- paste your key here
+# ── Local credentials override (never committed) ──────────────────────────
+# Create a file called  credentials.py  in the same folder with:
+#   ADO_PAT       = "your-ado-pat"
+#   PENDO_API_KEY = "your-pendo-key"
+try:
+    from credentials import ADO_PAT as _A, PENDO_API_KEY as _P  # type: ignore
+    if _A: ADO_PAT = _A
+    if _P: PENDO_API_KEY = _P
+except ImportError:
+    pass
 PENDO_SUBSCRIPTION_ID   = "5122158603141120"
 PENDO_SEGMENT_ID        = "dJzveERO2XLsAMSv8nEAKmftlVQ"  # single segment; EU/USEast split by visitor.server field
 
@@ -79,7 +89,7 @@ def fetch_ado_blackstone_incidents():
     Filters by tag = 'Blackstone' and state != Closed/Removed.
     Returns list of dicts with id, title, assignedTo, state, priority, tags, workItemType.
     """
-    if ADO_PAT == "YOUR_PAT_HERE":
+    if not ADO_PAT:
         # Return fake data so the script runs without a real PAT
         return _fake_ado_data()
 
@@ -196,7 +206,7 @@ def fetch_pendo_all_visitors(window_days: int = PENDO_WINDOW_DAYS):
     callers can split into EU / USEast groups.
     Returns list of dicts, each with a 'region' key.
     """
-    if PENDO_API_KEY == "YOUR_PENDO_API_KEY":
+    if not PENDO_API_KEY:
         return _fake_pendo_visitors()
 
     now_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
@@ -284,7 +294,7 @@ def fetch_pendo_top_pages(region_visitor_ids: list = None, window_days: int = PE
     Fetches top pages for the Blackstone segment in the last N days.
     If region_visitor_ids is provided, filters to only those visitor IDs (for EU/USEast split).
     """
-    if PENDO_API_KEY == "YOUR_PENDO_API_KEY":
+    if not PENDO_API_KEY:
         return _fake_pendo_pages()
 
     end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
@@ -846,12 +856,12 @@ def render_docx(regions_data):
 def main():
     # ── Startup key check ────────────────────────────────────────────────────
     using_fake = []
-    if ADO_PAT == "YOUR_PAT_HERE":
-        using_fake.append("ADO  → using FAKE data  (set env var: export ADO_PAT=...)")
+    if not ADO_PAT:
+        using_fake.append("ADO   → using FAKE data  (add ADO_PAT to credentials.py)")
     else:
         print("✓ ADO PAT detected — will fetch live work items")
 
-    if PENDO_API_KEY == "YOUR_PENDO_API_KEY":
+    if not PENDO_API_KEY:
         using_fake.append("Pendo → using FAKE data  (set env var: export PENDO_API_KEY=...)")
     else:
         print("✓ Pendo API key detected — will fetch live visitors")
