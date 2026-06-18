@@ -366,9 +366,9 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     server_field = f"visitor.{auto_bucket}.lastservername" if auto_bucket else ""
 
     # ── Q1: event counts scoped to Blackstone segment ─────────────────────────
+    # segmentId goes inside the events object, timeSeries is a sibling of events
     event_rows = _pendo_agg([
-        {"source": {"events": None,
-                    "segmentId": PENDO_SEGMENT_ID,
+        {"source": {"events": {"segmentId": PENDO_SEGMENT_ID},
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
         {"group": {
             "group": ["visitorId", "accountId"],
@@ -388,7 +388,8 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
 
     event_by_vid = {r["visitorId"]: r for r in event_rows if r.get("visitorId")}
 
-    # ── Q2: visitor metadata for segment members ──────────────────────────────
+    # ── Q2: visitor metadata for the active visitor IDs only ──────────────────
+    # Fetch all visitor metadata, then look up by visitorId from Q1
     select = {
         "visitorId": "visitorId",
         "email":     "visitor.agent.email",
@@ -398,10 +399,10 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         select["server"] = server_field
 
     visitor_rows = _pendo_agg([
-        {"source": {"visitors": {"segmentId": PENDO_SEGMENT_ID}}},
+        {"source": {"visitors": None}},
         {"select": select},
     ], "visitor_meta")
-    print(f"  [Pendo] segment visitor metadata rows: {len(visitor_rows)}")
+    print(f"  [Pendo] visitor metadata rows fetched: {len(visitor_rows)}")
     meta_by_vid = {r["visitorId"]: r for r in visitor_rows if r.get("visitorId")}
 
     results = []
@@ -494,8 +495,7 @@ def fetch_pendo_top_pages(window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10)
 
     # Events scoped to Blackstone segment, grouped by pageId
     raw = _pendo_agg([
-        {"source": {"events": None,
-                    "segmentId": PENDO_SEGMENT_ID,
+        {"source": {"events": {"segmentId": PENDO_SEGMENT_ID},
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
         {"group": {
             "group": ["pageId"],
