@@ -200,28 +200,36 @@ def pendo_headers():
         "Content-Type": "application/json",
     }
 
-def _fetch_blackstone_account_ids() -> list:
+def _fetch_blackstone_accounts() -> dict:
     """
-    Tries to get Blackstone account IDs from the segment.
-    Falls back to empty list if segment is visitor-based or unsupported.
+    Fetches Blackstone accounts from the segment with their metadata.
+    Returns {accountId: {"name": ..., "environment": ...}}.
+    Environment is read from account metadata to determine EU vs USEast.
     """
-    url = "https://app.pendo.io/api/v1/aggregation"
-    payload = {
-        "response": {"mimeType": "application/json"},
-        "request": {
-            "pipeline": [
-                {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
-                {"select": {"accountId": "accountId"}},
-            ]
+    rows = _pendo_agg([
+        {"source": {"accounts": {"segmentId": PENDO_SEGMENT_ID}}},
+        {"select": {
+            "accountId":   "accountId",
+            "name":        "account.name",
+            "environment": "account.metadata.auto.Environment",
+        }},
+    ], "accounts")
+
+    if not rows:
+        return {}
+
+    # Print one sample so we can verify field names if environment is empty
+    sample = rows[0]
+    print(f"  [Pendo] account sample: {sample}")
+    print(f"  [Pendo] account IDs in segment: {len(rows)}")
+
+    return {
+        r["accountId"]: {
+            "name":        r.get("name") or "",
+            "environment": (r.get("environment") or "").lower(),
         }
+        for r in rows if r.get("accountId")
     }
-    resp = requests.post(url, headers=pendo_headers(), json=payload)
-    if not resp.ok:
-        print(f"  [Pendo accounts] {resp.status_code}: {resp.text[:200]}")
-        return []
-    ids = [r["accountId"] for r in resp.json().get("results", []) if r.get("accountId")]
-    print(f"  [Pendo] account IDs in segment: {len(ids)}")
-    return ids
 
 
 def _pendo_agg(pipeline, label=""):
@@ -238,7 +246,7 @@ def _pendo_agg(pipeline, label=""):
     return resp.json().get("results", [])
 
 
-def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_WINDOW_DAYS):
+def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WINDOW_DAYS):
     """
     Two-query approach:
     1. Fetch ALL visitors with metadata (accountId, email, name, server).
@@ -251,7 +259,8 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
 
     end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     start_ms = end_ms - (window_days * 86400 * 1000)
-    acct_set = set(account_ids) if account_ids else set()
+    accounts = accounts or {}
+    acct_set = set(accounts.keys())
 
     # ── Query 1: all visitors metadata ───────────────────────────────────────
     visitor_rows = _pendo_agg([
@@ -262,7 +271,6 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
             "firstName":  "visitor.firstName",
             "lastName":   "visitor.lastName",
             "accountId":  "visitor.accountId",
-            "server":     f"visitor.auto.{PENDO_SERVER_FIELD}",
         }},
     ], "visitors")
     print(f"  [Pendo] total visitors in subscription: {len(visitor_rows)}")
@@ -302,10 +310,11 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
             fmt_mon(datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc))
             if last_seen_ms else "—"
         )
-        server = (v.get("server") or "").lower()
-        if PENDO_REGION_EU in server:
+        # Derive region from account-level environment metadata
+        env = accounts.get(acct, {}).get("environment", "").lower()
+        if "eu" in env or PENDO_REGION_EU in env:
             region = "eu"
-        elif PENDO_REGION_USEAST in server:
+        elif "useast" in env or "us east" in env or PENDO_REGION_USEAST in env:
             region = "useast"
         else:
             region = "unknown"
@@ -336,8 +345,7 @@ def split_visitors_by_region(visitors):
     return eu, useast, other
 
 
-def fetch_pendo_top_pages(account_ids: list = None,
-                          server_val: str = None,
+def fetch_pendo_top_pages(accounts: dict = None,
                           window_days: int = PENDO_WINDOW_DAYS, top_n: int = 10):
     """
     Fetches top pages for Blackstone accounts in the last N days.
@@ -348,7 +356,7 @@ def fetch_pendo_top_pages(account_ids: list = None,
 
     end_ms   = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     start_ms = end_ms - (window_days * 86400 * 1000)
-    acct_set = set(account_ids) if account_ids else set()
+    acct_set = set((accounts or {}).keys())
 
     pipeline = [
         {"source": {"events": None,
@@ -921,15 +929,15 @@ def main():
     ado_items = fetch_ado_blackstone_incidents()
 
     print("Fetching Pendo engagement...")
-    acct_ids     = _fetch_blackstone_account_ids()
-    all_visitors = fetch_pendo_all_visitors(account_ids=acct_ids or None)
+    accounts     = _fetch_blackstone_accounts()
+    all_visitors = fetch_pendo_all_visitors(accounts=accounts)
     eu_visitors, useast_visitors, other_visitors = split_visitors_by_region(all_visitors)
     print(f"  → EU visitors: {len(eu_visitors)}  |  USEast visitors: {len(useast_visitors)}  |  unclassified: {len(other_visitors)}")
 
     print("Fetching platform metrics...")
     metrics = fetch_platform_metrics()
 
-    pages = fetch_pendo_top_pages(account_ids=acct_ids or None)
+    pages = fetch_pendo_top_pages(accounts=accounts)
 
     doc = render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, metrics)
 
