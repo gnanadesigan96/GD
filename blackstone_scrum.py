@@ -393,25 +393,34 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     auto_bucket = _discover_visitor_auto_bucket()
     server_field = f"visitor.{auto_bucket}.lastservername" if auto_bucket else ""
 
-    select = {
-        "visitorId": "visitorId",
-        "email":     "visitor.agent.email",
-        "name":      "visitor.agent.name",
-    }
-    if server_field:
-        select["server"] = server_field
-
-    visitor_rows = _pendo_agg([
-        {"source": {"visitors": None}},
-        {"select": select},
-    ], "visitor_meta")
-    meta_by_vid = {r["visitorId"]: r for r in visitor_rows if r.get("visitorId") in active_vids}
-    print(f"  [Pendo] visitor metadata matched: {len(meta_by_vid)}")
-
-    # Debug: show sample emails and server values to diagnose region split
-    sample = list(meta_by_vid.values())[:10]
-    for m in sample:
-        print(f"    email={m.get('email')}  server={m.get('server')}")
+    # Try both field path conventions: with and without "visitor." prefix
+    select_attempts = [
+        {"visitorId": "visitorId", "email": "visitor.agent.email",
+         "name": "visitor.agent.name", "server": server_field or "visitor.auto.lastservername"},
+        {"visitorId": "visitorId", "email": "agent.email",
+         "name": "agent.name", "server": "auto.lastservername"},
+    ]
+    meta_by_vid = {}
+    for sel in select_attempts:
+        if not server_field:
+            sel.pop("server", None)
+        rows = _pendo_agg([
+            {"source": {"visitors": None}},
+            {"select": sel},
+        ], "visitor_meta")
+        matched = {r["visitorId"]: r for r in rows
+                   if r.get("visitorId") in active_vids and (r.get("email") or r.get("name"))}
+        print(f"  [Pendo] visitor metadata matched (paths={list(sel.values())[:2]}): {len(matched)}")
+        if matched:
+            meta_by_vid = matched
+            break
+    if not meta_by_vid:
+        # Fallback: use all rows even without email/name
+        all_rows = _pendo_agg([
+            {"source": {"visitors": None}},
+            {"select": select_attempts[0]},
+        ], "visitor_meta_fb")
+        meta_by_vid = {r["visitorId"]: r for r in all_rows if r.get("visitorId") in active_vids}
 
     results = []
     for vid in active_vids:
@@ -419,6 +428,10 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         meta = meta_by_vid.get(vid, {})
 
         email = (meta.get("email") or "").strip()
+        name  = (meta.get("name")  or "").strip()
+        # Skip anonymous/API visitors that have no identity at all
+        if not email and not name:
+            continue
         if email == PENDO_EXCLUDED_EMAIL:
             continue
 
