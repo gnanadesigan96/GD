@@ -220,14 +220,14 @@ def _fetch_blackstone_account_ids() -> list:
         print(f"  [Pendo accounts] {resp.status_code}: {resp.text[:200]}")
         return []
     ids = [r["accountId"] for r in resp.json().get("results", []) if r.get("accountId")]
-    print(f"  [Pendo] account IDs in segment: {ids}")
+    print(f"  [Pendo] account IDs in segment: {len(ids)}")
     return ids
 
 
 def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_WINDOW_DAYS):
     """
     Fetches all Blackstone visitors with engagement metrics for the last N days.
-    Filters events by accountId (batched), then joins visitor metadata.
+    Uses segmentId on the events source to scope to Blackstone accounts.
     Region is derived from the visitor's server metadata field.
     """
     if not PENDO_API_KEY:
@@ -237,21 +237,10 @@ def fetch_pendo_all_visitors(account_ids: list = None, window_days: int = PENDO_
     start_ms = end_ms - (window_days * 86400 * 1000)
     url = "https://app.pendo.io/api/v1/aggregation"
 
-    # Build accountId filter — batch 50 IDs per OR clause to stay within query limits
-    acct_clauses = []
-    if account_ids:
-        for i in range(0, min(len(account_ids), 200), 50):
-            batch = account_ids[i:i+50]
-            clause = " || ".join(f"accountId == '{aid}'" for aid in batch)
-            acct_clauses.append(f"({clause})")
-
-    acct_filter = " || ".join(acct_clauses) if acct_clauses else None
-
     pipeline = [
-        {"source": {"events": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
+        {"source": {"events": {"segmentId": PENDO_SEGMENT_ID},
+                    "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
     ]
-    if acct_filter:
-        pipeline.append({"filter": acct_filter})
 
     pipeline += [
         {"group": {
@@ -350,24 +339,10 @@ def fetch_pendo_top_pages(account_ids: list = None,
 
     url = "https://app.pendo.io/api/v1/aggregation"
 
-    acct_clauses = []
-    if account_ids:
-        for i in range(0, min(len(account_ids), 200), 50):
-            batch = account_ids[i:i+50]
-            clause = " || ".join(f"accountId == '{aid}'" for aid in batch)
-            acct_clauses.append(f"({clause})")
-    acct_filter = " || ".join(acct_clauses) if acct_clauses else None
-
-    # Visitor ID filter for region split (small list, safe to pass directly)
-    visitor_filter = None
-    if server_val and False:  # region split via visitor IDs disabled for now
-        pass
-
     pipeline = [
-        {"source": {"events": None, "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
+        {"source": {"events": {"segmentId": PENDO_SEGMENT_ID},
+                    "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
     ]
-    if acct_filter:
-        pipeline.append({"filter": acct_filter})
 
     pipeline += [
         {"group": {"group": ["pageId"], "fields": [{"views": {"sum": "numEvents"}}]}},
