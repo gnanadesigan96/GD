@@ -5,19 +5,16 @@ including ADO numbers, then upload to SharePoint.
 
 Usage:
     pip install requests openpyxl
-    python gen_report_live.py
+    python3 gen_report_live.py
+
+Credentials:
+    Create a file called  credentials.py  in the same folder with:
+        SHAREPOINT_TENANT_ID     = "your-tenant-id"
+        SHAREPOINT_CLIENT_SECRET = "your-client-secret"
+    That file is git-ignored and never committed.
 """
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "azure-function"))
-
-# ── SharePoint credentials — update these before running ──────────────────────
-os.environ.setdefault("SHAREPOINT_TENANT_ID",     "YOUR_TENANT_ID_HERE")
-os.environ.setdefault("SHAREPOINT_CLIENT_ID",     "abb2a8fa-4603-4aff-80b2-bf614beb173b")
-os.environ.setdefault("SHAREPOINT_CLIENT_SECRET", "YOUR_CLIENT_SECRET_HERE")
-os.environ.setdefault("SHAREPOINT_SITE_URL",      "cloudenablersinc.sharepoint.com/sites/SupportTeam")
-os.environ.setdefault("SHAREPOINT_HTML_FOLDER",   "General/Daily-Incident-Report/Template")
-os.environ.setdefault("SHAREPOINT_EXCEL_FOLDER",  "General/Daily-Incident-Report/Template")
-# ─────────────────────────────────────────────────────────────────────────────
 
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -30,10 +27,37 @@ from sharepoint_client import upload_file
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
-# ── Credentials ───────────────────────────────────────────────────────────────
+# ── Zoho credentials (safe to keep here — Zoho tokens, not passwords) ─────────
 ZOHO_CLIENT_ID     = os.environ.get("ZOHO_CLIENT_ID",     "1000.LXE6HGZAW4FWRED50ZUZ42CHUFHVEO")
 ZOHO_CLIENT_SECRET = os.environ.get("ZOHO_CLIENT_SECRET", "7d84eb43d93d42648ad05636b2b7310652361722e9")
 ZOHO_REFRESH_TOKEN = os.environ.get("ZOHO_REFRESH_TOKEN", "1000.ca586bbc38413c0661c0e67e78378449.72ac1952b7eb013374cc87e8544475a4")
+
+# ── SharePoint credentials — loaded from credentials.py (never committed) ─────
+SHAREPOINT_TENANT_ID     = os.environ.get("SHAREPOINT_TENANT_ID",     "")
+SHAREPOINT_CLIENT_ID     = os.environ.get("SHAREPOINT_CLIENT_ID",     "abb2a8fa-4603-4aff-80b2-bf614beb173b")
+SHAREPOINT_CLIENT_SECRET = os.environ.get("SHAREPOINT_CLIENT_SECRET", "")
+SHAREPOINT_SITE_URL      = os.environ.get("SHAREPOINT_SITE_URL",      "cloudenablersinc.sharepoint.com/sites/SupportTeam")
+SHAREPOINT_HTML_FOLDER   = os.environ.get("SHAREPOINT_HTML_FOLDER",   "General/Daily-Incident-Report/Template")
+SHAREPOINT_EXCEL_FOLDER  = os.environ.get("SHAREPOINT_EXCEL_FOLDER",  "General/Daily-Incident-Report/Template")
+
+# ── Local credentials override (create credentials.py — see docstring above) ──
+try:
+    from credentials import (          # type: ignore
+        SHAREPOINT_TENANT_ID     as _T,
+        SHAREPOINT_CLIENT_SECRET as _S,
+    )
+    if _T: SHAREPOINT_TENANT_ID     = _T
+    if _S: SHAREPOINT_CLIENT_SECRET = _S
+except ImportError:
+    pass
+
+# Push resolved values into env so sharepoint_client.py picks them up
+os.environ["SHAREPOINT_TENANT_ID"]     = SHAREPOINT_TENANT_ID
+os.environ["SHAREPOINT_CLIENT_ID"]     = SHAREPOINT_CLIENT_ID
+os.environ["SHAREPOINT_CLIENT_SECRET"] = SHAREPOINT_CLIENT_SECRET
+os.environ["SHAREPOINT_SITE_URL"]      = SHAREPOINT_SITE_URL
+os.environ["SHAREPOINT_HTML_FOLDER"]   = SHAREPOINT_HTML_FOLDER
+os.environ["SHAREPOINT_EXCEL_FOLDER"]  = SHAREPOINT_EXCEL_FOLDER
 ZOHO_ORG_ID        = "60019389025"
 ZOHO_DEPT_ID       = "100599000000010772"
 PENTAGON_ACCOUNT   = "100599000037212179"
