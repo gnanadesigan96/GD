@@ -200,6 +200,35 @@ def pendo_headers():
         "Content-Type": "application/json",
     }
 
+_VISITOR_AUTO_BUCKET = None  # discovered at runtime from REST API
+
+def _discover_visitor_auto_bucket() -> str:
+    """Find the auto_XXXXXXXX metadata bucket on visitors that contains lastservername."""
+    global _VISITOR_AUTO_BUCKET
+    if _VISITOR_AUTO_BUCKET:
+        return _VISITOR_AUTO_BUCKET
+    # Fetch any one visitor via aggregation to get a sample visitorId
+    rows = _pendo_agg([
+        {"source": {"visitors": None}},
+        {"select": {"visitorId": "visitorId"}},
+    ], "visitor_sample", rows_per_page=1)
+    if not rows or not rows[0].get("visitorId"):
+        return ""
+    vid = rows[0]["visitorId"]
+    r = requests.get(
+        f"https://app.pendo.io/api/v1/visitor/{requests.utils.quote(str(vid), safe='')}",
+        headers=pendo_headers()
+    )
+    if not r.ok:
+        return ""
+    for mtype, fields in r.json().get("metadata", {}).items():
+        if isinstance(fields, dict) and "lastservername" in fields:
+            _VISITOR_AUTO_BUCKET = mtype
+            print(f"  [Pendo] visitor server bucket: {mtype} → lastservername")
+            return mtype
+    return ""
+
+
 def _fetch_blackstone_accounts() -> dict:
     """
     Fetches Blackstone accounts from the segment with their metadata.
@@ -320,9 +349,11 @@ def _pendo_agg(pipeline, label="", rows_per_page=5000):
 
 def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WINDOW_DAYS):
     """
-    Fetches Blackstone visitors active in the window using the events source
-    (which has both visitorId and accountId per event). Joins visitor metadata
-    in the same pipeline. Filters to Blackstone account IDs in Python.
+    Two-query approach using correct Pendo field paths:
+    Q1: visitors source with visitor.auto.accountid + visitor.agent.name/email
+        + visitor.auto_BUCKET.lastservername for region.
+    Q2: events source for event counts in the window.
+    Join in Python; show all Blackstone segment members (— for inactive).
     """
     if not PENDO_API_KEY:
         return _fake_pendo_visitors()
@@ -332,12 +363,32 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     accounts = accounts or {}
     acct_set = set(accounts.keys())
 
-    # Single pipeline: events (has accountId) → group → join visitor metadata
-    rows = _pendo_agg([
+    # Discover subscription-specific auto bucket that has lastservername
+    auto_bucket = _discover_visitor_auto_bucket()
+    server_field = f"visitor.{auto_bucket}.lastservername" if auto_bucket else ""
+
+    select = {
+        "visitorId": "visitorId",
+        "accountId": "visitor.auto.accountid",
+        "email":     "visitor.agent.email",
+        "name":      "visitor.agent.name",
+    }
+    if server_field:
+        select["server"] = server_field
+
+    # ── Q1: all visitors with metadata ───────────────────────────────────────
+    visitor_rows = _pendo_agg([
+        {"source": {"visitors": None}},
+        {"select": select},
+    ], "visitors")
+    print(f"  [Pendo] total visitors in subscription: {len(visitor_rows)}")
+
+    # ── Q2: event counts per visitor for the window ───────────────────────────
+    event_rows = _pendo_agg([
         {"source": {"events": None,
                     "timeSeries": {"period": "dayRange", "first": start_ms, "last": end_ms}}},
         {"group": {
-            "group": ["visitorId", "accountId"],
+            "group": ["visitorId"],
             "fields": [
                 {"numEvents":  {"sum": "numEvents"}},
                 {"numMinutes": {"sum": "numMinutes"}},
@@ -345,75 +396,47 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
                 {"lastSeenAt": {"max": "day"}},
             ]
         }},
-        {"join": {
-            "kind": "left",
-            "pipeline": [
-                {"source": {"visitors": None}},
-                {"select": {
-                    "visitorId": "visitorId",
-                    "email":     "visitor.email",
-                    "firstName": "visitor.firstName",
-                    "lastName":  "visitor.lastName",
-                }},
-            ],
-            "keys": ["visitorId"],
-        }},
-    ], "visitors+events")
-    print(f"  [Pendo] event rows (all visitors, window): {len(rows)}")
-
-    # Also fetch a sample visitor via REST to discover region field
-    sample_vid = next((r["visitorId"] for r in rows if r.get("visitorId")), None)
-    if sample_vid:
-        vr = requests.get(
-            f"https://app.pendo.io/api/v1/visitor/{requests.utils.quote(sample_vid, safe='')}",
-            headers=pendo_headers()
-        )
-        if vr.ok:
-            vmeta = vr.json().get("metadata", {})
-            print(f"  [Pendo] visitor metadata keys: {list(vmeta.keys())}")
-            for mtype, fields in vmeta.items():
-                if isinstance(fields, dict) and fields:
-                    print(f"  [Pendo] visitor.{mtype}: {dict(list(fields.items())[:8])}")
+    ], "events")
+    print(f"  [Pendo] visitors with events in window: {len(event_rows)}")
+    event_by_vid = {r["visitorId"]: r for r in event_rows if r.get("visitorId")}
 
     results = []
-    for row in rows:
-        acct = row.get("accountId") or ""
+    for v in visitor_rows:
+        acct = v.get("accountId") or ""
         if acct_set and acct not in acct_set:
             continue
-        email = row.get("email", "") or ""
+        email = v.get("email", "") or ""
         if email == PENDO_EXCLUDED_EMAIL:
             continue
 
-        last_seen_ms = row.get("lastSeenAt")
+        ev = event_by_vid.get(v.get("visitorId", ""), {})
+        last_seen_ms = ev.get("lastSeenAt")
         last_seen = (
             fmt_mon(datetime.datetime.fromtimestamp(last_seen_ms / 1000, tz=datetime.timezone.utc))
             if last_seen_ms else "—"
         )
 
-        # Region from account environment (or "unknown" if not detected)
-        env = accounts.get(acct, {}).get("environment", "").lower()
-        if any(x in env for x in ("eu", "europe", "portal")):
+        server = (v.get("server") or "").lower()
+        if PENDO_REGION_EU in server:
             region = "eu"
-        elif any(x in env for x in ("useast", "us east", "us-east")):
+        elif PENDO_REGION_USEAST in server:
             region = "useast"
         else:
             region = "unknown"
 
-        name = ((row.get("firstName") or "") + " " + (row.get("lastName") or "")).strip() \
-               or row.get("visitorId", "—")
         results.append({
-            "visitorId":  row.get("visitorId", ""),
-            "visitor":    name,
+            "visitorId":  v.get("visitorId", ""),
+            "visitor":    v.get("name") or email or v.get("visitorId", "—"),
             "domain":     acct or "—",
-            "events":     row.get("numEvents") or "—",
-            "daysActive": row.get("daysActive") or "—",
-            "minutes":    int(row.get("numMinutes") or 0) or "—",
+            "events":     ev.get("numEvents") or "—",
+            "daysActive": ev.get("daysActive") or "—",
+            "minutes":    int(ev.get("numMinutes") or 0) or "—",
             "lastSeen":   last_seen,
             "region":     region,
         })
 
     results.sort(key=lambda r: (r["events"] == "—", str(r["visitor"]).lower()))
-    print(f"  [Pendo] Blackstone active visitors: {len(results)}")
+    print(f"  [Pendo] Blackstone visitors: {len(results)}")
     return results
 
 
