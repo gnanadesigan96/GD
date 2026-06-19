@@ -50,8 +50,8 @@ def daily_incident_report(timer: func.TimerRequest) -> None:
     excel_filename = f"CS_Daily_Incident_Report_{date_tag}.xlsx"
 
     # 4. Upload to SharePoint
-    sp_html_folder  = os.environ.get("SHAREPOINT_HTML_FOLDER",  "Daily Reports/HTML")
-    sp_excel_folder = os.environ.get("SHAREPOINT_EXCEL_FOLDER", "Daily Reports/Excel")
+    sp_html_folder  = os.environ.get("SHAREPOINT_HTML_FOLDER",  "General/Daily-Incident-Report/Template")
+    sp_excel_folder = os.environ.get("SHAREPOINT_EXCEL_FOLDER", "General/Daily-Incident-Report/Excel")
 
     with tempfile.TemporaryDirectory() as tmp:
         html_path  = os.path.join(tmp, html_filename)
