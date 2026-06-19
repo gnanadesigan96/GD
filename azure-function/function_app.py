@@ -45,7 +45,7 @@ def daily_incident_report(timer: func.TimerRequest) -> None:
     html_bytes  = generate_html(tickets, today).encode("utf-8")
     excel_bytes = generate_excel(tickets, today)
 
-    date_tag = today.strftime("%Y%m%d")
+    date_tag = today.strftime("%Y-%m-%d")
     html_filename  = f"CS_Daily_Incident_Report_{date_tag}.html"
     excel_filename = f"CS_Daily_Incident_Report_{date_tag}.xlsx"
 

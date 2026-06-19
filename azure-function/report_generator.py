@@ -753,7 +753,7 @@ def generate_html(tickets: list[dict], today: date, excel_url: str = "") -> str:
     )
 
     # Excel download link footer
-    excel_filename = f'CS_Daily_Incident_Report_{today.strftime("%Y%m%d")}.xlsx'
+    excel_filename = f'CS_Daily_Incident_Report_{today.strftime("%Y-%m-%d")}.xlsx'
     excel_link = excel_url or excel_filename
     html += (
         f'<tr><td><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;">'

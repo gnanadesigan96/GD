@@ -201,7 +201,7 @@ def main():
         if t.get("ado"):
             logging.info("  #%s  ADO=%s", t["num"], t["ado"])
 
-    date_tag = today.strftime("%Y%m%d")
+    date_tag = today.strftime("%Y-%m-%d")
     html_path  = f"CS_Daily_Incident_Report_{date_tag}.html"
     excel_path = f"CS_Daily_Incident_Report_{date_tag}.xlsx"
 
