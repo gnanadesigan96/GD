@@ -92,9 +92,7 @@ def fetch_all_active_tickets() -> list[dict]:
     all_tickets = [t for t in all_tickets if not _is_noise(t)]
     logging.info("After noise filter: %d tickets", len(all_tickets))
 
-    # Keep only Incidents
-    all_tickets = [t for t in all_tickets if (t.get("ticketType") or "").lower() in ("incident", "")]
-    logging.info("After incident-only filter: %d tickets", len(all_tickets))
+    # Keep only Incident Requests (cf_request_type field set after enrichment below)
 
     # Enrich tickets with custom fields (cf) via parallel individual fetches
     def _enrich(ticket: dict) -> dict:
@@ -127,4 +125,9 @@ def fetch_all_active_tickets() -> list[dict]:
         for future in as_completed(futures):
             enriched.append(future.result())
     logging.info("Enrichment complete.")
+
+    # Keep only Incident Requests
+    enriched = [t for t in enriched
+                if (t.get("cf") or {}).get("cf_request_type", "").lower() in ("incident request", "")]
+    logging.info("After incident-only filter: %d tickets", len(enriched))
     return enriched

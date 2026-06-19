@@ -185,11 +185,10 @@ def main():
         enriched = [f.result() for f in as_completed(futures)]
     logging.info("Enrichment done.")
 
-    # Debug: show all cf keys from first ticket to find Request Type field
-    if enriched:
-        cf_sample = enriched[0].get("cf") or {}
-        logging.info("DEBUG cf keys: %s", list(cf_sample.keys()))
-        logging.info("DEBUG cf values: %s", {k: v for k, v in cf_sample.items() if v})
+    # Keep only Incident Requests (exclude Service Requests etc.)
+    enriched = [t for t in enriched
+                if (t.get("cf") or {}).get("cf_request_type", "").lower() in ("incident request", "")]
+    logging.info("After incident-only filter: %d tickets", len(enriched))
 
     tickets = [parse_ticket(t, today) for t in enriched]
 
