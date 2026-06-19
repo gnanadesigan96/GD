@@ -92,6 +92,10 @@ def fetch_all_active_tickets() -> list[dict]:
     all_tickets = [t for t in all_tickets if not _is_noise(t)]
     logging.info("After noise filter: %d tickets", len(all_tickets))
 
+    # Keep only Incidents
+    all_tickets = [t for t in all_tickets if (t.get("ticketType") or "").lower() in ("incident", "")]
+    logging.info("After incident-only filter: %d tickets", len(all_tickets))
+
     # Enrich tickets with custom fields (cf) via parallel individual fetches
     def _enrich(ticket: dict) -> dict:
         tid = ticket.get("id") or ticket.get("ticketId") or ""

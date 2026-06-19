@@ -151,6 +151,10 @@ def main():
     raw = [t for t in raw if not is_pentagon(t) and not is_alert(t)]
     logging.info("After filters (Pentagon + Alerts): %d tickets", len(raw))
 
+    # Keep only Incidents (exclude Service Requests and other types)
+    raw = [t for t in raw if (t.get("ticketType") or "").lower() in ("incident", "")]
+    logging.info("After incident-only filter: %d tickets", len(raw))
+
     # Enrich with custom fields (ADO) via parallel individual fetches
     def enrich(t: dict) -> dict:
         tid = t.get("id") or t.get("ticketId") or ""
