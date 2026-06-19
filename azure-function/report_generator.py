@@ -751,5 +751,11 @@ def generate_html(tickets: list[dict], today: date) -> str:
         # Account sections
         + sections +
 
+        # Excel download link footer
+        f'<tr><td><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;">'
+        f'<tr><td style="padding:14px 20px;"><span style="font-size:11px;color:#64748B;">&#128202; Download Excel version: </span>'
+        f'<a href="CS_Daily_Incident_Report_{today.strftime("%Y%m%d")}.xlsx" style="font-size:11px;font-weight:600;color:#2563EB;text-decoration:none;">CS_Daily_Incident_Report_{today.strftime("%Y%m%d")}.xlsx &#8594;</a>'
+        f'</td></tr></table></td></tr>\n'
+
         '</table></td></tr></table></body></html>'
     )
