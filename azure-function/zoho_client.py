@@ -128,6 +128,6 @@ def fetch_all_active_tickets() -> list[dict]:
 
     # Keep only Incident Requests
     enriched = [t for t in enriched
-                if (t.get("cf") or {}).get("cf_request_type", "").lower() in ("incident request", "")]
+                if ((t.get("cf") or {}).get("cf_request_type") or "").lower() in ("incident request", "")]
     logging.info("After incident-only filter: %d tickets", len(enriched))
     return enriched

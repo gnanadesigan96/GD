@@ -187,7 +187,7 @@ def main():
 
     # Keep only Incident Requests (exclude Service Requests etc.)
     enriched = [t for t in enriched
-                if (t.get("cf") or {}).get("cf_request_type", "").lower() in ("incident request", "")]
+                if ((t.get("cf") or {}).get("cf_request_type") or "").lower() in ("incident request", "")]
     logging.info("After incident-only filter: %d tickets", len(enriched))
 
     tickets = [parse_ticket(t, today) for t in enriched]
