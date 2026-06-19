@@ -367,6 +367,13 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     print(f"  [Pendo] visitors active in window: {len(ev_sum)}")
     servers = {(r.get("server") or "").lower() for r in member_rows}
     print(f"  [Pendo] distinct lastservername values: {sorted(servers)[:10]}")
+    # Sample: show first 5 visitors with their server and EU-segment membership
+    for r in member_rows[:5]:
+        vid_s  = r.get("visitorId", "")[:20]
+        email_s = (r.get("email") or r.get("visitorId") or "")[:30]
+        srv_s  = (r.get("server") or "—")
+        in_eu  = vid_s in eu_vids or r.get("visitorId") in eu_vids
+        print(f"    sample → {email_s:<30}  server={srv_s:<30}  in_eu_seg={in_eu}")
 
     # ── Step 3: build result rows (one per member row = one per account) ──────
     results = []
