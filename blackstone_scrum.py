@@ -624,7 +624,7 @@ def fetch_platform_metrics():
     """
     import datetime as _dt
 
-    now        = _dt.datetime.utcnow()
+    now        = _dt.datetime.now(_dt.timezone.utc).replace(tzinfo=None)
     cutoff_24h = now - _dt.timedelta(hours=24)
     cutoff_48h = now - _dt.timedelta(hours=48)
 
