@@ -391,16 +391,20 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
         aid          = meta.get("accountId") or ""
         acct         = accounts.get(aid, {})
         account_name = acct.get("name", "")
-        # EU segment membership is authoritative; fall back to server name, then account map
+        # Account map is most reliable (Private Equity=useast, Real Estate=eu)
+        # Fall back to lastservername, then EU segment membership
         server = (meta.get("server") or "").lower()
-        if vid in eu_vids:
-            region = "eu"
+        acct_region = acct.get("region", "")
+        if acct_region:
+            region = acct_region
         elif PENDO_REGION_EU in server:
             region = "eu"
         elif PENDO_REGION_USEAST in server:
             region = "useast"
+        elif vid in eu_vids:
+            region = "eu"
         else:
-            region = acct.get("region", "unknown")
+            region = "unknown"
 
         last_seen  = fmt_month_day(meta.get("last"))   # "June 18" format
         num_events = ev_sum.get(vid, 0)
