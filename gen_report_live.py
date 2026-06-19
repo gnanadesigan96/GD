@@ -151,6 +151,10 @@ def main():
     raw = [t for t in raw if not is_pentagon(t) and not is_alert(t)]
     logging.info("After filters (Pentagon + Alerts): %d tickets", len(raw))
 
+    # Debug: show distinct ticketType values
+    types_seen = set((t.get("ticketType") or "BLANK") for t in raw)
+    logging.info("Ticket types seen: %s", types_seen)
+
     # Keep only Incidents (exclude Service Requests and other types)
     raw = [t for t in raw if (t.get("ticketType") or "").lower() in ("incident", "")]
     logging.info("After incident-only filter: %d tickets", len(raw))
