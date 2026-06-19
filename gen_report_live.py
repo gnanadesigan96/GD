@@ -151,13 +151,11 @@ def main():
     raw = [t for t in raw if not is_pentagon(t) and not is_alert(t)]
     logging.info("After filters (Pentagon + Alerts): %d tickets", len(raw))
 
-    # Debug: show distinct ticketType values
-    types_seen = set((t.get("ticketType") or "BLANK") for t in raw)
-    logging.info("Ticket types seen: %s", types_seen)
-
-    # Keep only Incidents (exclude Service Requests and other types)
-    raw = [t for t in raw if (t.get("ticketType") or "").lower() in ("incident", "")]
-    logging.info("After incident-only filter: %d tickets", len(raw))
+    # Debug: show ticketType from detail (first 5 tickets)
+    for t in raw[:5]:
+        logging.info("DEBUG ticketType fields: ticketType=%r type=%r cf_type=%r",
+                     t.get("ticketType"), t.get("type"),
+                     (t.get("cf") or {}).get("cf_ticket_type"))
 
     # Enrich with custom fields (ADO) via parallel individual fetches
     def enrich(t: dict) -> dict:
@@ -178,6 +176,10 @@ def main():
                 t["account"] = detail["account"]
             if detail.get("resolution") and not t.get("resolution"):
                 t["resolution"] = detail["resolution"]
+            if detail.get("ticketType"):
+                t["ticketType"] = detail["ticketType"]
+            if detail.get("type"):
+                t["type"] = detail["type"]
         except Exception as e:
             logging.warning("Detail fetch failed for %s: %s", tid, e)
         return t
@@ -187,6 +189,10 @@ def main():
         futures = {ex.submit(enrich, t): t for t in raw}
         enriched = [f.result() for f in as_completed(futures)]
     logging.info("Enrichment done.")
+
+    # Debug: show distinct type fields after enrichment
+    types_seen = set((t.get("ticketType") or t.get("type") or "BLANK") for t in enriched)
+    logging.info("Ticket types after enrichment: %s", types_seen)
 
     tickets = [parse_ticket(t, today) for t in enriched]
 
