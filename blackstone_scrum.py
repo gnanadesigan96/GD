@@ -70,6 +70,7 @@ except ImportError:
     pass
 PENDO_REGION_EU      = "portal.corestack.io"
 PENDO_REGION_USEAST  = "useast.corestack.io"
+PENDO_SEGMENT_ID_EU  = "Hh8nJFk5pC2QUMWBQavVPz3Y9zw"   # Blackstone EU segment
 PENDO_EXCLUDED_EMAIL = None   # set to an email string to exclude, or None to include all
 PENDO_WINDOW_DAYS    = 3
 
@@ -252,6 +253,19 @@ def _fetch_blackstone_accounts() -> dict:
     return result
 
 
+def _fetch_eu_segment_vids() -> set:
+    """Return the set of visitorIds that belong to the Blackstone EU segment."""
+    if not PENDO_SEGMENT_ID_EU:
+        return set()
+    rows = _pendo_agg([
+        {"source": {"visitors": {"segmentId": PENDO_SEGMENT_ID_EU}}},
+        {"select": {"visitorId": "visitorId"}},
+    ], "eu_segment")
+    vids = {r["visitorId"] for r in rows if r.get("visitorId")}
+    print(f"  [Pendo] EU segment members: {len(vids)}")
+    return vids
+
+
 def _discover_apps(acct_ids: list) -> list:
     """
     Find every Pendo app touched by the segment by inspecting auto_<appId>
@@ -291,6 +305,9 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
     acct_set  = set(accounts.keys())
     if not acct_set:
         return []
+
+    # ── EU segment: authoritative list of EU visitor IDs ─────────────────────
+    eu_vids = _fetch_eu_segment_vids()
 
     # ── Window: US Pacific day buckets, same as dashboard ────────────────────
     now      = datetime.datetime.now(datetime.timezone.utc)
@@ -371,13 +388,19 @@ def fetch_pendo_all_visitors(accounts: dict = None, window_days: int = PENDO_WIN
             display = name or vid
         domain = email.split("@")[1] if "@" in email else "—"
 
-        server = (meta.get("server") or "").lower()
-        aid    = meta.get("accountId") or ""
-        acct   = accounts.get(aid, {})
-        region = ("eu"     if PENDO_REGION_EU    in server else
-                  "useast" if PENDO_REGION_USEAST in server else
-                  acct.get("region", "unknown"))
+        aid          = meta.get("accountId") or ""
+        acct         = accounts.get(aid, {})
         account_name = acct.get("name", "")
+        # EU segment membership is authoritative; fall back to server name, then account map
+        server = (meta.get("server") or "").lower()
+        if vid in eu_vids:
+            region = "eu"
+        elif PENDO_REGION_EU in server:
+            region = "eu"
+        elif PENDO_REGION_USEAST in server:
+            region = "useast"
+        else:
+            region = acct.get("region", "unknown")
 
         last_seen  = fmt_month_day(meta.get("last"))   # "June 18" format
         num_events = ev_sum.get(vid, 0)
