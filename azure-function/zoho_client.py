@@ -77,6 +77,21 @@ def fetch_all_active_tickets() -> list[dict]:
     for s in statuses:
         all_tickets.extend(fetch_tickets_by_status(s, token))
 
+    # Filter out Pentagon and SRE alert noise
+    _PENTAGON_ACCOUNT = "100599000037212179"
+    def _is_noise(t: dict) -> bool:
+        acc_id = str((t.get("account") or {}).get("id") or t.get("accountId") or "")
+        email  = (t.get("email") or t.get("contactEmail") or "").lower()
+        subj   = (t.get("subject") or "").lower()
+        if acc_id == _PENTAGON_ACCOUNT:               return True
+        if "clouddesk@pentagon" in email:             return True
+        if "notify-sre-ops@corestack.io" in email:   return True
+        if "[inc-52" in subj and ("request resolved" in subj or "request received" in subj):
+            return True
+        return False
+    all_tickets = [t for t in all_tickets if not _is_noise(t)]
+    logging.info("After noise filter: %d tickets", len(all_tickets))
+
     # Enrich tickets with custom fields (cf) via parallel individual fetches
     def _enrich(ticket: dict) -> dict:
         tid = ticket.get("id") or ticket.get("ticketId") or ""

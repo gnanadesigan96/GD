@@ -128,6 +128,11 @@ def is_pentagon(t: dict) -> bool:
     return False
 
 
+def is_alert(t: dict) -> bool:
+    email = (t.get("email") or t.get("contactEmail") or "").lower()
+    return "notify-sre-ops@corestack.io" in email
+
+
 def main():
     today = (datetime.now(timezone.utc) + IST).date()
     logging.info("Generating report for %s", today)
@@ -142,9 +147,9 @@ def main():
         logging.info("  %s: %d tickets", s, len(batch))
         raw.extend(batch)
 
-    # Filter Pentagon noise
-    raw = [t for t in raw if not is_pentagon(t)]
-    logging.info("After Pentagon filter: %d tickets", len(raw))
+    # Filter noise
+    raw = [t for t in raw if not is_pentagon(t) and not is_alert(t)]
+    logging.info("After filters (Pentagon + Alerts): %d tickets", len(raw))
 
     # Enrich with custom fields (ADO) via parallel individual fetches
     def enrich(t: dict) -> dict:
