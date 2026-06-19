@@ -190,27 +190,33 @@ def main():
     html_path  = f"CS_Daily_Incident_Report_{date_tag}.html"
     excel_path = f"CS_Daily_Incident_Report_{date_tag}.xlsx"
 
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(generate_html(tickets, today))
-    logging.info("HTML written: %s", html_path)
-
+    # Generate Excel first
     with open(excel_path, "wb") as f:
         f.write(generate_excel(tickets, today))
     logging.info("Excel written: %s", excel_path)
 
-    # Upload to SharePoint
+    # Upload Excel to get the SharePoint URL, then embed it in the HTML
     sp_html_folder  = os.environ["SHAREPOINT_HTML_FOLDER"]
     sp_excel_folder = os.environ["SHAREPOINT_EXCEL_FOLDER"]
+    excel_sp_url = ""
+    try:
+        logging.info("Uploading Excel to SharePoint…")
+        excel_sp_url = upload_file(excel_path, sp_excel_folder, excel_path)
+        logging.info("Excel uploaded: %s", excel_sp_url)
+    except Exception as e:
+        logging.error("SharePoint Excel upload failed: %s", e)
+
+    # Generate HTML with the SharePoint Excel URL embedded
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(generate_html(tickets, today, excel_url=excel_sp_url))
+    logging.info("HTML written: %s", html_path)
+
     try:
         logging.info("Uploading HTML to SharePoint…")
         html_url = upload_file(html_path, sp_html_folder, html_path)
         logging.info("HTML uploaded: %s", html_url)
-
-        logging.info("Uploading Excel to SharePoint…")
-        excel_url = upload_file(excel_path, sp_excel_folder, excel_path)
-        logging.info("Excel uploaded: %s", excel_url)
     except Exception as e:
-        logging.error("SharePoint upload failed: %s", e)
+        logging.error("SharePoint HTML upload failed: %s", e)
         logging.info("Files saved locally — upload manually if needed.")
 
     logging.info("Done. %d tickets in report.", len(tickets))
