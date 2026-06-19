@@ -151,11 +151,6 @@ def main():
     raw = [t for t in raw if not is_pentagon(t) and not is_alert(t)]
     logging.info("After filters (Pentagon + Alerts): %d tickets", len(raw))
 
-    # Debug: show ticketType from detail (first 5 tickets)
-    for t in raw[:5]:
-        logging.info("DEBUG ticketType fields: ticketType=%r type=%r cf_type=%r",
-                     t.get("ticketType"), t.get("type"),
-                     (t.get("cf") or {}).get("cf_ticket_type"))
 
     # Enrich with custom fields (ADO) via parallel individual fetches
     def enrich(t: dict) -> dict:
@@ -190,9 +185,11 @@ def main():
         enriched = [f.result() for f in as_completed(futures)]
     logging.info("Enrichment done.")
 
-    # Debug: show distinct type fields after enrichment
-    types_seen = set((t.get("ticketType") or t.get("type") or "BLANK") for t in enriched)
-    logging.info("Ticket types after enrichment: %s", types_seen)
+    # Debug: show all cf keys from first ticket to find Request Type field
+    if enriched:
+        cf_sample = enriched[0].get("cf") or {}
+        logging.info("DEBUG cf keys: %s", list(cf_sample.keys()))
+        logging.info("DEBUG cf values: %s", {k: v for k, v in cf_sample.items() if v})
 
     tickets = [parse_ticket(t, today) for t in enriched]
 
