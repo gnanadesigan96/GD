@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { putObject, getObject, listObjects } from '../s3.js';
+import { putObject, getObject, listObjects } from '../storage.js';
 
 export const sessionsRouter = Router();
 

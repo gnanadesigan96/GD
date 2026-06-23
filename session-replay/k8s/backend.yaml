@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: session-replay-backend
+  namespace: session-replay
+  labels:
+    app: session-replay-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: session-replay-backend
+  template:
+    metadata:
+      labels:
+        app: session-replay-backend
+    spec:
+      # ── If using AKS Workload Identity, annotate this SA instead of using
+      #    the connection-string secret. See README for steps.
+      serviceAccountName: default
+      containers:
+        - name: backend
+          image: YOUR_ACR.azurecr.io/session-replay-backend:latest
+          ports:
+            - containerPort: 3001
+          env:
+            - name: PORT
+              value: "3001"
+            - name: NODE_ENV
+              value: "production"
+            - name: CORS_ORIGIN
+              value: "https://YOUR_VIEWER_DOMAIN"   # ← change this
+            - name: AZURE_STORAGE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: session-replay-azure
+                  key: connection-string
+            - name: AZURE_STORAGE_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: session-replay-azure
+                  key: container
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: session-replay-backend
+  namespace: session-replay
+spec:
+  selector:
+    app: session-replay-backend
+  ports:
+    - port: 3001
+      targetPort: 3001
+  type: ClusterIP          # internal only — viewer proxies to it

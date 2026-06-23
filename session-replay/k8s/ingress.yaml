@@ -1,0 +1,30 @@
+# Requires: nginx ingress controller installed on your AKS cluster.
+# Install it once: helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --create-namespace
+#
+# The backend is NOT exposed externally — only the viewer is.
+# The viewer's nginx container forwards /sessions calls to the backend internally.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: session-replay-ingress
+  namespace: session-replay
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"   # remove if not using cert-manager
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - replay.YOUR_DOMAIN.com      # ← change to your actual domain
+      secretName: session-replay-tls
+  rules:
+    - host: replay.YOUR_DOMAIN.com    # ← same domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: session-replay-viewer
+                port:
+                  number: 80

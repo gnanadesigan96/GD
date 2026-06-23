@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: session-replay-viewer
+  namespace: session-replay
+  labels:
+    app: session-replay-viewer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: session-replay-viewer
+  template:
+    metadata:
+      labels:
+        app: session-replay-viewer
+    spec:
+      containers:
+        - name: viewer
+          image: YOUR_ACR.azurecr.io/session-replay-viewer:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: session-replay-viewer
+  namespace: session-replay
+spec:
+  selector:
+    app: session-replay-viewer
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
