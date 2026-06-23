@@ -4,6 +4,7 @@
   "workspaces": ["sdk", "backend", "viewer"],
   "scripts": {
     "install:all": "npm install --prefix sdk && npm install --prefix backend && npm install --prefix viewer",
+    "dev": "npm run dev:backend & npm run dev:viewer",
     "dev:backend": "npm run dev --prefix backend",
     "dev:viewer": "npm run dev --prefix viewer",
     "build:sdk": "npm run build --prefix sdk"
