@@ -166,7 +166,7 @@ _ENV_PATTERNS = [
     (r"prd-us3|us3|useast|us4|useast-app|useast-web|us-east|blackstone",  "USEast"),
     (r"prd-us-app|prd-us-web|prd-us\b|prod-us\b|prod-us-",               "ProdUS"),
     (r"prd-eu|prod-eu|eu\.corestack",                                     "ProdEU"),
-    (r"prd-uae|prod-uae|uae",                                             "ProdUAE"),
+    (r"prd-uae|prod-uae|uae",                                             "prd-uae-app"),
     (r"msprod|ms[-\s]?prod",                                              "MSProd"),
     (r"kyndryl",                                                          "Kyndryl"),
     (r"prodin|prd-in|prod-in",                                            "ProdIN"),
@@ -440,14 +440,14 @@ def build_ticket_stats_footer(
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
         'style="background:#fff;border:1px solid #E2E8F0;border-radius:6px;">'
         '<tr><td style="background:#F8FAFC;border-bottom:1px solid #E2E8F0;padding:9px 16px;">'
-        '<span style="font-size:12px;font-weight:700;color:#0F172A;">&#128202; Ticket Volume</span>'
-        f'<span style="font-size:10px;color:#94A3B8;margin-left:8px;">{today.strftime("%B %Y")}</span>'
+        '<span style="font-size:12px;font-weight:700;color:#0F172A;">&#128202; Customer Incident Volume</span>'
+        f'<span style="font-size:10px;color:#94A3B8;margin-left:8px;">{today.strftime("%B %Y")} &mdash; all customer incidents</span>'
         '</td></tr>'
         '<tr><td style="padding:12px 8px;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
-        + _col("&#128197;", "This Week (Incidents)",  cur_w,  w_trend,  "#EFF6FF", "#2563EB")
-        + _col("&#128336;", "Last Week (Incidents)",  last_w, "",       "#F8FAFC", "#64748B")
-        + _col("&#128218;", f"{today.strftime('%B')} Total (Incidents)", month, "", "#FFF7ED", "#D97706")
+        + _col("&#128197;", "This Week",        cur_w,  w_trend,  "#EFF6FF", "#2563EB")
+        + _col("&#128336;", "Last Week",        last_w, "",       "#F8FAFC", "#64748B")
+        + _col("&#128218;", f"{today.strftime('%B')} Total", month, "", "#FFF7ED", "#D97706")
         + '</tr></table>'
         '</td></tr>'
         '</table></td></tr>\n'
