@@ -174,11 +174,12 @@ _ENV_PATTERNS = [
     (r"prd-in-web",                                                        "prd-in-web"),
     (r"prd-uae-app",                                                       "prd-uae-app"),
     (r"prd-uae-web",                                                       "prd-uae-web"),
+    (r"prd-uae\b",                                                         "prd-uae"),
     # Broader env buckets
     (r"prd-us3|us3|useast|us4|useast-web|us-east|blackstone",             "USEast"),
     (r"prd-us-web|prd-us\b|prod-us\b|prod-us-",                          "ProdUS"),
     (r"prd-eu|prod-eu|eu\.corestack",                                     "ProdEU"),
-    (r"prd-uae|prod-uae|uae",                                             "ProdUAE"),
+    (r"prod-uae|uae",                                                     "ProdUAE"),
     (r"msprod|ms[-\s]?prod",                                              "MSProd"),
     (r"kyndryl",                                                          "Kyndryl"),
     (r"prodin|prd-in|prod-in",                                            "ProdIN"),
