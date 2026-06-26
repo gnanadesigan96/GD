@@ -19,9 +19,10 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timezone, timedelta
 
+import io
 import requests
-from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl import load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 from report_generator import parse_ticket, generate_html, generate_excel
 from sharepoint_client import upload_file
@@ -256,12 +257,10 @@ def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: 
         trend_badge = ""
 
     # ── Per-environment mini-tables laid out in a 3-column grid ──────────────
-    TH = (
-        '<th style="padding:4px 10px;font-size:9px;font-weight:700;color:#9CA3AF;'
-        'text-transform:uppercase;text-align:{align};border-bottom:1px solid #E5E7EB;">{label}</th>'
-    )
+    # Env header accent colours (cycles for variety)
+    _ENV_COLORS = ["#1D4ED8", "#0369A1", "#6D28D9", "#0F766E", "#B45309", "#BE185D", "#374151"]
 
-    def _mini_table(env: str) -> str:
+    def _mini_table(env: str, color: str) -> str:
         rows = ""
         for j, atype in enumerate(all_types):
             td = today_c.get(env, {}).get(atype, 0)
@@ -270,85 +269,116 @@ def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: 
             if td == 0 and yd == 0 and wd == 0:
                 continue
             if td > yd:
-                today_cell = (f'<span style="font-weight:700;color:#B91C1C;">{td}</span>'
-                              f'<span style="font-size:8px;color:#B91C1C;"> &#9650;</span>')
+                today_cell = (
+                    f'<span style="font-size:13px;font-weight:800;color:#DC2626;">{td}</span>'
+                    f'&thinsp;<span style="font-size:9px;color:#DC2626;vertical-align:middle;">&#9650;</span>'
+                )
             elif td < yd:
-                today_cell = (f'<span style="font-weight:700;color:#16A34A;">{td}</span>'
-                              f'<span style="font-size:8px;color:#16A34A;"> &#9660;</span>')
+                today_cell = (
+                    f'<span style="font-size:13px;font-weight:800;color:#16A34A;">{td}</span>'
+                    f'&thinsp;<span style="font-size:9px;color:#16A34A;vertical-align:middle;">&#9660;</span>'
+                )
             else:
-                today_cell = f'<span style="font-weight:700;color:#374151;">{td}</span>'
-            bg = "#F9FAFB" if j % 2 == 0 else "#FFFFFF"
+                today_cell = f'<span style="font-size:13px;font-weight:800;color:#1E293B;">{td}</span>'
+            bg = "#F8FAFC" if j % 2 == 0 else "#FFFFFF"
             rows += (
                 f'<tr style="background:{bg};">'
-                f'<td style="padding:4px 10px;font-size:11px;color:#374151;border-bottom:1px solid #F1F5F9;">{atype}</td>'
-                f'<td style="padding:4px 10px;text-align:center;font-size:11px;border-bottom:1px solid #F1F5F9;">{today_cell}</td>'
-                f'<td style="padding:4px 10px;text-align:center;font-size:11px;color:#6B7280;border-bottom:1px solid #F1F5F9;">{yd}</td>'
-                f'<td style="padding:4px 10px;text-align:center;font-size:11px;color:#6B7280;border-bottom:1px solid #F1F5F9;">{wd}</td>'
+                f'<td style="padding:5px 10px;font-size:11px;color:#374151;'
+                f'border-bottom:1px solid #F1F5F9;max-width:130px;">{atype}</td>'
+                f'<td style="padding:5px 10px;text-align:center;border-bottom:1px solid #F1F5F9;">{today_cell}</td>'
+                f'<td style="padding:5px 10px;text-align:center;font-size:11px;color:#6B7280;'
+                f'border-bottom:1px solid #F1F5F9;">{yd if yd else "&ndash;"}</td>'
+                f'<td style="padding:5px 10px;text-align:center;font-size:11px;color:#94A3B8;'
+                f'border-bottom:1px solid #F1F5F9;">{wd if wd else "&ndash;"}</td>'
                 f'</tr>'
             )
         if not rows:
             return ""
         env_today = sum(today_c.get(env, {}).values())
         env_yest  = sum(yesterday_c.get(env, {}).values())
-        env_trend = ""
         if env_today > env_yest:
-            env_trend = f' <span style="font-size:9px;color:#B91C1C;">&#9650;</span>'
+            env_dot = '<span style="font-size:9px;color:#DC2626;font-weight:700;"> &#9650;</span>'
         elif env_today < env_yest:
-            env_trend = f' <span style="font-size:9px;color:#16A34A;">&#9660;</span>'
+            env_dot = '<span style="font-size:9px;color:#16A34A;font-weight:700;"> &#9660;</span>'
+        else:
+            env_dot = ""
         return (
             '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-            'style="background:#fff;border:1px solid #E4E8EF;margin-bottom:0;">'
-            f'<tr><td colspan="4" style="background:#F1F5F9;border-bottom:1px solid #CBD5E1;padding:5px 10px;">'
-            f'<span style="font-size:11px;font-weight:700;color:#0F172A;">{env}</span>'
-            f'<span style="font-size:10px;color:#475569;"> &mdash; Today: <strong>{env_today}</strong>{env_trend}</span>'
+            f'style="border:1px solid #E2E8F0;border-top:3px solid {color};border-radius:0 0 4px 4px;">'
+            # env name header
+            f'<tr><td colspan="4" style="padding:8px 10px 6px 10px;background:#FAFBFC;">'
+            f'<span style="font-size:12px;font-weight:700;color:{color};">{env}</span>'
+            f'<span style="font-size:11px;color:#64748B;"> — {env_today} today{env_dot}</span>'
             f'</td></tr>'
-            '<tr style="background:#F8FAFC;">'
-            + TH.format(align="left",   label="Alert Type")
-            + TH.format(align="center", label="Today")
-            + TH.format(align="center", label="Yesterday")
-            + TH.format(align="center", label="Last 7d")
-            + '</tr>'
+            # column headers
+            '<tr style="background:#F1F5F9;">'
+            '<th style="padding:4px 10px;font-size:9px;font-weight:600;color:#94A3B8;'
+            'text-transform:uppercase;text-align:left;border-bottom:1px solid #E2E8F0;">Type</th>'
+            '<th style="padding:4px 10px;font-size:9px;font-weight:600;color:#94A3B8;'
+            'text-transform:uppercase;text-align:center;border-bottom:1px solid #E2E8F0;">Today</th>'
+            '<th style="padding:4px 10px;font-size:9px;font-weight:600;color:#94A3B8;'
+            'text-transform:uppercase;text-align:center;border-bottom:1px solid #E2E8F0;">Yest.</th>'
+            '<th style="padding:4px 10px;font-size:9px;font-weight:600;color:#94A3B8;'
+            'text-transform:uppercase;text-align:center;border-bottom:1px solid #E2E8F0;">7d</th>'
+            '</tr>'
             + rows
             + '</table>'
         )
 
-    # Arrange mini-tables in rows of 3 columns
-    mini_tables = [(env, _mini_table(env)) for env in all_envs]
-    mini_tables = [(env, mt) for env, mt in mini_tables if mt]
+    # Build list of non-empty mini-tables
+    mini_tables = []
+    for idx, env in enumerate(all_envs):
+        color = _ENV_COLORS[idx % len(_ENV_COLORS)]
+        mt = _mini_table(env, color)
+        if mt:
+            mini_tables.append(mt)
 
+    # 3-column grid
     grid_rows = ""
     for i in range(0, len(mini_tables), 3):
         chunk = mini_tables[i:i+3]
-        # pad to 3 cells
         while len(chunk) < 3:
-            chunk.append(("", ""))
+            chunk.append("")
         grid_rows += '<tr valign="top">'
-        for _, mt in chunk:
+        for mt in chunk:
             grid_rows += (
-                '<td style="width:33%;padding:0 6px 12px 0;vertical-align:top;">'
-                + (mt or "")
+                '<td style="width:33%;padding:0 8px 16px 0;vertical-align:top;">'
+                + mt
                 + '</td>'
             )
         grid_rows += '</tr>'
 
-    widget = (
-        '<tr><td style="padding-bottom:18px;">'
-        '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-        'style="background:#fff;border:1px solid #E4E8EF;">'
+    # Summary chips for header
+    def _chip(label, val, bg, fg):
+        return (
+            f'<span style="display:inline-block;background:{bg};color:{fg};'
+            f'font-size:10px;font-weight:600;padding:3px 10px;border-radius:12px;margin-left:6px;">'
+            f'{label}: {val}</span>'
+        )
 
-        # Section header
-        '<tr><td style="background:#F1F5F9;border-bottom:2px solid #CBD5E1;padding:9px 14px;">'
+    widget = (
+        '<tr><td style="padding-bottom:20px;">'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="background:#fff;border:1px solid #E2E8F0;border-radius:6px;overflow:hidden;">'
+
+        # Header
+        '<tr><td style="background:linear-gradient(135deg,#1E293B 0%,#334155 100%);padding:11px 16px;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
-        '<td style="font-size:12px;font-weight:700;color:#0F172A;">&#128680; SRE Alert Summary</td>'
-        f'<td align="right" style="font-size:11px;color:#475569;">'
-        f'Today: <strong>{n_today}</strong>{trend_badge}'
-        f'&nbsp;&nbsp;|&nbsp;&nbsp;Yesterday: <strong>{n_yesterday}</strong>'
-        f'&nbsp;&nbsp;|&nbsp;&nbsp;Last 7 days: <strong>{len(week_alerts)}</strong>'
-        f'</td>'
+        '<td style="font-size:13px;font-weight:700;color:#F8FAFC;letter-spacing:.3px;">'
+        '&#128680;&nbsp; SRE Alert Summary</td>'
+        f'<td align="right">'
+        + _chip("Today",     n_today,           "#FEE2E2", "#991B1B")
+        + (f'<span style="display:inline-block;font-size:10px;font-weight:700;'
+           f'color:{"#DC2626" if n_today > n_yesterday else "#16A34A"};margin-left:4px;">'
+           f'{"&#9650; +" if n_today > n_yesterday else "&#9660; "}{abs(n_today - n_yesterday)}</span>'
+           if n_today != n_yesterday else "")
+        + _chip("Yesterday",  n_yesterday,        "#FEF3C7", "#92400E")
+        + _chip("Last 7 days", len(week_alerts),  "#DBEAFE", "#1E40AF")
+        + f'</td>'
         '</tr></table></td></tr>'
 
-        # Grid of mini-tables
-        '<tr><td style="padding:12px 10px 0 10px;">'
+        # Grid
+        '<tr><td style="padding:14px 12px 2px 12px;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
         + grid_rows +
         '</table></td></tr>'
@@ -364,66 +394,48 @@ def build_ticket_stats_footer(
     last_week_raw: list,
     month_raw: list,
 ) -> str:
-    """
-    Build a summary footer bar showing current-week / last-week / month ticket counts,
-    similar to the top summary but focused on historical volume.
-    """
-    # Active breakdown (same as top summary)
-    by_status = defaultdict(int)
-    for t in tickets:
-        by_status[t["status"]] += 1
-
-    n_open  = by_status.get("Open", 0)
-    n_ip    = by_status.get("In Progress", 0)
-    n_oh    = by_status.get("On Hold", 0)
-    n_arc   = by_status.get("Awaiting Resolution Confirmation", 0)
-    n_l2    = sum(1 for t in tickets if t.get("ado"))
-    total   = len(tickets)
-
+    """Footer showing ticket volume: this week vs last week vs this month."""
     cur_w  = len(cur_week_raw)
     last_w = len(last_week_raw)
     month  = len(month_raw)
 
-    w_trend = ""
     if cur_w > last_w:
-        w_trend = f' <span style="font-size:10px;color:#B91C1C;font-weight:700;">&#9650; +{cur_w - last_w}</span>'
+        w_trend = (f'<span style="font-size:10px;color:#DC2626;font-weight:700;">'
+                   f' &#9650; +{cur_w - last_w}</span>')
     elif cur_w < last_w:
-        w_trend = f' <span style="font-size:10px;color:#16A34A;font-weight:700;">&#9660; {cur_w - last_w}</span>'
+        w_trend = (f'<span style="font-size:10px;color:#16A34A;font-weight:700;">'
+                   f' &#9660; {cur_w - last_w}</span>')
+    else:
+        w_trend = ""
 
-    def _stat(label, val, bg, fg, sub=""):
+    def _col(icon, label, value, extra, bg, accent):
         return (
-            f'<td style="padding:0 8px;text-align:center;border-right:1px solid #E4E8EF;">'
-            f'<div style="background:{bg};border-radius:6px;padding:8px 14px;min-width:80px;">'
-            f'<div style="font-size:20px;font-weight:700;color:{fg};">{val}</div>'
-            f'<div style="font-size:9px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;">{label}</div>'
-            + (f'<div style="font-size:9px;color:#94A3B8;">{sub}</div>' if sub else '')
-            + '</div></td>'
+            f'<td style="width:33%;padding:0 8px;vertical-align:top;">'
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+            f'style="border:1px solid #E2E8F0;border-top:3px solid {accent};border-radius:0 0 4px 4px;">'
+            f'<tr><td style="padding:12px 14px;background:#FAFBFC;">'
+            f'<div style="font-size:10px;color:#94A3B8;text-transform:uppercase;'
+            f'letter-spacing:.6px;margin-bottom:6px;">{icon} {label}</div>'
+            f'<div style="font-size:26px;font-weight:800;color:#0F172A;line-height:1;">'
+            f'{value}{extra}</div>'
+            f'</td></tr>'
+            f'</table></td>'
         )
 
     return (
-        '<tr><td style="padding-bottom:18px;">'
+        '<tr><td style="padding-bottom:20px;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-        'style="background:#fff;border:1px solid #E4E8EF;">'
-
-        '<tr><td style="background:#F1F5F9;border-bottom:2px solid #CBD5E1;padding:9px 14px;">'
-        '<span style="font-size:12px;font-weight:700;color:#0F172A;">&#128202; Ticket Volume Summary</span>'
+        'style="background:#fff;border:1px solid #E2E8F0;border-radius:6px;">'
+        '<tr><td style="background:#F8FAFC;border-bottom:1px solid #E2E8F0;padding:9px 16px;">'
+        '<span style="font-size:12px;font-weight:700;color:#0F172A;">&#128202; Ticket Volume</span>'
+        f'<span style="font-size:10px;color:#94A3B8;margin-left:8px;">{today.strftime("%B %Y")}</span>'
         '</td></tr>'
-
-        '<tr><td style="padding:14px 10px;">'
-        '<table cellpadding="0" cellspacing="0" border="0">'
-        '<tr>'
-        + _stat("New",          n_open, "#EFF6FF", "#1D4ED8", "opened")
-        + _stat("In Progress",  n_ip,   "#F0FDF4", "#15803D", "being worked")
-        + _stat("On Hold",      n_oh,   "#FFF7ED", "#C2410C", "monitoring")
-        + _stat("Awaiting Conf",n_arc,  "#FDF4FF", "#7E22CE", "customer")
-        + _stat("With L2 (ADO)",n_l2,   "#F8FAFC", "#334155", "linked")
-        + '<td style="padding:0 16px;border-right:1px solid #E4E8EF;border-left:1px solid #E4E8EF;">'
-        + '<div style="width:1px;"></div></td>'
-        + _stat("This Week",    f'{cur_w}{w_trend}',  "#F0F9FF", "#0369A1", "tickets created")
-        + _stat("Last Week",    last_w,  "#F8FAFC", "#475569", "tickets created")
-        + _stat("This Month",   month,   "#FFF7ED", "#B45309", f"{today.strftime('%B')} total")
-        + '</tr>'
-        '</table>'
+        '<tr><td style="padding:12px 8px;">'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+        + _col("&#128197;", "This Week",  cur_w,  w_trend,         "#EFF6FF", "#2563EB")
+        + _col("&#128336;", "Last Week",  last_w, "",              "#F8FAFC", "#64748B")
+        + _col("&#128218;", f"{today.strftime('%B')} Total", month, "", "#FFF7ED", "#D97706")
+        + '</tr></table>'
         '</td></tr>'
         '</table></td></tr>\n'
     )
@@ -439,7 +451,6 @@ def generate_html_with_alerts(tickets, today, excel_url, alert_widget, stats_foo
 
 def add_alerts_sheet(excel_bytes: bytes, today_alerts: list, today: date) -> bytes:
     """Append an 'Alerts' sheet with today's alert ticket details to the workbook bytes."""
-    import io
     wb = load_workbook(io.BytesIO(excel_bytes))
     ws = wb.create_sheet("Alerts")
 
@@ -613,7 +624,11 @@ def main():
     excel_path = f"CS_Daily_Incident_Report_{date_tag}_TEST.xlsx"
 
     excel_bytes = generate_excel(tickets, today)
-    excel_bytes = add_alerts_sheet(excel_bytes, today_alerts, today)
+    try:
+        excel_bytes = add_alerts_sheet(excel_bytes, today_alerts, today)
+        logging.info("Alerts sheet added (%d rows)", len(today_alerts))
+    except Exception as e:
+        logging.error("Failed to add Alerts sheet: %s", e)
     with open(excel_path, "wb") as f:
         f.write(excel_bytes)
     logging.info("Excel written: %s", excel_path)
