@@ -108,28 +108,56 @@ def fetch_detail(ticket_id: str, token: str) -> dict:
     return resp.json()
 
 
-def fetch_alerts_for_range(token: str, from_ist: datetime, to_ist: datetime) -> list[dict]:
-    """Fetch all alert tickets created in a given IST date range."""
-    from_utc = (from_ist - IST).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    to_utc   = (to_ist   - IST).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    tickets, from_ = [], 0
-    while True:
-        resp = requests.get(f"{ZOHO_API_BASE}/tickets", headers=hdrs(token), params={
-            "departmentId":    ZOHO_DEPT_ID,
-            "sortBy":          "createdTime",
-            "limit":           100,
-            "from":            from_,
-            "createdTimeRange": f"{from_utc},{to_utc}",
-        }, timeout=30)
-        resp.raise_for_status()
-        data = resp.json().get("data", [])
-        if not data: break
-        tickets.extend(data)
-        if len(data) < 100: break
-        from_ += 100
-    # Keep only SRE alert tickets
-    return [t for t in tickets
-            if (t.get("email") or t.get("contactEmail") or "").lower() == ALERT_EMAIL]
+def fetch_all_recent_alerts(token: str, days_back: int = 8) -> list[dict]:
+    """
+    Fetch all SRE alert tickets from the last `days_back` days.
+    Zoho doesn't support createdTimeRange filtering, so we fetch all statuses
+    sorted by createdTime desc and stop once tickets are older than the cutoff.
+    """
+    cutoff_ist = datetime.now(timezone.utc) + IST - timedelta(days=days_back)
+    cutoff_str = cutoff_ist.strftime("%Y-%m-%dT%H:%M:%S")
+
+    results = []
+    statuses = ["Open", "In Progress", "On Hold", "Awaiting Resolution Confirmation", "Closed"]
+    for status in statuses:
+        from_ = 0
+        while True:
+            resp = requests.get(f"{ZOHO_API_BASE}/tickets", headers=hdrs(token), params={
+                "departmentId": ZOHO_DEPT_ID,
+                "status":       status,
+                "sortBy":       "createdTime",
+                "order":        "desc",
+                "limit":        100,
+                "from":         from_,
+            }, timeout=30)
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+            if not data:
+                break
+            # Filter to alert email
+            results.extend(t for t in data
+                           if (t.get("email") or t.get("contactEmail") or "").lower() == ALERT_EMAIL)
+            # Stop paging if oldest ticket on this page is past our cutoff
+            oldest = data[-1].get("createdTime", "")
+            if oldest and oldest[:19] < cutoff_str:
+                break
+            if len(data) < 100:
+                break
+            from_ += 100
+    return results
+
+
+def _ticket_ist_date(t: dict) -> date:
+    """Parse ticket createdTime (UTC) and return the IST calendar date."""
+    ct = t.get("createdTime") or ""
+    if not ct:
+        return date.min
+    # Format: "2026-06-26T10:30:00.000Z"
+    try:
+        dt_utc = datetime.strptime(ct[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+        return (dt_utc + IST).date()
+    except ValueError:
+        return date.min
 
 
 # ── Alert parsing ──────────────────────────────────────────────────────────────
@@ -348,17 +376,14 @@ def main():
 
     # ── Fetch alert tickets for today / yesterday / last 7 days ───────────────
     logging.info("Fetching SRE alert tickets…")
+    all_alerts = fetch_all_recent_alerts(token, days_back=8)
+    logging.info("Total recent alert tickets fetched: %d", len(all_alerts))
 
-    def _day_range(d: date):
-        start = datetime(d.year, d.month, d.day, 0, 0, 0) + IST
-        end   = datetime(d.year, d.month, d.day, 23, 59, 59) + IST
-        return start, end
-
-    today_alerts     = fetch_alerts_for_range(token, *_day_range(today))
-    yesterday_alerts = fetch_alerts_for_range(token, *_day_range(today - timedelta(days=1)))
-    week_alerts      = []
-    for i in range(1, 8):
-        week_alerts += fetch_alerts_for_range(token, *_day_range(today - timedelta(days=i)))
+    yesterday = today - timedelta(days=1)
+    today_alerts     = [t for t in all_alerts if _ticket_ist_date(t) == today]
+    yesterday_alerts = [t for t in all_alerts if _ticket_ist_date(t) == yesterday]
+    week_alerts      = [t for t in all_alerts
+                        if yesterday >= _ticket_ist_date(t) >= today - timedelta(days=7)]
 
     logging.info("Alerts — today: %d  yesterday: %d  last 7 days: %d",
                  len(today_alerts), len(yesterday_alerts), len(week_alerts))
