@@ -160,25 +160,26 @@ def _ticket_ist_date(t: dict) -> date:
 
 # ── Alert parsing ──────────────────────────────────────────────────────────────
 _ENV_PATTERNS = [
-    (r"prd-us3|us3",                        "US3"),
-    (r"prd-us-app|prd-us-web|prd-us\b",     "ProdUS"),
-    (r"useast|us4|useast-app|useast-web",   "USEast / US4"),
-    (r"prd-eu|prod-eu|eu\.corestack",        "ProdEU"),
-    (r"msprod|ms.prod",                      "MSProd"),
-    (r"kyndryl",                             "Kyndryl"),
-    (r"prodin|prd-in|prod-in",               "ProdIN"),
+    (r"prd-us3|us3|useast|us4|useast-app|useast-web|us-east|blackstone", "USEast"),
+    (r"prd-us-app|prd-us-web|prd-us\b|prod-us\b",                        "ProdUS"),
+    (r"prd-eu|prod-eu|eu\.corestack",                                     "ProdEU"),
+    (r"msprod|ms[-\s]?prod",                                              "MSProd"),
+    (r"kyndryl",                                                          "Kyndryl"),
+    (r"prodin|prd-in|prod-in",                                            "ProdIN"),
 ]
 
 _ALERT_PATTERNS = [
-    (r"cpu usage|cpu utilisation|cpu utilization",           "CPU"),
-    (r"memory usage|memory utilisation|memory utilization",  "Memory"),
-    (r"oomkilled|oom",                                       "OOM"),
-    (r"vm availability|availability is below",               "VM Availability"),
-    (r"missing service|service.*down",                       "Service Down"),
-    (r"url.*down|is down|unreachable",                       "URL Down"),
-    (r"disk|storage",                                        "Disk"),
-    (r"pod.*restart|restartcount",                           "Pod Restart"),
-    (r"db alert|database",                                   "Database"),
+    (r"cpu usage|cpu utilisation|cpu utilization|cpu",                    "CPU"),
+    (r"memory usage|memory utilisation|memory utilization|memory",        "Memory"),
+    (r"oomkilled|oom",                                                    "OOM"),
+    (r"vm availability|availability is below",                            "VM Availability"),
+    (r"missing service|service.*down",                                    "Service Down"),
+    (r"url.*down|is down|unreachable",                                    "URL Down"),
+    (r"disk|storage",                                                     "Disk"),
+    (r"pod.*restart|restartcount",                                        "Pod Restart"),
+    (r"db alert|database",                                                "Database"),
+    (r"node",                                                             "Node"),
+    (r"network",                                                          "Network"),
 ]
 
 
@@ -202,7 +203,6 @@ def parse_alert(subject: str) -> tuple[str, str]:
 def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: list) -> str:
     """Build the HTML alert summary widget."""
 
-    # Count by env × alert_type for each period
     def count_by(alerts):
         counts = defaultdict(lambda: defaultdict(int))
         for t in alerts:
@@ -214,87 +214,114 @@ def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: 
     yesterday_c = count_by(yesterday_alerts)
     week_c      = count_by(week_alerts)
 
-    # All envs and types seen across all periods
-    all_envs   = sorted(set(list(today_c) + list(yesterday_c) + list(week_c)))
-    all_types  = sorted(set(
-        t for c in [today_c, yesterday_c, week_c] for env in c for t in c[env]
-    ))
+    # Log "Other" subjects so we can improve patterns
+    for t in today_alerts + yesterday_alerts + week_alerts:
+        env, atype = parse_alert(t.get("subject") or "")
+        if env == "Other" or atype == "Other":
+            logging.info("Alert [%s/%s]: %s", env, atype, t.get("subject", ""))
+
+    # All envs and types seen — "Other" sorted last
+    def _sort_key(x):
+        return (x == "Other", x)
+
+    all_envs  = sorted(set(list(today_c) + list(yesterday_c) + list(week_c)), key=_sort_key)
+    all_types = sorted(set(
+        tp for c in [today_c, yesterday_c, week_c] for env in c for tp in c[env]
+    ), key=_sort_key)
 
     if not all_envs:
         return (
             '<tr><td style="padding-bottom:14px;">'
-            '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-            'style="background:#fff;border:1px solid #E4E8EF;border-radius:10px;">'
+            '<table width="100%" cellpadding="6" cellspacing="0" border="0" '
+            'style="background:#fff;border:1px solid #E4E8EF;">'
             '<tr><td style="background:#F8FAFC;border-bottom:1px solid #E4E8EF;padding:8px 14px;">'
-            '<span style="font-size:13px;font-weight:700;color:#0F172A;">&#128680; SRE Alert Summary</span>'
+            '<span style="font-size:12px;font-weight:700;color:#0F172A;">&#128680; SRE Alert Summary</span>'
             '</td></tr>'
-            '<tr><td style="padding:14px;font-size:12px;color:#64748B;">No alerts recorded today.</td></tr>'
+            '<tr><td style="padding:12px;font-size:11px;color:#64748B;">No alerts recorded today.</td></tr>'
             '</table></td></tr>\n'
         )
 
-    # Forecast = 7-day avg (week count / 7), rounded
-    def forecast(env, atype):
-        total = week_c.get(env, {}).get(atype, 0)
-        return round(total / 7, 1)
-
-    # Summary counts
     n_today     = len(today_alerts)
     n_yesterday = len(yesterday_alerts)
-    n_week      = len(week_alerts)
-    n_forecast  = round(n_week / 7, 1)
+    trend_badge = ""
+    if n_today > n_yesterday:
+        trend_badge = (
+            f' <span style="font-size:10px;font-weight:700;color:#B91C1C;">&#9650; +{n_today - n_yesterday}</span>'
+        )
+    elif n_today < n_yesterday:
+        trend_badge = (
+            f' <span style="font-size:10px;font-weight:700;color:#16A34A;">&#9660; {n_today - n_yesterday}</span>'
+        )
 
-    # Build table rows
+    # Build rows
     rows = ""
     for i, env in enumerate(all_envs):
-        bg = "#F8FAFC" if i % 2 == 0 else "#FFFFFF"
+        env_has_rows = False
+        env_rows = ""
         for atype in all_types:
             td = today_c.get(env, {}).get(atype, 0)
             yd = yesterday_c.get(env, {}).get(atype, 0)
             wd = week_c.get(env, {}).get(atype, 0)
-            fc = forecast(env, atype)
             if td == 0 and yd == 0 and wd == 0:
                 continue
-            td_color = "#EF4444" if td > 5 else ("#F59E0B" if td > 2 else "#10B981")
-            rows += (
+            env_has_rows = True
+            # Today cell with trend arrow
+            if td > yd:
+                today_cell = (
+                    f'<span style="font-weight:700;color:#B91C1C;">{td}</span>'
+                    f'<span style="font-size:9px;color:#B91C1C;"> &#9650;</span>'
+                )
+            elif td < yd:
+                today_cell = (
+                    f'<span style="font-weight:700;color:#16A34A;">{td}</span>'
+                    f'<span style="font-size:9px;color:#16A34A;"> &#9660;</span>'
+                )
+            else:
+                today_cell = f'<span style="font-weight:700;color:#334155;">{td}</span>'
+
+            bg = "#F9FAFB" if i % 2 == 0 else "#FFFFFF"
+            env_rows += (
                 f'<tr style="background:{bg};">'
-                f'<td style="padding:5px 10px;font-size:11px;font-weight:600;color:#334155;border-bottom:1px solid #F1F5F9;">{env}</td>'
-                f'<td style="padding:5px 10px;font-size:11px;color:#475569;border-bottom:1px solid #F1F5F9;">{atype}</td>'
-                f'<td style="padding:5px 10px;text-align:center;border-bottom:1px solid #F1F5F9;"><span style="font-size:11px;font-weight:700;color:{td_color};">{td}</span></td>'
-                f'<td style="padding:5px 10px;text-align:center;font-size:11px;color:#64748B;border-bottom:1px solid #F1F5F9;">{yd}</td>'
-                f'<td style="padding:5px 10px;text-align:center;font-size:11px;color:#64748B;border-bottom:1px solid #F1F5F9;">{wd}</td>'
-                f'<td style="padding:5px 10px;text-align:center;border-bottom:1px solid #F1F5F9;"><span style="font-size:11px;font-weight:600;color:#8B5CF6;">{fc}</span></td>'
+                f'<td style="padding:5px 12px;font-size:11px;color:#374151;border-bottom:1px solid #F1F5F9;">{env}</td>'
+                f'<td style="padding:5px 12px;font-size:11px;color:#374151;border-bottom:1px solid #F1F5F9;">{atype}</td>'
+                f'<td style="padding:5px 12px;text-align:center;font-size:11px;border-bottom:1px solid #F1F5F9;">{today_cell}</td>'
+                f'<td style="padding:5px 12px;text-align:center;font-size:11px;color:#6B7280;border-bottom:1px solid #F1F5F9;">{yd}</td>'
+                f'<td style="padding:5px 12px;text-align:center;font-size:11px;color:#6B7280;border-bottom:1px solid #F1F5F9;">{wd}</td>'
                 f'</tr>'
             )
+        if env_has_rows:
+            rows += env_rows
 
     widget = (
-        '<tr><td style="padding-bottom:14px;">'
+        '<tr><td style="padding-bottom:18px;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
-        'style="background:#fff;border:1px solid #E4E8EF;border-radius:10px;">'
+        'style="background:#fff;border:1px solid #E4E8EF;">'
 
-        # Header
-        '<tr><td style="background:#F8FAFC;border-bottom:1px solid #E4E8EF;padding:8px 14px;">'
+        # Header row
+        '<tr><td colspan="5" style="background:#F1F5F9;border-bottom:2px solid #CBD5E1;padding:9px 14px;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
-        '<td style="font-size:13px;font-weight:700;color:#0F172A;">&#128680; SRE Alert Summary</td>'
-        f'<td align="right">'
-        f'<span style="font-size:10px;background:#FEE2E2;color:#B91C1C;padding:2px 8px;border-radius:4px;margin-left:6px;">Today: {n_today}</span>'
-        f'<span style="font-size:10px;background:#FEF3C7;color:#B45309;padding:2px 8px;border-radius:4px;margin-left:6px;">Yesterday: {n_yesterday}</span>'
-        f'<span style="font-size:10px;background:#DBEAFE;color:#1D4ED8;padding:2px 8px;border-radius:4px;margin-left:6px;">Last 7d: {n_week}</span>'
-        f'<span style="font-size:10px;background:#EDE9FE;color:#6D28D9;padding:2px 8px;border-radius:4px;margin-left:6px;">Forecast: ~{n_forecast}/day</span>'
+        '<td style="font-size:12px;font-weight:700;color:#0F172A;">&#128680; SRE Alert Summary</td>'
+        f'<td align="right" style="font-size:11px;color:#475569;">'
+        f'Today: <strong>{n_today}</strong>{trend_badge}'
+        f'&nbsp;&nbsp;|&nbsp;&nbsp;Yesterday: <strong>{n_yesterday}</strong>'
+        f'&nbsp;&nbsp;|&nbsp;&nbsp;Last 7 days: <strong>{len(week_alerts)}</strong>'
         f'</td>'
         '</tr></table></td></tr>'
 
-        # Table
-        '<tr><td><table width="100%" cellpadding="0" cellspacing="0" border="0">'
+        # Column headers
         '<tr style="background:#F8FAFC;">'
-        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:18%;">Environment</th>'
-        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:left;border-bottom:1px solid #E4E8EF;width:20%;">Alert Type</th>'
-        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:center;border-bottom:1px solid #E4E8EF;width:12%;">Today</th>'
-        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:center;border-bottom:1px solid #E4E8EF;width:12%;">Yesterday</th>'
-        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:center;border-bottom:1px solid #E4E8EF;width:12%;">Last 7 days</th>'
-        '<th style="padding:5px 10px;font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;text-align:center;border-bottom:1px solid #E4E8EF;width:12%;">Forecast (next day)</th>'
+        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
+        'text-align:left;border-bottom:1px solid #E5E7EB;width:20%;">Environment</th>'
+        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
+        'text-align:left;border-bottom:1px solid #E5E7EB;width:25%;">Alert Type</th>'
+        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
+        'text-align:center;border-bottom:1px solid #E5E7EB;width:18%;">Today</th>'
+        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
+        'text-align:center;border-bottom:1px solid #E5E7EB;width:18%;">Yesterday</th>'
+        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
+        'text-align:center;border-bottom:1px solid #E5E7EB;width:19%;">Last 7 Days</th>'
         '</tr>'
         + rows +
-        '</table></td></tr>'
         '</table></td></tr>\n'
     )
     return widget
