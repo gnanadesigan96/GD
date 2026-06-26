@@ -454,11 +454,11 @@ def build_ticket_stats_footer(
     )
 
 
-def generate_html_with_alerts(tickets, today, excel_url, alert_widget, stats_footer="") -> str:
-    """Generate the standard HTML and inject the alert widget + stats footer after the ticket section."""
+def generate_html_with_alerts(tickets, today, excel_url, alert_widget) -> str:
+    """Generate the standard HTML and inject the alert widget after the ticket section."""
     html = generate_html(tickets, today, excel_url=excel_url)
     inject_before = '<tr><td><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F0F9FF'
-    html = html.replace(inject_before, stats_footer + alert_widget + inject_before, 1)
+    html = html.replace(inject_before, alert_widget + inject_before, 1)
     return html
 
 
@@ -613,24 +613,6 @@ def main():
 
     alert_widget = build_alert_widget(today_alerts, yesterday_alerts, week_alerts)
 
-    # ── Fetch ticket volume stats for footer ──────────────────────────────────
-    logging.info("Fetching ticket volume stats (week / month)…")
-    # Current week: Mon–today
-    week_start      = today - timedelta(days=today.weekday())
-    last_week_start = week_start - timedelta(days=7)
-    last_week_end   = week_start - timedelta(days=1)
-    month_start     = today.replace(day=1)
-
-    cur_week_raw  = fetch_tickets_in_range(token, week_start,      today)
-    last_week_raw = fetch_tickets_in_range(token, last_week_start, last_week_end)
-    month_raw     = fetch_tickets_in_range(token, month_start,     today)
-    logging.info("Volume — this week: %d  last week: %d  this month: %d",
-                 len(cur_week_raw), len(last_week_raw), len(month_raw))
-
-    stats_footer = build_ticket_stats_footer(
-        tickets, today, cur_week_raw, last_week_raw, month_raw
-    )
-
     # ── Generate files ────────────────────────────────────────────────────────
     date_tag   = today.strftime("%Y-%m-%d")
     html_path  = f"CS_Daily_Incident_Report_{date_tag}_TEST.html"
@@ -656,7 +638,7 @@ def main():
     except Exception as e:
         logging.error("SharePoint Excel upload failed: %s", e)
 
-    html_content = generate_html_with_alerts(tickets, today, excel_sp_url, alert_widget, stats_footer)
+    html_content = generate_html_with_alerts(tickets, today, excel_sp_url, alert_widget)
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
     logging.info("HTML written: %s", html_path)
