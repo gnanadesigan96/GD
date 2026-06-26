@@ -163,9 +163,10 @@ def _ticket_ist_date(t: dict) -> date:
 
 # ── Alert parsing ──────────────────────────────────────────────────────────────
 _ENV_PATTERNS = [
-    (r"prd-us3|us3|useast|us4|useast-app|useast-web|us-east|blackstone", "USEast"),
-    (r"prd-us-app|prd-us-web|prd-us\b|prod-us\b",                        "ProdUS"),
+    (r"prd-us3|us3|useast|us4|useast-app|useast-web|us-east|blackstone",  "USEast"),
+    (r"prd-us-app|prd-us-web|prd-us\b|prod-us\b|prod-us-",               "ProdUS"),
     (r"prd-eu|prod-eu|eu\.corestack",                                     "ProdEU"),
+    (r"prd-uae|prod-uae|uae",                                             "ProdUAE"),
     (r"msprod|ms[-\s]?prod",                                              "MSProd"),
     (r"kyndryl",                                                          "Kyndryl"),
     (r"prodin|prd-in|prod-in",                                            "ProdIN"),
@@ -268,7 +269,9 @@ def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: 
             wd = week_c.get(env, {}).get(atype, 0)
             if td == 0 and yd == 0 and wd == 0:
                 continue
-            if td > yd:
+            if td == 0 and yd == 0:
+                today_cell = f'<span style="font-size:12px;color:#CBD5E1;">&ndash;</span>'
+            elif td > yd:
                 today_cell = (
                     f'<span style="font-size:13px;font-weight:800;color:#DC2626;">{td}</span>'
                     f'&thinsp;<span style="font-size:9px;color:#DC2626;vertical-align:middle;">&#9650;</span>'
@@ -278,8 +281,18 @@ def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: 
                     f'<span style="font-size:13px;font-weight:800;color:#16A34A;">{td}</span>'
                     f'&thinsp;<span style="font-size:9px;color:#16A34A;vertical-align:middle;">&#9660;</span>'
                 )
+            elif td == 0:
+                # today 0, yd also 0 handled above; here yd>0 means it dropped to 0
+                today_cell = (
+                    f'<span style="font-size:13px;font-weight:800;color:#16A34A;">0</span>'
+                    f'&thinsp;<span style="font-size:9px;color:#16A34A;vertical-align:middle;">&#9660;</span>'
+                )
             else:
-                today_cell = f'<span style="font-size:13px;font-weight:800;color:#1E293B;">{td}</span>'
+                # equal and both non-zero — steady
+                today_cell = (
+                    f'<span style="font-size:13px;font-weight:800;color:#1E293B;">{td}</span>'
+                    f'&thinsp;<span style="font-size:9px;color:#94A3B8;vertical-align:middle;">=</span>'
+                )
             bg = "#F8FAFC" if j % 2 == 0 else "#FFFFFF"
             rows += (
                 f'<tr style="background:{bg};">'
@@ -432,9 +445,9 @@ def build_ticket_stats_footer(
         '</td></tr>'
         '<tr><td style="padding:12px 8px;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
-        + _col("&#128197;", "This Week",  cur_w,  w_trend,         "#EFF6FF", "#2563EB")
-        + _col("&#128336;", "Last Week",  last_w, "",              "#F8FAFC", "#64748B")
-        + _col("&#128218;", f"{today.strftime('%B')} Total", month, "", "#FFF7ED", "#D97706")
+        + _col("&#128197;", "This Week (Incidents)",  cur_w,  w_trend,  "#EFF6FF", "#2563EB")
+        + _col("&#128336;", "Last Week (Incidents)",  last_w, "",       "#F8FAFC", "#64748B")
+        + _col("&#128218;", f"{today.strftime('%B')} Total (Incidents)", month, "", "#FFF7ED", "#D97706")
         + '</tr></table>'
         '</td></tr>'
         '</table></td></tr>\n'
