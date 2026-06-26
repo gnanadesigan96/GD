@@ -163,12 +163,17 @@ def _ticket_ist_date(t: dict) -> date:
 
 # ── Alert parsing ──────────────────────────────────────────────────────────────
 _ENV_PATTERNS = [
-    # Specific app/web-tier envs — must come before broader patterns
-    (r"prd-us3-app|prd-us3-web",                                           "prd-us3-app"),
-    (r"prd-us-app|prd-us-web",                                             "prd-us-app"),
-    (r"prd-eu-app|prd-eu-web",                                             "prd-eu-app"),
-    (r"prd-in-app|prd-in-web",                                             "prd-in-app"),
-    (r"prd-uae-app|prd-uae-web",                                           "prd-uae-app"),
+    # Specific app-tier envs — must come before broader patterns
+    (r"prd-us3-app",                                                       "prd-us3-app"),
+    (r"prd-us3-web",                                                       "prd-us3-web"),
+    (r"prd-us-app",                                                        "prd-us-app"),
+    (r"prd-us-web",                                                        "prd-us-web"),
+    (r"prd-eu-app",                                                        "prd-eu-app"),
+    (r"prd-eu-web",                                                        "prd-eu-web"),
+    (r"prd-in-app",                                                        "prd-in-app"),
+    (r"prd-in-web",                                                        "prd-in-web"),
+    (r"prd-uae-app",                                                       "prd-uae-app"),
+    (r"prd-uae-web",                                                       "prd-uae-web"),
     # Broader env buckets
     (r"prd-us3|us3|useast|us4|useast-web|us-east|blackstone",             "USEast"),
     (r"prd-us-web|prd-us\b|prod-us\b|prod-us-",                          "ProdUS"),
