@@ -126,7 +126,6 @@ def fetch_all_recent_alerts(token: str, days_back: int = 8) -> list[dict]:
                 "departmentId": ZOHO_DEPT_ID,
                 "status":       status,
                 "sortBy":       "createdTime",
-                "order":        "desc",
                 "limit":        100,
                 "from":         from_,
             }, timeout=30)
@@ -134,13 +133,12 @@ def fetch_all_recent_alerts(token: str, days_back: int = 8) -> list[dict]:
             data = resp.json().get("data", [])
             if not data:
                 break
-            # Filter to alert email
-            results.extend(t for t in data
-                           if (t.get("email") or t.get("contactEmail") or "").lower() == ALERT_EMAIL)
-            # Stop paging if oldest ticket on this page is past our cutoff
-            oldest = data[-1].get("createdTime", "")
-            if oldest and oldest[:19] < cutoff_str:
-                break
+            # Filter to alert email and within cutoff window
+            for t in data:
+                email = (t.get("email") or t.get("contactEmail") or "").lower()
+                ct = (t.get("createdTime") or "")[:19]
+                if email == ALERT_EMAIL and ct >= cutoff_str:
+                    results.append(t)
             if len(data) < 100:
                 break
             from_ += 100
