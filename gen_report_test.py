@@ -20,6 +20,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timezone, timedelta
 
 import requests
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 
 from report_generator import parse_ticket, generate_html, generate_excel
 from sharepoint_client import upload_file
@@ -201,7 +203,7 @@ def parse_alert(subject: str) -> tuple[str, str]:
 
 # ── Alert HTML widget ─────────────────────────────────────────────────────────
 def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: list) -> str:
-    """Build the HTML alert summary widget."""
+    """Build the HTML alert summary widget — one mini-table per environment."""
 
     def count_by(alerts):
         counts = defaultdict(lambda: defaultdict(int))
@@ -220,7 +222,6 @@ def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: 
         if env == "Other" or atype == "Other":
             logging.info("Alert [%s/%s]: %s", env, atype, t.get("subject", ""))
 
-    # All envs and types seen — "Other" sorted last
     def _sort_key(x):
         return (x == "Other", x)
 
@@ -228,6 +229,9 @@ def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: 
     all_types = sorted(set(
         tp for c in [today_c, yesterday_c, week_c] for env in c for tp in c[env]
     ), key=_sort_key)
+
+    n_today     = len(today_alerts)
+    n_yesterday = len(yesterday_alerts)
 
     if not all_envs:
         return (
@@ -241,64 +245,99 @@ def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: 
             '</table></td></tr>\n'
         )
 
-    n_today     = len(today_alerts)
-    n_yesterday = len(yesterday_alerts)
-    trend_badge = ""
+    # Overall trend badge
     if n_today > n_yesterday:
-        trend_badge = (
-            f' <span style="font-size:10px;font-weight:700;color:#B91C1C;">&#9650; +{n_today - n_yesterday}</span>'
-        )
+        trend_badge = (f' <span style="font-size:10px;font-weight:700;color:#B91C1C;">'
+                       f'&#9650; +{n_today - n_yesterday}</span>')
     elif n_today < n_yesterday:
-        trend_badge = (
-            f' <span style="font-size:10px;font-weight:700;color:#16A34A;">&#9660; {n_today - n_yesterday}</span>'
-        )
+        trend_badge = (f' <span style="font-size:10px;font-weight:700;color:#16A34A;">'
+                       f'&#9660; {n_today - n_yesterday}</span>')
+    else:
+        trend_badge = ""
 
-    # Build rows
-    rows = ""
-    for i, env in enumerate(all_envs):
-        env_has_rows = False
-        env_rows = ""
-        for atype in all_types:
+    # ── Per-environment mini-tables laid out in a 3-column grid ──────────────
+    TH = (
+        '<th style="padding:4px 10px;font-size:9px;font-weight:700;color:#9CA3AF;'
+        'text-transform:uppercase;text-align:{align};border-bottom:1px solid #E5E7EB;">{label}</th>'
+    )
+
+    def _mini_table(env: str) -> str:
+        rows = ""
+        for j, atype in enumerate(all_types):
             td = today_c.get(env, {}).get(atype, 0)
             yd = yesterday_c.get(env, {}).get(atype, 0)
             wd = week_c.get(env, {}).get(atype, 0)
             if td == 0 and yd == 0 and wd == 0:
                 continue
-            env_has_rows = True
-            # Today cell with trend arrow
             if td > yd:
-                today_cell = (
-                    f'<span style="font-weight:700;color:#B91C1C;">{td}</span>'
-                    f'<span style="font-size:9px;color:#B91C1C;"> &#9650;</span>'
-                )
+                today_cell = (f'<span style="font-weight:700;color:#B91C1C;">{td}</span>'
+                              f'<span style="font-size:8px;color:#B91C1C;"> &#9650;</span>')
             elif td < yd:
-                today_cell = (
-                    f'<span style="font-weight:700;color:#16A34A;">{td}</span>'
-                    f'<span style="font-size:9px;color:#16A34A;"> &#9660;</span>'
-                )
+                today_cell = (f'<span style="font-weight:700;color:#16A34A;">{td}</span>'
+                              f'<span style="font-size:8px;color:#16A34A;"> &#9660;</span>')
             else:
-                today_cell = f'<span style="font-weight:700;color:#334155;">{td}</span>'
-
-            bg = "#F9FAFB" if i % 2 == 0 else "#FFFFFF"
-            env_rows += (
+                today_cell = f'<span style="font-weight:700;color:#374151;">{td}</span>'
+            bg = "#F9FAFB" if j % 2 == 0 else "#FFFFFF"
+            rows += (
                 f'<tr style="background:{bg};">'
-                f'<td style="padding:5px 12px;font-size:11px;color:#374151;border-bottom:1px solid #F1F5F9;">{env}</td>'
-                f'<td style="padding:5px 12px;font-size:11px;color:#374151;border-bottom:1px solid #F1F5F9;">{atype}</td>'
-                f'<td style="padding:5px 12px;text-align:center;font-size:11px;border-bottom:1px solid #F1F5F9;">{today_cell}</td>'
-                f'<td style="padding:5px 12px;text-align:center;font-size:11px;color:#6B7280;border-bottom:1px solid #F1F5F9;">{yd}</td>'
-                f'<td style="padding:5px 12px;text-align:center;font-size:11px;color:#6B7280;border-bottom:1px solid #F1F5F9;">{wd}</td>'
+                f'<td style="padding:4px 10px;font-size:11px;color:#374151;border-bottom:1px solid #F1F5F9;">{atype}</td>'
+                f'<td style="padding:4px 10px;text-align:center;font-size:11px;border-bottom:1px solid #F1F5F9;">{today_cell}</td>'
+                f'<td style="padding:4px 10px;text-align:center;font-size:11px;color:#6B7280;border-bottom:1px solid #F1F5F9;">{yd}</td>'
+                f'<td style="padding:4px 10px;text-align:center;font-size:11px;color:#6B7280;border-bottom:1px solid #F1F5F9;">{wd}</td>'
                 f'</tr>'
             )
-        if env_has_rows:
-            rows += env_rows
+        if not rows:
+            return ""
+        env_today = sum(today_c.get(env, {}).values())
+        env_yest  = sum(yesterday_c.get(env, {}).values())
+        env_trend = ""
+        if env_today > env_yest:
+            env_trend = f' <span style="font-size:9px;color:#B91C1C;">&#9650;</span>'
+        elif env_today < env_yest:
+            env_trend = f' <span style="font-size:9px;color:#16A34A;">&#9660;</span>'
+        return (
+            '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+            'style="background:#fff;border:1px solid #E4E8EF;margin-bottom:0;">'
+            f'<tr><td colspan="4" style="background:#F1F5F9;border-bottom:1px solid #CBD5E1;padding:5px 10px;">'
+            f'<span style="font-size:11px;font-weight:700;color:#0F172A;">{env}</span>'
+            f'<span style="font-size:10px;color:#475569;"> &mdash; Today: <strong>{env_today}</strong>{env_trend}</span>'
+            f'</td></tr>'
+            '<tr style="background:#F8FAFC;">'
+            + TH.format(align="left",   label="Alert Type")
+            + TH.format(align="center", label="Today")
+            + TH.format(align="center", label="Yesterday")
+            + TH.format(align="center", label="Last 7d")
+            + '</tr>'
+            + rows
+            + '</table>'
+        )
+
+    # Arrange mini-tables in rows of 3 columns
+    mini_tables = [(env, _mini_table(env)) for env in all_envs]
+    mini_tables = [(env, mt) for env, mt in mini_tables if mt]
+
+    grid_rows = ""
+    for i in range(0, len(mini_tables), 3):
+        chunk = mini_tables[i:i+3]
+        # pad to 3 cells
+        while len(chunk) < 3:
+            chunk.append(("", ""))
+        grid_rows += '<tr valign="top">'
+        for _, mt in chunk:
+            grid_rows += (
+                '<td style="width:33%;padding:0 6px 12px 0;vertical-align:top;">'
+                + (mt or "")
+                + '</td>'
+            )
+        grid_rows += '</tr>'
 
     widget = (
         '<tr><td style="padding-bottom:18px;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
         'style="background:#fff;border:1px solid #E4E8EF;">'
 
-        # Header row
-        '<tr><td colspan="5" style="background:#F1F5F9;border-bottom:2px solid #CBD5E1;padding:9px 14px;">'
+        # Section header
+        '<tr><td style="background:#F1F5F9;border-bottom:2px solid #CBD5E1;padding:9px 14px;">'
         '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
         '<td style="font-size:12px;font-weight:700;color:#0F172A;">&#128680; SRE Alert Summary</td>'
         f'<td align="right" style="font-size:11px;color:#475569;">'
@@ -308,32 +347,167 @@ def build_alert_widget(today_alerts: list, yesterday_alerts: list, week_alerts: 
         f'</td>'
         '</tr></table></td></tr>'
 
-        # Column headers
-        '<tr style="background:#F8FAFC;">'
-        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
-        'text-align:left;border-bottom:1px solid #E5E7EB;width:20%;">Environment</th>'
-        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
-        'text-align:left;border-bottom:1px solid #E5E7EB;width:25%;">Alert Type</th>'
-        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
-        'text-align:center;border-bottom:1px solid #E5E7EB;width:18%;">Today</th>'
-        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
-        'text-align:center;border-bottom:1px solid #E5E7EB;width:18%;">Yesterday</th>'
-        '<th style="padding:5px 12px;font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;'
-        'text-align:center;border-bottom:1px solid #E5E7EB;width:19%;">Last 7 Days</th>'
-        '</tr>'
-        + rows +
+        # Grid of mini-tables
+        '<tr><td style="padding:12px 10px 0 10px;">'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+        + grid_rows +
+        '</table></td></tr>'
         '</table></td></tr>\n'
     )
     return widget
 
 
-def generate_html_with_alerts(tickets, today, excel_url, alert_widget) -> str:
-    """Generate the standard HTML and inject the alert widget after the ticket section."""
+def build_ticket_stats_footer(
+    tickets: list,
+    today: date,
+    cur_week_raw: list,
+    last_week_raw: list,
+    month_raw: list,
+) -> str:
+    """
+    Build a summary footer bar showing current-week / last-week / month ticket counts,
+    similar to the top summary but focused on historical volume.
+    """
+    # Active breakdown (same as top summary)
+    by_status = defaultdict(int)
+    for t in tickets:
+        by_status[t["status"]] += 1
+
+    n_open  = by_status.get("Open", 0)
+    n_ip    = by_status.get("In Progress", 0)
+    n_oh    = by_status.get("On Hold", 0)
+    n_arc   = by_status.get("Awaiting Resolution Confirmation", 0)
+    n_l2    = sum(1 for t in tickets if t.get("ado"))
+    total   = len(tickets)
+
+    cur_w  = len(cur_week_raw)
+    last_w = len(last_week_raw)
+    month  = len(month_raw)
+
+    w_trend = ""
+    if cur_w > last_w:
+        w_trend = f' <span style="font-size:10px;color:#B91C1C;font-weight:700;">&#9650; +{cur_w - last_w}</span>'
+    elif cur_w < last_w:
+        w_trend = f' <span style="font-size:10px;color:#16A34A;font-weight:700;">&#9660; {cur_w - last_w}</span>'
+
+    def _stat(label, val, bg, fg, sub=""):
+        return (
+            f'<td style="padding:0 8px;text-align:center;border-right:1px solid #E4E8EF;">'
+            f'<div style="background:{bg};border-radius:6px;padding:8px 14px;min-width:80px;">'
+            f'<div style="font-size:20px;font-weight:700;color:{fg};">{val}</div>'
+            f'<div style="font-size:9px;color:#64748B;text-transform:uppercase;letter-spacing:.5px;">{label}</div>'
+            + (f'<div style="font-size:9px;color:#94A3B8;">{sub}</div>' if sub else '')
+            + '</div></td>'
+        )
+
+    return (
+        '<tr><td style="padding-bottom:18px;">'
+        '<table width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="background:#fff;border:1px solid #E4E8EF;">'
+
+        '<tr><td style="background:#F1F5F9;border-bottom:2px solid #CBD5E1;padding:9px 14px;">'
+        '<span style="font-size:12px;font-weight:700;color:#0F172A;">&#128202; Ticket Volume Summary</span>'
+        '</td></tr>'
+
+        '<tr><td style="padding:14px 10px;">'
+        '<table cellpadding="0" cellspacing="0" border="0">'
+        '<tr>'
+        + _stat("New",          n_open, "#EFF6FF", "#1D4ED8", "opened")
+        + _stat("In Progress",  n_ip,   "#F0FDF4", "#15803D", "being worked")
+        + _stat("On Hold",      n_oh,   "#FFF7ED", "#C2410C", "monitoring")
+        + _stat("Awaiting Conf",n_arc,  "#FDF4FF", "#7E22CE", "customer")
+        + _stat("With L2 (ADO)",n_l2,   "#F8FAFC", "#334155", "linked")
+        + '<td style="padding:0 16px;border-right:1px solid #E4E8EF;border-left:1px solid #E4E8EF;">'
+        + '<div style="width:1px;"></div></td>'
+        + _stat("This Week",    f'{cur_w}{w_trend}',  "#F0F9FF", "#0369A1", "tickets created")
+        + _stat("Last Week",    last_w,  "#F8FAFC", "#475569", "tickets created")
+        + _stat("This Month",   month,   "#FFF7ED", "#B45309", f"{today.strftime('%B')} total")
+        + '</tr>'
+        '</table>'
+        '</td></tr>'
+        '</table></td></tr>\n'
+    )
+
+
+def generate_html_with_alerts(tickets, today, excel_url, alert_widget, stats_footer="") -> str:
+    """Generate the standard HTML and inject the alert widget + stats footer after the ticket section."""
     html = generate_html(tickets, today, excel_url=excel_url)
-    # Inject alert widget just before the Excel footer link
     inject_before = '<tr><td><table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F0F9FF'
-    html = html.replace(inject_before, alert_widget + inject_before, 1)
+    html = html.replace(inject_before, stats_footer + alert_widget + inject_before, 1)
     return html
+
+
+def add_alerts_sheet(excel_bytes: bytes, today_alerts: list, today: date) -> bytes:
+    """Append an 'Alerts' sheet with today's alert ticket details to the workbook bytes."""
+    import io
+    wb = load_workbook(io.BytesIO(excel_bytes))
+    ws = wb.create_sheet("Alerts")
+
+    hdr_fill = PatternFill("solid", fgColor="1E293B")
+    hdr_font = Font(color="FFFFFF", bold=True, size=10)
+    cols = ["Ticket #", "Subject", "Environment", "Alert Type", "Status", "Created Time (IST)"]
+    widths = [12, 60, 16, 18, 14, 22]
+    for i, (col, w) in enumerate(zip(cols, widths), 1):
+        c = ws.cell(row=1, column=i, value=col)
+        c.fill = hdr_fill
+        c.font = hdr_font
+        c.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
+
+    for r, t in enumerate(today_alerts, 2):
+        env, atype = parse_alert(t.get("subject") or "")
+        ct = t.get("createdTime") or ""
+        ist_str = ""
+        if ct:
+            try:
+                dt_utc = datetime.strptime(ct[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+                ist_str = (dt_utc + IST).strftime("%Y-%m-%d %H:%M IST")
+            except ValueError:
+                ist_str = ct
+        row_data = [
+            t.get("ticketNumber") or t.get("id") or "",
+            t.get("subject") or "",
+            env,
+            atype,
+            t.get("status") or "",
+            ist_str,
+        ]
+        for c_idx, val in enumerate(row_data, 1):
+            ws.cell(row=r, column=c_idx, value=val)
+
+    out = io.BytesIO()
+    wb.save(out)
+    return out.getvalue()
+
+
+def fetch_tickets_in_range(token: str, from_date: date, to_date: date) -> list[dict]:
+    """Fetch all non-noise tickets created between from_date and to_date (IST) across all statuses."""
+    statuses = ["Open", "In Progress", "On Hold", "Awaiting Resolution Confirmation", "Closed"]
+    cutoff_from = datetime(from_date.year, from_date.month, from_date.day, 0, 0, 0, tzinfo=timezone.utc) - IST
+    cutoff_to   = datetime(to_date.year,   to_date.month,   to_date.day,   23, 59, 59, tzinfo=timezone.utc) - IST
+    from_str = cutoff_from.strftime("%Y-%m-%dT%H:%M:%S")
+    to_str   = cutoff_to.strftime("%Y-%m-%dT%H:%M:%S")
+
+    results = []
+    for status in statuses:
+        from_ = 0
+        while True:
+            resp = requests.get(f"{ZOHO_API_BASE}/tickets", headers=hdrs(token), params={
+                "departmentId": ZOHO_DEPT_ID, "status": status,
+                "sortBy": "createdTime", "limit": 100, "from": from_,
+            }, timeout=30)
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+            if not data:
+                break
+            for t in data:
+                ct = (t.get("createdTime") or "")[:19]
+                if from_str <= ct <= to_str:
+                    results.append(t)
+            if len(data) < 100:
+                break
+            from_ += 100
+    return results
 
 
 def is_pentagon(t: dict) -> bool:
@@ -415,13 +589,33 @@ def main():
 
     alert_widget = build_alert_widget(today_alerts, yesterday_alerts, week_alerts)
 
+    # ── Fetch ticket volume stats for footer ──────────────────────────────────
+    logging.info("Fetching ticket volume stats (week / month)…")
+    # Current week: Mon–today
+    week_start      = today - timedelta(days=today.weekday())
+    last_week_start = week_start - timedelta(days=7)
+    last_week_end   = week_start - timedelta(days=1)
+    month_start     = today.replace(day=1)
+
+    cur_week_raw  = fetch_tickets_in_range(token, week_start,      today)
+    last_week_raw = fetch_tickets_in_range(token, last_week_start, last_week_end)
+    month_raw     = fetch_tickets_in_range(token, month_start,     today)
+    logging.info("Volume — this week: %d  last week: %d  this month: %d",
+                 len(cur_week_raw), len(last_week_raw), len(month_raw))
+
+    stats_footer = build_ticket_stats_footer(
+        tickets, today, cur_week_raw, last_week_raw, month_raw
+    )
+
     # ── Generate files ────────────────────────────────────────────────────────
     date_tag   = today.strftime("%Y-%m-%d")
     html_path  = f"CS_Daily_Incident_Report_{date_tag}_TEST.html"
     excel_path = f"CS_Daily_Incident_Report_{date_tag}_TEST.xlsx"
 
+    excel_bytes = generate_excel(tickets, today)
+    excel_bytes = add_alerts_sheet(excel_bytes, today_alerts, today)
     with open(excel_path, "wb") as f:
-        f.write(generate_excel(tickets, today))
+        f.write(excel_bytes)
     logging.info("Excel written: %s", excel_path)
 
     sp_html_folder  = os.environ["SHAREPOINT_HTML_FOLDER"]
@@ -434,7 +628,7 @@ def main():
     except Exception as e:
         logging.error("SharePoint Excel upload failed: %s", e)
 
-    html_content = generate_html_with_alerts(tickets, today, excel_sp_url, alert_widget)
+    html_content = generate_html_with_alerts(tickets, today, excel_sp_url, alert_widget, stats_footer)
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
     logging.info("HTML written: %s", html_path)
