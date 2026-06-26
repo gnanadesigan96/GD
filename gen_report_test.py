@@ -189,6 +189,7 @@ _ALERT_PATTERNS = [
     (r"disk|storage",                                                     "Disk"),
     (r"pod.*restart|restartcount",                                        "Pod Restart"),
     (r"db alert|database",                                                "Database"),
+    (r"graphdb|graph db|graph database",                                  "GraphDB"),
     (r"node",                                                             "Node"),
     (r"network",                                                          "Network"),
 ]
