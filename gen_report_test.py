@@ -164,7 +164,7 @@ def _ticket_ist_date(t: dict) -> date:
 # ── Alert parsing ──────────────────────────────────────────────────────────────
 _ENV_PATTERNS = [
     # Specific app-tier envs — must come before broader patterns
-    (r"prd-us3-app",                                                       "prd-us3-app"),
+    (r"prd-us3-app|prd-us3-web",                                           "prd-us3-app"),
     (r"prd-us-app",                                                        "prd-us-app"),
     (r"prd-eu-app",                                                        "prd-eu-app"),
     (r"prd-in-app",                                                        "prd-in-app"),
@@ -181,6 +181,7 @@ _ENV_PATTERNS = [
 
 _ALERT_PATTERNS = [
     (r"cpu usage|cpu utilisation|cpu utilization|cpu",                    "CPU"),
+    (r"pod.*memory|memory.*pod",                                          "Pod Memory"),
     (r"memory usage|memory utilisation|memory utilization|memory",        "Memory"),
     (r"oomkilled|oom",                                                    "OOM"),
     (r"vm availability|availability is below",                            "VM Availability"),
