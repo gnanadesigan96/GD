@@ -1,0 +1,31 @@
+export const TIMEZONES = [
+  { value: 'America/New_York', label: 'Eastern Time (ET) — New York' },
+  { value: 'America/Chicago', label: 'Central Time (CT) — Chicago' },
+  { value: 'America/Denver', label: 'Mountain Time (MT) — Denver' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT) — Los Angeles' },
+  { value: 'America/Phoenix', label: 'Arizona Time — Phoenix' },
+  { value: 'America/Anchorage', label: 'Alaska Time — Anchorage' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time — Honolulu' },
+  { value: 'Europe/London', label: 'Greenwich Mean Time (GMT) — London' },
+  { value: 'Europe/Paris', label: 'Central European Time (CET) — Paris' },
+  { value: 'Europe/Berlin', label: 'Central European Time (CET) — Berlin' },
+  { value: 'Europe/Rome', label: 'Central European Time (CET) — Rome' },
+  { value: 'Europe/Madrid', label: 'Central European Time (CET) — Madrid' },
+  { value: 'Europe/Amsterdam', label: 'Central European Time (CET) — Amsterdam' },
+  { value: 'Europe/Stockholm', label: 'Central European Time (CET) — Stockholm' },
+  { value: 'Europe/Helsinki', label: 'Eastern European Time (EET) — Helsinki' },
+  { value: 'Europe/Athens', label: 'Eastern European Time (EET) — Athens' },
+  { value: 'Australia/Sydney', label: 'Australian Eastern Time (AEST) — Sydney' },
+  { value: 'Australia/Melbourne', label: 'Australian Eastern Time (AEST) — Melbourne' },
+  { value: 'Australia/Brisbane', label: 'Australian Eastern Time — Brisbane' },
+  { value: 'Australia/Perth', label: 'Australian Western Time — Perth' },
+  { value: 'Asia/Singapore', label: 'Singapore Time (SGT)' },
+  { value: 'Asia/Dubai', label: 'Gulf Standard Time (GST) — Dubai' },
+  { value: 'Asia/Kolkata', label: 'India Standard Time (IST)' },
+  { value: 'Canada/Toronto', label: 'Eastern Time — Toronto' },
+  { value: 'Canada/Vancouver', label: 'Pacific Time — Vancouver' },
+]
+
+export const COMPANION_TIMEZONES = [
+  { value: 'Asia/Kolkata', label: 'India Standard Time (IST)' },
+]

@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  FAMILY
+  COMPANION
+  ADMIN
+}
+
+enum CompanionStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  BANNED
+}
+
+enum ServiceType {
+  COMPANION
+  CARETAKER
+  ACTIVITY_COACH
+  COORDINATOR
+}
+
+enum RequestStatus {
+  PENDING
+  ASSIGNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  COMPANION
+  CARETAKER
+  PREMIUM
+}
+
+enum CallType {
+  VIDEO
+  VOICE
+}
+
+enum CallStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  MISSED
+  CANCELLED
+}
+
+enum ViolationLevel {
+  WARNING
+  SUSPENSION
+  BAN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String
+  role          Role      @default(FAMILY)
+  language      String    @default("en")
+  timezone      String    @default("America/New_York")
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  elders        Elder[]
+  companion     Companion?
+  subscription  Subscription?
+  sentMessages  Message[]     @relation("SentMessages")
+  receivedMessages Message[]  @relation("ReceivedMessages")
+  notifications Notification[]
+}
+
+model Elder {
+  id            String    @id @default(cuid())
+  familyId      String
+  family        User      @relation(fields: [familyId], references: [id])
+  name          String
+  age           Int
+  photo         String?
+  language      String    @default("en")
+  timezone      String    @default("America/New_York")
+  healthNotes   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  serviceRequests ServiceRequest[]
+}
+
+model Companion {
+  id                  String          @id @default(cuid())
+  userId              String          @unique
+  user                User            @relation(fields: [userId], references: [id])
+  bio                 String?
+  languages           String[]
+  skills              String[]
+  idDocumentUrl       String?
+  idVerified          Boolean         @default(false)
+  onfidoApplicantId   String?
+  onfidoCheckId       String?
+  status              CompanionStatus @default(PENDING)
+  availability        Json            // { day: string, startTime: string, endTime: string }[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  assignments         Assignment[]
+  dailyLogs           DailyLog[]
+  violations          PrivacyViolation[]
+}
+
+model ServiceRequest {
+  id          String        @id @default(cuid())
+  elderId     String
+  elder       Elder         @relation(fields: [elderId], references: [id])
+  serviceType ServiceType
+  parameters  Json
+  status      RequestStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  assignment  Assignment?
+}
+
+model Assignment {
+  id              String        @id @default(cuid())
+  requestId       String        @unique
+  request         ServiceRequest @relation(fields: [requestId], references: [id])
+  companionId     String
+  companion       Companion     @relation(fields: [companionId], references: [id])
+  startDate       DateTime      @default(now())
+  status          RequestStatus @default(ACTIVE)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  messages        Message[]
+  callSessions    CallSession[]
+  dailyLogs       DailyLog[]
+}
+
+model Subscription {
+  id                    String           @id @default(cuid())
+  userId                String           @unique
+  user                  User             @relation(fields: [userId], references: [id])
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  plan                  SubscriptionPlan
+  status                String           @default("active")
+  currentPeriodEnd      DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+}
+
+model Message {
+  id            String    @id @default(cuid())
+  assignmentId  String
+  assignment    Assignment @relation(fields: [assignmentId], references: [id])
+  senderId      String
+  sender        User      @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId    String
+  receiver      User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content       String
+  isScanned     Boolean   @default(false)
+  isFlagged     Boolean   @default(false)
+  flagReason    String?
+  createdAt     DateTime  @default(now())
+
+  violation     PrivacyViolation?
+}
+
+model PrivacyViolation {
+  id            String         @id @default(cuid())
+  companionId   String
+  companion     Companion      @relation(fields: [companionId], references: [id])
+  messageId     String         @unique
+  message       Message        @relation(fields: [messageId], references: [id])
+  level         ViolationLevel
+  resolvedAt    DateTime?
+  createdAt     DateTime       @default(now())
+}
+
+model CallSession {
+  id                String     @id @default(cuid())
+  assignmentId      String
+  assignment        Assignment @relation(fields: [assignmentId], references: [id])
+  agoraChannelName  String
+  callType          CallType
+  scheduledAt       DateTime
+  startedAt         DateTime?
+  endedAt           DateTime?
+  status            CallStatus @default(SCHEDULED)
+  createdAt         DateTime   @default(now())
+}
+
+model DailyLog {
+  id              String    @id @default(cuid())
+  assignmentId    String
+  assignment      Assignment @relation(fields: [assignmentId], references: [id])
+  companionId     String
+  companion       Companion  @relation(fields: [companionId], references: [id])
+  mood            String
+  medicationTaken Boolean?
+  content         String
+  concerns        String?
+  createdAt       DateTime  @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  body      String
+  type      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
