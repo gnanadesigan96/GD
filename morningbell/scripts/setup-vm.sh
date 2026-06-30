@@ -1,17 +1,18 @@
 #!/bin/bash
 # MorningBell VM Setup Script
-# Run as root on a fresh Ubuntu 22.04 LTS server
-# Usage: curl -sL <your-raw-url>/setup-vm.sh | bash
+# Supports Ubuntu 22.04 and 24.04 LTS
+# Usage: curl -sL <your-raw-url>/setup-vm.sh | sudo bash
 
 set -e
 
+UBUNTU_VERSION=$(lsb_release -rs)
 echo "============================================"
-echo "  MorningBell VM Setup — Ubuntu 22.04"
+echo "  MorningBell VM Setup — Ubuntu $UBUNTU_VERSION"
 echo "============================================"
 
 # --- System update ---
 apt-get update -y && apt-get upgrade -y
-apt-get install -y curl git unzip ufw nginx certbot python3-certbot-nginx build-essential
+apt-get install -y curl git unzip ufw nginx certbot python3-certbot-nginx build-essential gnupg2 lsb-release
 
 # --- Node.js 20 LTS ---
 echo "Installing Node.js 20..."
@@ -22,12 +23,12 @@ node -v && npm -v
 # --- PM2 (process manager) ---
 echo "Installing PM2..."
 npm install -g pm2
-pm2 startup systemd -u morningbell --hp /home/morningbell
 
 # --- PostgreSQL 16 ---
 echo "Installing PostgreSQL 16..."
-sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+apt-get install -y gnupg curl
+curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 apt-get update -y
 apt-get install -y postgresql-16 postgresql-client-16
 
