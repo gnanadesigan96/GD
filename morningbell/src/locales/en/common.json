@@ -1,0 +1,13 @@
+{
+  "app": { "name": "MorningBell", "tagline": "You can't be there every morning. We are." },
+  "nav": { "dashboard": "Dashboard", "messages": "Messages", "calls": "Calls", "logs": "Daily Logs", "subscription": "Subscription", "profile": "My Profile", "signOut": "Sign out" },
+  "auth": { "signIn": "Sign in", "signUp": "Create account", "email": "Email", "password": "Password", "name": "Full name", "timezone": "Your timezone", "language": "Preferred language", "alreadyHaveAccount": "Already have an account?", "noAccount": "Don't have an account?" },
+  "dashboard": { "welcome": "Welcome back", "lovedOnes": "Here's how your loved ones are doing today.", "noElder": "You haven't added a loved one yet.", "addElder": "Add your loved one", "noSubscription": "No active subscription", "chooseAPlan": "Choose a plan to get a companion assigned." },
+  "services": { "COMPANION": "Companion", "CARETAKER": "Caretaker", "ACTIVITY_COACH": "Activity Coach", "COORDINATOR": "Family Coordinator" },
+  "status": { "PENDING": "Pending", "APPROVED": "Approved", "SUSPENDED": "Suspended", "BANNED": "Banned", "ACTIVE": "Active", "ASSIGNED": "Assigned", "COMPLETED": "Completed" },
+  "messages": { "title": "Messages", "placeholder": "Type a message...", "send": "Send", "blocked": "Message blocked — personal contact info is not allowed on this platform." },
+  "calls": { "schedule": "Schedule a call", "video": "Video call", "voice": "Voice call", "join": "Join call", "upcoming": "Upcoming calls" },
+  "logs": { "title": "Daily Log", "mood": "Today's mood", "medication": "Medication taken?", "summary": "Session summary", "concerns": "Concerns", "submit": "Submit log", "submitted": "Log submitted!" },
+  "admin": { "companions": "Companions", "assignments": "Assignments", "flags": "Flagged Messages", "approve": "Approve", "suspend": "Suspend", "ban": "Ban" },
+  "common": { "save": "Save", "cancel": "Cancel", "back": "Back", "continue": "Continue", "loading": "Loading...", "error": "Something went wrong.", "yes": "Yes", "no": "No", "notApplicable": "Not applicable" }
+}

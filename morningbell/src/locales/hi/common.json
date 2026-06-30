@@ -1,0 +1,13 @@
+{
+  "app": { "name": "MorningBell", "tagline": "आप हर सुबह वहाँ नहीं हो सकते। हम हैं।" },
+  "nav": { "dashboard": "डैशबोर्ड", "messages": "संदेश", "calls": "कॉल", "logs": "दैनिक लॉग", "subscription": "सदस्यता", "profile": "मेरी प्रोफ़ाइल", "signOut": "साइन आउट" },
+  "auth": { "signIn": "साइन इन", "signUp": "खाता बनाएं", "email": "ईमेल", "password": "पासवर्ड", "name": "पूरा नाम", "timezone": "आपका समय क्षेत्र", "language": "पसंदीदा भाषा", "alreadyHaveAccount": "पहले से खाता है?", "noAccount": "खाता नहीं है?" },
+  "dashboard": { "welcome": "वापस स्वागत है", "lovedOnes": "आज आपके प्रियजन कैसे हैं।", "noElder": "आपने अभी तक किसी को नहीं जोड़ा।", "addElder": "अपने प्रियजन को जोड़ें", "noSubscription": "कोई सक्रिय सदस्यता नहीं", "chooseAPlan": "साथी नियुक्त करने के लिए एक योजना चुनें।" },
+  "services": { "COMPANION": "साथी", "CARETAKER": "देखभालकर्ता", "ACTIVITY_COACH": "गतिविधि कोच", "COORDINATOR": "परिवार समन्वयक" },
+  "status": { "PENDING": "लंबित", "APPROVED": "स्वीकृत", "SUSPENDED": "निलंबित", "BANNED": "प्रतिबंधित", "ACTIVE": "सक्रिय", "ASSIGNED": "नियुक्त", "COMPLETED": "पूर्ण" },
+  "messages": { "title": "संदेश", "placeholder": "संदेश टाइप करें...", "send": "भेजें", "blocked": "संदेश अवरुद्ध — व्यक्तिगत संपर्क जानकारी इस प्लेटफ़ॉर्म पर अनुमति नहीं है।" },
+  "calls": { "schedule": "कॉल शेड्यूल करें", "video": "वीडियो कॉल", "voice": "वॉइस कॉल", "join": "शामिल हों", "upcoming": "आगामी कॉल" },
+  "logs": { "title": "दैनिक लॉग", "mood": "आज का मूड", "medication": "दवा ली?", "summary": "सत्र सारांश", "concerns": "चिंताएं", "submit": "लॉग सबमिट करें", "submitted": "लॉग सबमिट हो गया!" },
+  "admin": { "companions": "साथी", "assignments": "नियुक्तियां", "flags": "चिह्नित संदेश", "approve": "स्वीकृत करें", "suspend": "निलंबित करें", "ban": "प्रतिबंधित करें" },
+  "common": { "save": "सहेजें", "cancel": "रद्द करें", "back": "वापस", "continue": "जारी रखें", "loading": "लोड हो रहा है...", "error": "कुछ गलत हो गया।", "yes": "हाँ", "no": "नहीं", "notApplicable": "लागू नहीं" }
+}
