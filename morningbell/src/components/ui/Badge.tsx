@@ -10,17 +10,24 @@ export function Badge({ children, variant = 'default', className }: BadgeProps) 
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+        'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium',
         {
-          'bg-gray-100 text-gray-700': variant === 'default',
-          'bg-green-100 text-green-700': variant === 'success',
-          'bg-amber-100 text-amber-700': variant === 'warning',
-          'bg-red-100 text-red-700': variant === 'danger',
-          'bg-blue-100 text-blue-700': variant === 'info',
+          'bg-slate-100 text-slate-700': variant === 'default',
+          'bg-emerald-50 text-emerald-700': variant === 'success',
+          'bg-amber-50 text-amber-700': variant === 'warning',
+          'bg-red-50 text-red-700': variant === 'danger',
+          'bg-primary-50 text-primary-700': variant === 'info',
         },
         className
       )}
     >
+      <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', {
+        'bg-slate-400': variant === 'default',
+        'bg-emerald-500': variant === 'success',
+        'bg-amber-500': variant === 'warning',
+        'bg-red-500': variant === 'danger',
+        'bg-primary-600': variant === 'info',
+      })} />
       {children}
     </span>
   )
