@@ -6,10 +6,12 @@ import { redirect } from 'next/navigation'
 
 const navItems = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: 'dashboard' },
+  { label: 'Subscriptions', href: '/admin/subscriptions', icon: 'subscriptions' },
+  { label: 'Family Users', href: '/admin/users', icon: 'elder' },
   { label: 'Companions', href: '/admin/companions', icon: 'companions' },
   { label: 'Assignments', href: '/admin/assignments', icon: 'assignments' },
   { label: 'Flagged Messages', href: '/admin/flags', icon: 'flags' },
-  { label: 'Subscriptions', href: '/admin/subscriptions', icon: 'subscriptions' },
+  { label: 'Team', href: '/admin/team', icon: 'messages' },
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

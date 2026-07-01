@@ -223,3 +223,14 @@ model Notification {
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
+
+model TeamMember {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String?
+  role        String    @default("Support")
+  inviteToken String    @unique @default(cuid())
+  status      String    @default("PENDING")
+  invitedAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+}

@@ -66,10 +66,11 @@ const LogoutIcon = () => (
 
 function getIcon(href: string) {
   if (href.includes('dashboard')) return <HomeIcon />
-  if (href.includes('message')) return <MessageIcon />
+  if (href.includes('message') || href.includes('team')) return <MessageIcon />
   if (href.includes('call')) return <PhoneIcon />
   if (href.includes('log')) return <ClipboardIcon />
-  if (href.includes('admin/companion')) return <UsersIcon />
+  if (href.includes('companion')) return <UsersIcon />
+  if (href.includes('users')) return <UsersIcon />
   if (href.includes('assignment')) return <LinkIcon />
   if (href.includes('flag')) return <FlagIcon />
   if (href.includes('subscription')) return <CardIcon />
