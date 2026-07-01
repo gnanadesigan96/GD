@@ -5,11 +5,11 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 
 const navItems = [
-  { label: 'Dashboard', href: '/companion/dashboard', icon: '🏠' },
-  { label: 'Messages', href: '/companion/messages', icon: '💬' },
-  { label: 'Calls', href: '/companion/calls', icon: '📞' },
-  { label: 'Daily Logs', href: '/companion/logs/new', icon: '📝' },
-  { label: 'My Profile', href: '/companion/profile', icon: '👤' },
+  { label: 'Dashboard', href: '/companion/dashboard', icon: 'dashboard' },
+  { label: 'Messages', href: '/companion/messages', icon: 'messages' },
+  { label: 'Calls', href: '/companion/calls', icon: 'calls' },
+  { label: 'Daily Logs', href: '/companion/logs/new', icon: 'logs' },
+  { label: 'My Profile', href: '/companion/profile', icon: 'companions' },
 ]
 
 export default async function CompanionLayout({ children }: { children: React.ReactNode }) {
@@ -20,7 +20,7 @@ export default async function CompanionLayout({ children }: { children: React.Re
       <Sidebar items={navItems} role="Companion" />
       <div className="flex-1 flex flex-col">
         <Header title="MorningBell" />
-        <main className="flex-1 p-6 bg-amber-50/30">{children}</main>
+        <main className="flex-1 p-6 bg-slate-50">{children}</main>
       </div>
     </div>
   )

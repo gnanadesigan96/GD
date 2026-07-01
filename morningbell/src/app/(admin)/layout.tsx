@@ -5,11 +5,11 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 
 const navItems = [
-  { label: 'Dashboard', href: '/admin/dashboard', icon: '📊' },
-  { label: 'Companions', href: '/admin/companions', icon: '👤' },
-  { label: 'Assignments', href: '/admin/assignments', icon: '🔗' },
-  { label: 'Flagged Messages', href: '/admin/flags', icon: '🚩' },
-  { label: 'Subscriptions', href: '/admin/subscriptions', icon: '💳' },
+  { label: 'Dashboard', href: '/admin/dashboard', icon: 'dashboard' },
+  { label: 'Companions', href: '/admin/companions', icon: 'companions' },
+  { label: 'Assignments', href: '/admin/assignments', icon: 'assignments' },
+  { label: 'Flagged Messages', href: '/admin/flags', icon: 'flags' },
+  { label: 'Subscriptions', href: '/admin/subscriptions', icon: 'subscriptions' },
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <Sidebar items={navItems} role="Admin" />
       <div className="flex-1 flex flex-col">
         <Header title="Admin Panel" />
-        <main className="flex-1 p-6 bg-gray-50">{children}</main>
+        <main className="flex-1 p-6 bg-slate-50">{children}</main>
       </div>
     </div>
   )
