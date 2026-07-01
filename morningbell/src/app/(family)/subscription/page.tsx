@@ -20,17 +20,15 @@ const CreditCardIcon = () => (
   </svg>
 )
 
-const PLAN_ORDER = ['BASIC', 'STANDARD', 'PREMIUM']
-const POPULAR_PLAN = 'STANDARD'
+const PLAN_ORDER = ['COMPANION', 'CARETAKER', 'PREMIUM'] as const
+const POPULAR_PLAN = 'CARETAKER'
 
 export default async function SubscriptionPage() {
   const session = await getServerSession(authOptions)
   const userId = (session!.user as any).id
   const subscription = await prisma.subscription.findUnique({ where: { userId } })
 
-  const planEntries = PLAN_ORDER
-    .filter(key => PLANS[key])
-    .map(key => [key, PLANS[key]] as [string, typeof PLANS[string]])
+  const planEntries = PLAN_ORDER.map(key => [key, PLANS[key]] as const)
 
   return (
     <div className="space-y-6">
