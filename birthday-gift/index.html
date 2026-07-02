@@ -4,1207 +4,808 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A Special Surprise For You</title>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        :root {
-            --pink-light: #fce4ec;
-            --pink: #f48fb1;
-            --pink-dark: #ec407a;
-            --rose: #e91e63;
-            --lavender: #e1bee7;
-            --lavender-dark: #ab47bc;
-            --peach: #ffe0b2;
-            --coral: #ff8a80;
-            --gold: #ffd54f;
-            --text-dark: #4a2040;
-            --text-light: #7c5270;
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --bg1:#fdf2f8;--bg2:#fce7f3;--bg3:#f5e6ff;
+            --pink:#ec4899;--rose:#f43f5e;--purple:#a855f7;
+            --gold:#f59e0b;--emerald:#10b981;
+            --glass:rgba(255,255,255,0.65);--glass-border:rgba(255,255,255,0.35);
+            --text:#1e1b4b;--text2:#6b21a8;--text-muted:#a78bfa;
+        }
+        body{
+            font-family:'Inter',sans-serif;
+            background:linear-gradient(160deg,#fdf2f8 0%,#fce7f3 30%,#f5e6ff 60%,#ede9fe 100%);
+            min-height:100vh;overflow-x:hidden;color:var(--text);
         }
 
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #fce4ec, #f3e5f5, #ffe0b2);
-            min-height: 100vh;
-            overflow-x: hidden;
-            color: var(--text-dark);
-        }
-
-        /* ===== FLOATING HEARTS BG ===== */
-        .hearts-bg {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 0; overflow: hidden;
-        }
-        .floating-heart {
-            position: absolute; opacity: 0.15;
-            animation: floatHeart linear infinite;
-        }
-        @keyframes floatHeart {
-            0% { transform: translateY(100vh) rotate(0deg) scale(0.5); opacity: 0; }
-            10% { opacity: 0.15; }
-            90% { opacity: 0.15; }
-            100% { transform: translateY(-10vh) rotate(360deg) scale(1.2); opacity: 0; }
-        }
-        .sparkle {
-            position: fixed; width: 4px; height: 4px; border-radius: 50%;
-            background: var(--gold); pointer-events: none; z-index: 1;
-            animation: sparkleAnim 1.5s ease-in-out infinite;
-        }
-        @keyframes sparkleAnim {
-            0%, 100% { opacity: 0; transform: scale(0); }
-            50% { opacity: 1; transform: scale(1); }
-        }
+        /* ===== AMBIENT PARTICLES ===== */
+        canvas#particles{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
 
         /* ===== LAYOUT ===== */
-        .container {
-            position: relative; z-index: 2; max-width: 600px;
-            margin: 0 auto; padding: 20px; min-height: 100vh;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        .screen { display: none; width: 100%; animation: fadeInUp 0.8s ease-out; }
-        .screen.active { display: flex; flex-direction: column; align-items: center; }
-        .hidden { display: none !important; }
+        .container{position:relative;z-index:2;max-width:520px;margin:0 auto;padding:20px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+        .screen{display:none;width:100%;animation:slideUp .7s cubic-bezier(.16,1,.3,1)}
+        .screen.active{display:flex;flex-direction:column;align-items:center}
+        .hidden{display:none!important}
 
-        /* ===== ANIMATIONS ===== */
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-        @keyframes bounceIn { 0% { transform: scale(0); } 50% { transform: scale(1.15); } 70% { transform: scale(0.95); } 100% { transform: scale(1); } }
-        @keyframes shake { 0%,100%{transform:translateX(0)} 10%,30%,50%,70%,90%{transform:translateX(-5px)} 20%,40%,60%,80%{transform:translateX(5px)} }
-        @keyframes confettiFall { 0%{transform:translateY(-100vh) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
-        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
-        @keyframes wiggle { 0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-5deg)} 75%{transform:rotate(5deg)} }
-        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-        @keyframes glow { 0%,100%{box-shadow:0 0 20px rgba(233,30,99,0.3)} 50%{box-shadow:0 0 40px rgba(233,30,99,0.6)} }
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes scaleIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+        @keyframes bounceIn{0%{transform:scale(0)}50%{transform:scale(1.12)}70%{transform:scale(.96)}100%{transform:scale(1)}}
+        @keyframes shake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-6px)}30%,60%,90%{transform:translateX(6px)}}
+        @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+        @keyframes confettiFall{0%{transform:translateY(-100vh) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
 
-        /* ============================================
-           ANIMATED CHARACTER - CSS GIRL
-           ============================================ */
-        .character-wrapper {
-            position: relative;
-            width: 160px;
-            height: 240px;
-            margin: 0 auto 10px;
+        /* ===== SVG CHARACTER STAGE ===== */
+        .character-stage{
+            width:220px;height:300px;margin:0 auto 5px;position:relative;
         }
+        .character-stage svg{width:100%;height:100%}
 
-        /* Walk-in animation */
-        .character-wrapper.walk-in {
-            animation: characterWalkIn 1.5s ease-out forwards;
+        /* Walk in */
+        .character-stage.walk-in{animation:charWalkIn 1.8s cubic-bezier(.16,1,.3,1) forwards}
+        @keyframes charWalkIn{
+            0%{transform:translateX(-280px) scale(.9);opacity:0}
+            50%{opacity:1}
+            70%{transform:translateX(12px) scale(1.02)}
+            85%{transform:translateX(-4px) scale(1)}
+            100%{transform:translateX(0) scale(1);opacity:1}
         }
-        @keyframes characterWalkIn {
-            0% { transform: translateX(-200px) scale(0.8); opacity: 0; }
-            60% { transform: translateX(15px) scale(1.02); opacity: 1; }
-            80% { transform: translateX(-5px) scale(1); }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
-        }
+        .character-stage.idle{animation:charIdle 4s ease-in-out infinite}
+        @keyframes charIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+        .character-stage.happy{animation:charHappy .6s ease-in-out 3}
+        @keyframes charHappy{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-18px) rotate(-3deg)}70%{transform:translateY(-18px) rotate(3deg)}}
+        .character-stage.sad{animation:charSad .5s ease-in-out 2}
+        @keyframes charSad{0%,100%{transform:rotate(0)}25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
 
-        /* Idle floating */
-        .character-wrapper.idle {
-            animation: characterIdle 3s ease-in-out infinite;
+        /* ===== GLASS CHAT BUBBLE ===== */
+        .chat-bubble{
+            background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+            border:1px solid var(--glass-border);
+            border-radius:20px;padding:16px 22px;margin:8px 0;
+            box-shadow:0 8px 32px rgba(168,85,247,.12);
+            max-width:92%;position:relative;animation:scaleIn .5s cubic-bezier(.16,1,.3,1);
         }
-        @keyframes characterIdle {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
+        .chat-bubble::after{
+            content:'';position:absolute;top:-7px;left:50%;transform:translateX(-50%);
+            width:14px;height:14px;background:var(--glass);
+            border:1px solid var(--glass-border);border-bottom:0;border-right:0;
+            transform:translateX(-50%) rotate(45deg);
+            backdrop-filter:blur(20px);
         }
-
-        /* Wave animation */
-        .character-wrapper.waving .char-right-arm {
-            animation: armWave 0.6s ease-in-out 4;
-        }
-        @keyframes armWave {
-            0%, 100% { transform: rotate(0deg); }
-            50% { transform: rotate(-45deg); }
-        }
-
-        /* Happy bounce */
-        .character-wrapper.happy {
-            animation: happyBounce 0.6s ease-in-out 3;
-        }
-        @keyframes happyBounce {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            25% { transform: translateY(-15px) rotate(-3deg); }
-            75% { transform: translateY(-15px) rotate(3deg); }
-        }
-
-        /* Sad/disappointed shake */
-        .character-wrapper.sad {
-            animation: sadShake 0.5s ease-in-out 2;
-        }
-        @keyframes sadShake {
-            0%, 100% { transform: rotate(0deg); }
-            25% { transform: rotate(-8deg); }
-            75% { transform: rotate(8deg); }
-        }
-
-        /* Thinking */
-        .character-wrapper.thinking .char-right-arm {
-            transform: rotate(-30deg) translateY(-15px);
-            transition: transform 0.5s ease;
-        }
-
-        /* ===== CHARACTER BODY PARTS ===== */
-        .char-body {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Hair */
-        .char-hair {
-            position: absolute;
-            top: 2px; left: 50%; transform: translateX(-50%);
-            width: 82px; height: 75px;
-            background: #2c1810;
-            border-radius: 50% 50% 30% 30%;
-            z-index: 3;
-        }
-        .char-hair::before {
-            content: '';
-            position: absolute;
-            top: 30px; left: -12px;
-            width: 30px; height: 70px;
-            background: #2c1810;
-            border-radius: 0 0 50% 50%;
-            z-index: 1;
-        }
-        .char-hair::after {
-            content: '';
-            position: absolute;
-            top: 30px; right: -12px;
-            width: 30px; height: 70px;
-            background: #2c1810;
-            border-radius: 0 0 50% 50%;
-            z-index: 1;
-        }
-
-        /* Hair accessory - flower */
-        .char-hair-flower {
-            position: absolute;
-            top: 8px; right: 18px;
-            width: 22px; height: 22px;
-            z-index: 10;
-            font-size: 20px;
-            line-height: 1;
-        }
-
-        /* Face */
-        .char-face {
-            position: absolute;
-            top: 12px; left: 50%; transform: translateX(-50%);
-            width: 70px; height: 70px;
-            background: #fdd9b5;
-            border-radius: 50%;
-            z-index: 4;
-            overflow: visible;
-        }
-
-        /* Eyes */
-        .char-eyes {
-            position: absolute;
-            top: 24px; left: 50%; transform: translateX(-50%);
-            width: 44px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .char-eye {
-            width: 10px; height: 12px;
-            background: #2c1810;
-            border-radius: 50%;
-            position: relative;
-            animation: eyeBlink 3.5s ease-in-out infinite;
-        }
-        .char-eye::after {
-            content: '';
-            position: absolute;
-            top: 2px; left: 2px;
-            width: 4px; height: 4px;
-            background: white;
-            border-radius: 50%;
-        }
-        @keyframes eyeBlink {
-            0%, 45%, 55%, 100% { transform: scaleY(1); }
-            50% { transform: scaleY(0.1); }
-        }
-
-        /* Eye expressions */
-        .char-eye.happy-eye {
-            height: 6px;
-            border-radius: 6px 6px 0 0;
-            animation: none;
-        }
-        .char-eye.sad-eye {
-            border-radius: 50%;
-            animation: none;
-        }
-        .char-eye.sad-eye::before {
-            content: '';
-            position: absolute;
-            top: -4px; left: -2px;
-            width: 14px; height: 4px;
-            border-bottom: 2px solid #2c1810;
-            border-radius: 0 0 50% 50%;
-            transform: rotate(-10deg);
-        }
-        .char-eye.surprised-eye {
-            width: 14px; height: 14px;
-            animation: none;
-        }
-        .char-eye.wink-eye-left {
-            animation: none;
-        }
-        .char-eye.wink-eye-right {
-            height: 3px;
-            border-radius: 3px;
-            animation: none;
-        }
-
-        /* Mouth */
-        .char-mouth {
-            position: absolute;
-            top: 42px; left: 50%; transform: translateX(-50%);
-            width: 14px; height: 8px;
-            border-radius: 0 0 10px 10px;
-            background: #e57373;
-            z-index: 5;
-        }
-        .char-mouth.smile {
-            width: 18px; height: 10px;
-            border-radius: 0 0 12px 12px;
-            background: #e57373;
-        }
-        .char-mouth.big-smile {
-            width: 22px; height: 14px;
-            border-radius: 0 0 14px 14px;
-            background: #e57373;
-        }
-        .char-mouth.sad-mouth {
-            width: 14px; height: 8px;
-            border-radius: 10px 10px 0 0;
-            background: #e57373;
-        }
-        .char-mouth.open-mouth {
-            width: 16px; height: 16px;
-            border-radius: 50%;
-            background: #e57373;
-        }
-        .char-mouth.smirk {
-            width: 16px; height: 6px;
-            border-radius: 0 0 12px 0;
-            background: #e57373;
-        }
-
-        /* Blush */
-        .char-blush {
-            position: absolute;
-            top: 36px;
-            width: 14px; height: 8px;
-            background: rgba(255, 135, 135, 0.45);
-            border-radius: 50%;
-            z-index: 5;
-        }
-        .char-blush.left { left: 6px; }
-        .char-blush.right { right: 6px; }
-
-        /* Neck */
-        .char-neck {
-            position: absolute;
-            top: 74px; left: 50%; transform: translateX(-50%);
-            width: 20px; height: 14px;
-            background: #fdd9b5;
-            z-index: 2;
-        }
-
-        /* Dress / Body */
-        .char-dress {
-            position: absolute;
-            top: 84px; left: 50%; transform: translateX(-50%);
-            width: 70px; height: 80px;
-            background: linear-gradient(180deg, var(--pink-dark), var(--rose));
-            border-radius: 10px 10px 35px 35px;
-            z-index: 2;
-        }
-        .char-dress::before {
-            content: '';
-            position: absolute;
-            bottom: 0; left: -8px;
-            width: 86px; height: 25px;
-            background: linear-gradient(180deg, transparent, rgba(255,255,255,0.15));
-            border-radius: 0 0 40px 40px;
-        }
-        /* Dress decoration */
-        .char-dress-belt {
-            position: absolute;
-            top: 94px; left: 50%; transform: translateX(-50%);
-            width: 72px; height: 6px;
-            background: var(--gold);
-            border-radius: 3px;
-            z-index: 3;
-        }
-        .char-dress-bow {
-            position: absolute;
-            top: 89px; left: 50%; transform: translateX(-50%);
-            z-index: 4;
-            font-size: 16px;
-        }
-
-        /* Arms */
-        .char-left-arm, .char-right-arm {
-            position: absolute;
-            top: 90px;
-            width: 14px; height: 50px;
-            background: #fdd9b5;
-            border-radius: 7px;
-            z-index: 1;
-            transform-origin: top center;
-            transition: transform 0.4s ease;
-        }
-        .char-left-arm {
-            left: 16px;
-            transform: rotate(8deg);
-        }
-        .char-right-arm {
-            right: 16px;
-            transform: rotate(-8deg);
-        }
-
-        /* Hands */
-        .char-left-arm::after, .char-right-arm::after {
-            content: '';
-            position: absolute;
-            bottom: -6px; left: 50%; transform: translateX(-50%);
-            width: 14px; height: 14px;
-            background: #fdd9b5;
-            border-radius: 50%;
-        }
-
-        /* Legs */
-        .char-left-leg, .char-right-leg {
-            position: absolute;
-            top: 158px;
-            width: 14px; height: 45px;
-            background: #fdd9b5;
-            border-radius: 7px;
-            z-index: 1;
-        }
-        .char-left-leg { left: 38px; }
-        .char-right-leg { right: 38px; }
-
-        /* Shoes */
-        .char-left-leg::after, .char-right-leg::after {
-            content: '';
-            position: absolute;
-            bottom: -4px; left: -3px;
-            width: 20px; height: 10px;
-            background: var(--rose);
-            border-radius: 10px 10px 5px 5px;
-        }
-
-        /* Walking legs */
-        .character-wrapper.walk-in .char-left-leg {
-            animation: legWalkLeft 0.4s ease-in-out 3;
-        }
-        .character-wrapper.walk-in .char-right-leg {
-            animation: legWalkRight 0.4s ease-in-out 3;
-        }
-        @keyframes legWalkLeft {
-            0%, 100% { transform: rotate(0deg); }
-            50% { transform: rotate(15deg); }
-        }
-        @keyframes legWalkRight {
-            0%, 100% { transform: rotate(0deg); }
-            50% { transform: rotate(-15deg); }
-        }
-
-        /* Speech bubble pointer from character */
-        .char-speech-area {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-top: 0;
-        }
-
-        /* ===== CHAT BUBBLE ===== */
-        .chat-bubble {
-            background: white;
-            border-radius: 20px;
-            border-bottom-left-radius: 5px;
-            padding: 16px 22px;
-            margin: 8px 0;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            max-width: 90%;
-            position: relative;
-            animation: fadeInScale 0.5s ease-out;
-        }
-        .chat-bubble::before {
-            content: '';
-            position: absolute;
-            top: -8px; left: 50%; transform: translateX(-50%);
-            width: 0; height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-bottom: 8px solid white;
-        }
-        .chat-bubble p {
-            font-size: 15px; line-height: 1.6; color: var(--text-dark);
-        }
-        .typing-dots {
-            display: inline-flex; gap: 4px; padding: 5px 0;
-        }
-        .typing-dots span {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: var(--pink);
-            animation: typingBounce 1.4s ease-in-out infinite;
-        }
-        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typingBounce {
-            0%,60%,100% { transform: translateY(0); }
-            30% { transform: translateY(-8px); }
-        }
+        .chat-bubble p{font-size:15px;line-height:1.65;color:var(--text)}
+        .typing-dots{display:inline-flex;gap:5px;padding:6px 0}
+        .typing-dots span{width:8px;height:8px;border-radius:50%;background:var(--purple);animation:dotBounce 1.4s ease-in-out infinite}
+        .typing-dots span:nth-child(2){animation-delay:.15s}
+        .typing-dots span:nth-child(3){animation-delay:.3s}
+        @keyframes dotBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-10px);opacity:1}}
 
         /* ===== BUTTONS ===== */
-        .btn {
-            background: linear-gradient(135deg, var(--pink-dark), var(--rose));
-            color: white; border: none;
-            padding: 14px 36px; border-radius: 50px;
-            font-family: 'Poppins', sans-serif;
-            font-size: 16px; font-weight: 600;
-            cursor: pointer; transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(233,30,99,0.35);
-            margin-top: 15px; letter-spacing: 0.5px;
+        .btn{
+            background:linear-gradient(135deg,var(--pink),var(--purple));
+            color:#fff;border:none;padding:14px 40px;border-radius:60px;
+            font-family:'Inter',sans-serif;font-size:15px;font-weight:600;
+            cursor:pointer;transition:all .3s cubic-bezier(.16,1,.3,1);
+            box-shadow:0 6px 24px rgba(168,85,247,.35);margin-top:18px;letter-spacing:.3px;
         }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(233,30,99,0.5); }
-        .btn:active { transform: translateY(0); }
+        .btn:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 10px 32px rgba(168,85,247,.45)}
+        .btn:active{transform:translateY(0) scale(.98)}
 
         /* ===== QUESTION CARD ===== */
-        .question-card {
-            background: white; border-radius: 24px; padding: 28px;
-            width: 100%; box-shadow: 0 8px 40px rgba(0,0,0,0.1);
-            animation: fadeInUp 0.6s ease-out;
+        .question-card{
+            background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+            border:1px solid var(--glass-border);
+            border-radius:24px;padding:26px;width:100%;
+            box-shadow:0 8px 40px rgba(168,85,247,.1);animation:slideUp .6s cubic-bezier(.16,1,.3,1);
         }
-        .question-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-        .question-number {
-            width: 40px; height: 40px; border-radius: 50%;
-            background: linear-gradient(135deg, var(--pink-dark), var(--rose));
-            color: white; display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 18px; flex-shrink: 0;
+        .question-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+        .question-number{
+            width:38px;height:38px;border-radius:50%;
+            background:linear-gradient(135deg,var(--pink),var(--purple));
+            color:#fff;display:flex;align-items:center;justify-content:center;
+            font-weight:700;font-size:16px;flex-shrink:0;
         }
-        .question-text {
-            font-size: 17px; font-weight: 600; color: var(--text-dark);
-            font-family: 'Quicksand', sans-serif;
+        .question-text{font-size:16px;font-weight:600;color:var(--text);font-family:'Playfair Display',serif}
+        .progress-bar{width:100%;height:5px;background:rgba(168,85,247,.12);border-radius:3px;margin-bottom:20px;overflow:hidden}
+        .progress-fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple));border-radius:3px;transition:width .5s ease}
+        .options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+        .option-btn{
+            background:rgba(255,255,255,.7);backdrop-filter:blur(10px);
+            border:2px solid rgba(168,85,247,.15);border-radius:16px;
+            padding:15px 12px;font-family:'Inter',sans-serif;
+            font-size:13.5px;font-weight:500;color:var(--text);
+            cursor:pointer;transition:all .3s ease;text-align:center;
         }
-        .progress-bar {
-            width: 100%; height: 6px; background: var(--pink-light);
-            border-radius: 3px; margin-bottom: 22px; overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%; background: linear-gradient(90deg, var(--pink-dark), var(--rose));
-            border-radius: 3px; transition: width 0.5s ease;
-        }
-        .options-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;
-        }
-        .option-btn {
-            background: linear-gradient(135deg, #fce4ec, #f3e5f5);
-            border: 2px solid transparent; border-radius: 16px;
-            padding: 16px 12px; font-family: 'Poppins', sans-serif;
-            font-size: 14px; font-weight: 500; color: var(--text-dark);
-            cursor: pointer; transition: all 0.3s ease; text-align: center;
-        }
-        .option-btn:hover { border-color: var(--pink-dark); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(233,30,99,0.2); }
-        .option-btn.correct { background: linear-gradient(135deg, #c8e6c9, #a5d6a7); border-color: #66bb6a; animation: bounceIn 0.5s ease; }
-        .option-btn.wrong { background: linear-gradient(135deg, #ffcdd2, #ef9a9a); border-color: #ef5350; animation: shake 0.5s ease; }
-        .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+        .option-btn:hover{border-color:var(--purple);transform:translateY(-2px);box-shadow:0 6px 20px rgba(168,85,247,.15)}
+        .option-btn.correct{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:var(--emerald);animation:bounceIn .5s ease}
+        .option-btn.wrong{background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:var(--rose);animation:shake .5s ease}
+        .option-btn:disabled{cursor:not-allowed;opacity:.65}
 
-        .score-display { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-light); margin-bottom: 12px; }
-        .hearts-counter { display: flex; gap: 8px; justify-content: center; margin: 12px 0; }
-        .heart-icon { font-size: 24px; transition: all 0.3s ease; }
-        .heart-icon.filled { animation: bounceIn 0.4s ease; }
-        .heart-icon.empty { filter: grayscale(1); opacity: 0.3; }
+        .score-display{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);margin-bottom:10px}
+        .hearts-counter{display:flex;gap:8px;justify-content:center;margin:12px 0}
+        .heart-icon{font-size:22px;transition:all .3s ease}
+        .heart-icon.filled{animation:bounceIn .4s ease}
+        .heart-icon.empty{filter:grayscale(1);opacity:.25}
 
         /* ===== WRONG POPUP ===== */
-        .wrong-popup {
-            position: fixed; top: 50%; left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            background: white; border-radius: 24px; padding: 30px;
-            z-index: 100; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            text-align: center; max-width: 400px; width: 90%;
-            animation: bounceIn 0.5s ease forwards;
+        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(30,27,75,.45);backdrop-filter:blur(4px);z-index:99;animation:fadeIn .3s ease}
+        .wrong-popup{
+            position:fixed;top:50%;left:50%;
+            transform:translate(-50%,-50%) scale(0);
+            background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+            border:1px solid var(--glass-border);
+            border-radius:28px;padding:32px;z-index:100;
+            box-shadow:0 24px 64px rgba(30,27,75,.25);
+            text-align:center;max-width:400px;width:90%;
+            animation:bounceIn .5s cubic-bezier(.16,1,.3,1) forwards;
         }
-        .wrong-popup .popup-char { margin-bottom: 10px; }
-        .wrong-popup h3 { font-family: 'Quicksand', sans-serif; color: var(--text-dark); margin-bottom: 8px; font-size: 20px; }
-        .wrong-popup p { color: var(--text-light); font-size: 14px; line-height: 1.6; }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 99; animation: fadeIn 0.3s ease; }
+        .wrong-popup .popup-char-wrap{margin:0 auto 12px;width:140px;height:190px}
+        .wrong-popup h3{font-family:'Playfair Display',serif;color:var(--text);margin-bottom:8px;font-size:20px}
+        .wrong-popup p{color:var(--text2);font-size:14px;line-height:1.65}
 
-        /* ===== GIFT REVEAL ===== */
-        .gift-reveal { text-align: center; padding: 20px; }
-        .gift-box {
-            width: 180px; height: 180px; margin: 20px auto;
-            cursor: pointer; animation: float 2s ease-in-out infinite, glow 2s ease-in-out infinite;
-            font-size: 120px; display: flex; align-items: center; justify-content: center;
-            transition: transform 0.5s ease;
-            filter: drop-shadow(0 10px 30px rgba(233,30,99,0.4));
+        /* ===== GIFT ===== */
+        .gift-reveal{text-align:center;padding:15px}
+        .gift-box{
+            width:160px;height:160px;margin:18px auto;cursor:pointer;
+            animation:float 2.5s ease-in-out infinite;
+            font-size:110px;display:flex;align-items:center;justify-content:center;
+            transition:transform .4s cubic-bezier(.16,1,.3,1);
+            filter:drop-shadow(0 12px 30px rgba(236,72,153,.35));
         }
-        .gift-box:hover { transform: scale(1.1); }
-        .gift-box.opened { animation: bounceIn 0.8s ease; }
-        .gift-title { font-family: 'Dancing Script', cursive; font-size: 36px; color: var(--rose); margin: 15px 0; animation: fadeInUp 1s ease; }
-        .teddy-reveal { font-size: 150px; animation: bounceIn 1s ease; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.2)); }
-        .gift-message { font-family: 'Dancing Script', cursive; font-size: 24px; color: var(--text-dark); margin: 20px 0; line-height: 1.8; }
-        .birthday-text {
-            font-family: 'Dancing Script', cursive; font-size: 42px;
-            background: linear-gradient(135deg, var(--rose), var(--lavender-dark), var(--pink-dark));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-            margin: 10px 0; animation: pulse 2s ease-in-out infinite;
+        .gift-box:hover{transform:scale(1.12)}
+        .gift-title{font-family:'Dancing Script',cursive;font-size:38px;color:var(--pink);margin:12px 0;animation:slideUp 1s ease}
+        .teddy-reveal{font-size:140px;animation:bounceIn 1s cubic-bezier(.16,1,.3,1);filter:drop-shadow(0 10px 30px rgba(0,0,0,.15))}
+        .gift-message{font-family:'Dancing Script',cursive;font-size:22px;color:var(--text);margin:18px 0;line-height:1.85}
+        .birthday-text{
+            font-family:'Dancing Script',cursive;font-size:44px;
+            background:linear-gradient(135deg,var(--pink),var(--purple),var(--rose));
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+            animation:pulse 2.5s ease-in-out infinite;
         }
-        .intro-flowers { display: flex; gap: 10px; font-size: 28px; margin: 10px 0; animation: float 3s ease-in-out infinite; justify-content: center; }
-        .confetti-piece { position: fixed; width: 10px; height: 10px; top: -10px; z-index: 200; animation: confettiFall 3s linear forwards; }
+        .intro-flowers{display:flex;gap:10px;font-size:26px;margin:8px 0;animation:float 3s ease-in-out infinite;justify-content:center}
+        .confetti-piece{position:fixed;width:10px;height:10px;top:-10px;z-index:200;animation:confettiFall 3s linear forwards}
+        .star-burst{position:fixed;pointer-events:none;z-index:50}
+        .star-burst span{position:absolute;font-size:22px;animation:starBurst .8s ease-out forwards}
+        @keyframes starBurst{0%{transform:translate(0,0) scale(0);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(1);opacity:0}}
 
-        /* Star burst */
-        .star-burst { position: fixed; pointer-events: none; z-index: 50; }
-        .star-burst span { position: absolute; font-size: 24px; animation: starBurst 0.8s ease-out forwards; }
-        @keyframes starBurst { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(var(--tx),var(--ty)) scale(1);opacity:0} }
+        .fail-text{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);margin:10px 0}
+        .fail-subtitle{font-size:14px;color:var(--text2);line-height:1.65;margin-bottom:18px}
+        .chat-sequence{width:100%;display:flex;flex-direction:column;align-items:center}
 
-        /* Fail */
-        .fail-text { font-family: 'Quicksand', sans-serif; font-size: 22px; font-weight: 700; color: var(--text-dark); margin: 10px 0; }
-        .fail-subtitle { font-size: 15px; color: var(--text-light); line-height: 1.6; margin-bottom: 20px; }
-
-        /* ===== MINI CHARACTER (for popups / quiz) ===== */
-        .mini-character {
-            width: 80px; height: 120px; margin: 0 auto; position: relative;
-            transform: scale(0.65); transform-origin: center center;
-        }
-
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 480px) {
-            .container { padding: 15px; }
-            .question-card { padding: 18px; }
-            .birthday-text { font-size: 32px; }
-            .gift-title { font-size: 28px; }
-            .character-wrapper { transform: scale(0.85); margin-bottom: 0; }
-            .options-grid { gap: 8px; }
-            .option-btn { padding: 14px 10px; font-size: 13px; }
-        }
-
-        .chat-sequence {
-            width: 100%; display: flex; flex-direction: column; align-items: center;
+        @media(max-width:480px){
+            .container{padding:15px}
+            .question-card{padding:18px}
+            .birthday-text{font-size:32px}
+            .character-stage{transform:scale(.82);margin-bottom:0}
+            .option-btn{padding:13px 8px;font-size:12.5px}
         }
     </style>
 </head>
 <body>
-    <div class="hearts-bg" id="heartsBg"></div>
+<canvas id="particles"></canvas>
+<div class="container">
 
-    <div class="container">
-        <!-- SCREEN 1: Welcome -->
-        <div class="screen active" id="screen-welcome">
-            <div class="character-wrapper" id="mainCharacter">
-                <div class="char-body">
-                    <div class="char-hair">
-                        <div class="char-hair-flower">🌸</div>
-                    </div>
-                    <div class="char-face" id="mainFace">
-                        <div class="char-eyes" id="mainEyes">
-                            <div class="char-eye" id="eyeLeft"></div>
-                            <div class="char-eye" id="eyeRight"></div>
-                        </div>
-                        <div class="char-mouth smile" id="mainMouth"></div>
-                        <div class="char-blush left"></div>
-                        <div class="char-blush right"></div>
-                    </div>
-                    <div class="char-neck"></div>
-                    <div class="char-dress"></div>
-                    <div class="char-dress-bow">🎀</div>
-                    <div class="char-dress-belt"></div>
-                    <div class="char-left-arm"></div>
-                    <div class="char-right-arm" id="mainRightArm"></div>
-                    <div class="char-left-leg"></div>
-                    <div class="char-right-leg"></div>
-                </div>
-            </div>
-            <div class="chat-sequence" id="chatSequence"></div>
+    <!-- SCREEN 1: WELCOME -->
+    <div class="screen active" id="screen-welcome">
+        <div class="character-stage" id="mainStage">
+            <svg id="mainChar" viewBox="0 0 220 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Shadow -->
+                <ellipse cx="110" cy="290" rx="40" ry="6" fill="rgba(0,0,0,.08)">
+                    <animate attributeName="rx" values="40;36;40" dur="4s" repeatCount="indefinite"/>
+                </ellipse>
+
+                <!-- LEFT LEG -->
+                <g id="mainLeftLeg">
+                    <rect x="88" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/>
+                    <rect x="84" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
+                </g>
+                <!-- RIGHT LEG -->
+                <g id="mainRightLeg">
+                    <rect x="116" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/>
+                    <rect x="112" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
+                </g>
+
+                <!-- BODY / SUIT -->
+                <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#suitGrad)"/>
+                <!-- Suit lapels -->
+                <path d="M100 130 L110 165 L98 165 Z" fill="#1e1b4b" opacity=".25"/>
+                <path d="M120 130 L110 165 L122 165 Z" fill="#1e1b4b" opacity=".25"/>
+                <!-- Tie -->
+                <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#tieGrad)"/>
+                <!-- Shirt collar -->
+                <path d="M98 130 L110 148 L122 130" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>
+                <!-- Pocket square -->
+                <rect x="120" y="145" width="10" height="8" rx="2" fill="#ec4899" opacity=".7"/>
+
+                <!-- LEFT ARM -->
+                <g id="mainLeftArm" style="transform-origin:90px 135px">
+                    <rect x="60" y="132" width="22" height="55" rx="11" fill="url(#suitGrad)"/>
+                    <circle cx="71" cy="192" r="9" fill="#e8b89d"/>
+                </g>
+                <!-- RIGHT ARM -->
+                <g id="mainRightArm" style="transform-origin:130px 135px">
+                    <rect x="138" y="132" width="22" height="55" rx="11" fill="url(#suitGrad)"/>
+                    <circle cx="149" cy="192" r="9" fill="#e8b89d"/>
+                    <!-- Flower in hand (hidden initially) -->
+                    <g id="flowerInHand" opacity="0">
+                        <text x="142" y="132" font-size="22">🌹</text>
+                    </g>
+                </g>
+
+                <!-- NECK -->
+                <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
+
+                <!-- HEAD -->
+                <g id="mainHead">
+                    <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
+                    <!-- Hair -->
+                    <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
+                    <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
+                    <rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
+                    <!-- Side hair -->
+                    <path d="M78 80 Q72 90 76 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
+                    <path d="M142 80 Q148 90 144 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
+
+                    <!-- FACE -->
+                    <!-- Eyebrows -->
+                    <g id="mainBrows">
+                        <line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
+                        <line x1="117" y1="78" x2="127" y2="80" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
+                    </g>
+                    <!-- Eyes -->
+                    <g id="mainEyes">
+                        <g id="eyeL">
+                            <ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/>
+                            <circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/>
+                        </g>
+                        <g id="eyeR">
+                            <ellipse cx="122" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/>
+                            <circle cx="123.5" cy="88.5" r="1.8" fill="#fff"/>
+                        </g>
+                    </g>
+                    <!-- Blink overlay (animated) -->
+                    <rect id="blinkL" x="91" y="84" width="14" height="12" rx="6" fill="#e8b89d" opacity="0">
+                        <animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/>
+                    </rect>
+                    <rect id="blinkR" x="115" y="84" width="14" height="12" rx="6" fill="#e8b89d" opacity="0">
+                        <animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/>
+                    </rect>
+
+                    <!-- Mouth -->
+                    <g id="mainMouth">
+                        <path d="M104 104 Q110 112 116 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    </g>
+
+                    <!-- Blush -->
+                    <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
+                    <ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
+                </g>
+
+                <!-- Gradients -->
+                <defs>
+                    <linearGradient id="suitGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#312e81"/>
+                        <stop offset="100%" stop-color="#1e1b4b"/>
+                    </linearGradient>
+                    <linearGradient id="tieGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#ec4899"/>
+                        <stop offset="100%" stop-color="#a855f7"/>
+                    </linearGradient>
+                </defs>
+            </svg>
         </div>
+        <div class="chat-sequence" id="chatSequence"></div>
+    </div>
 
-        <!-- SCREEN 2: Quiz -->
-        <div class="screen" id="screen-quiz">
-            <div class="character-wrapper idle" id="quizCharacter" style="transform: scale(0.7); margin-bottom: 5px;">
-                <div class="char-body">
-                    <div class="char-hair"><div class="char-hair-flower">🌸</div></div>
-                    <div class="char-face">
-                        <div class="char-eyes" id="quizEyes">
-                            <div class="char-eye"></div>
-                            <div class="char-eye"></div>
-                        </div>
-                        <div class="char-mouth smirk" id="quizMouth"></div>
-                        <div class="char-blush left"></div>
-                        <div class="char-blush right"></div>
-                    </div>
-                    <div class="char-neck"></div>
-                    <div class="char-dress"></div>
-                    <div class="char-dress-bow">🎀</div>
-                    <div class="char-dress-belt"></div>
-                    <div class="char-left-arm"></div>
-                    <div class="char-right-arm"></div>
-                    <div class="char-left-leg"></div>
-                    <div class="char-right-leg"></div>
-                </div>
-            </div>
-            <div class="chat-bubble" style="margin-bottom: 15px;">
-                <p id="quizChatText">Alright! Let's see how well you remember... 🤔</p>
-            </div>
-            <div class="hearts-counter" id="heartsCounter"></div>
-            <div class="question-card" id="questionCard">
-                <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
-                <div class="score-display" id="scoreDisplay"><span>✨</span><span id="scoreText">Score: 0 / 5</span></div>
-                <div class="question-header">
-                    <div class="question-number" id="questionNum">1</div>
-                    <div class="question-text" id="questionText"></div>
-                </div>
-                <div class="options-grid" id="optionsGrid"></div>
-            </div>
+    <!-- SCREEN 2: QUIZ -->
+    <div class="screen" id="screen-quiz">
+        <div class="character-stage idle" id="quizStage" style="transform:scale(.6);margin-bottom:0">
+            <svg id="quizChar" viewBox="0 0 220 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="110" cy="290" rx="40" ry="6" fill="rgba(0,0,0,.08)"/>
+                <g id="qLeftLeg"><rect x="88" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="84" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/></g>
+                <g id="qRightLeg"><rect x="116" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="112" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/></g>
+                <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#suitGrad2)"/>
+                <path d="M100 130 L110 165 L98 165 Z" fill="#1e1b4b" opacity=".25"/>
+                <path d="M120 130 L110 165 L122 165 Z" fill="#1e1b4b" opacity=".25"/>
+                <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#tieGrad2)"/>
+                <path d="M98 130 L110 148 L122 130" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>
+                <rect x="120" y="145" width="10" height="8" rx="2" fill="#ec4899" opacity=".7"/>
+                <g id="qLeftArm" style="transform-origin:90px 135px"><rect x="60" y="132" width="22" height="55" rx="11" fill="url(#suitGrad2)"/><circle cx="71" cy="192" r="9" fill="#e8b89d"/></g>
+                <g id="qRightArm" style="transform-origin:130px 135px"><rect x="138" y="132" width="22" height="55" rx="11" fill="url(#suitGrad2)"/><circle cx="149" cy="192" r="9" fill="#e8b89d"/></g>
+                <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
+                <g id="qHead">
+                    <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
+                    <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
+                    <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
+                    <rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
+                    <path d="M78 80 Q72 90 76 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
+                    <path d="M142 80 Q148 90 144 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
+                    <g id="qBrows"><line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="78" x2="127" y2="80" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/></g>
+                    <g id="qEyes">
+                        <ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/>
+                        <ellipse cx="122" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="123.5" cy="88.5" r="1.8" fill="#fff"/>
+                    </g>
+                    <rect x="91" y="84" width="14" height="12" rx="6" fill="#e8b89d" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
+                    <rect x="115" y="84" width="14" height="12" rx="6" fill="#e8b89d" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
+                    <g id="qMouth"><path d="M104 104 Q110 112 116 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/></g>
+                    <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
+                    <ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
+                </g>
+                <defs>
+                    <linearGradient id="suitGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient>
+                    <linearGradient id="tieGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
+                </defs>
+            </svg>
         </div>
-
-        <!-- SCREEN 3: Gift -->
-        <div class="screen" id="screen-gift">
-            <div class="gift-reveal">
-                <div class="character-wrapper happy" style="transform: scale(0.65); margin-bottom: 0;">
-                    <div class="char-body">
-                        <div class="char-hair"><div class="char-hair-flower">🌸</div></div>
-                        <div class="char-face">
-                            <div class="char-eyes"><div class="char-eye happy-eye"></div><div class="char-eye happy-eye"></div></div>
-                            <div class="char-mouth big-smile"></div>
-                            <div class="char-blush left"></div>
-                            <div class="char-blush right"></div>
-                        </div>
-                        <div class="char-neck"></div>
-                        <div class="char-dress"></div>
-                        <div class="char-dress-bow">🎀</div>
-                        <div class="char-dress-belt"></div>
-                        <div class="char-left-arm" style="transform: rotate(-20deg);"></div>
-                        <div class="char-right-arm" style="transform: rotate(20deg);"></div>
-                        <div class="char-left-leg"></div>
-                        <div class="char-right-leg"></div>
-                    </div>
-                </div>
-                <div class="birthday-text">Happy Birthday!</div>
-                <div class="intro-flowers">🌸 🌺 🌷 🌹 🌸</div>
-                <p style="color: var(--text-light); margin: 8px 0;">You got all answers right! You really remember everything about us!</p>
-                <p style="color: var(--text-dark); font-weight: 600; margin: 15px 0;">Tap the gift to reveal your surprise...</p>
-                <div class="gift-box" id="giftBox" onclick="openGift()">🎁</div>
-                <div id="giftContent" class="hidden">
-                    <div class="teddy-reveal">🧸</div>
-                    <div class="gift-title">A Big Teddy Bear!</div>
-                    <div class="gift-message">
-                        Because you deserve the biggest, softest, most huggable teddy in the world...
-                        <br>just like how you make my world the warmest place!
-                        <br><br>I love you more than words can say 💕
-                    </div>
-                    <div class="intro-flowers">💝 🧸 💝 🧸 💝</div>
-                </div>
+        <div class="chat-bubble" style="margin-bottom:12px"><p id="quizChatText">Alright! Let's see how well you remember... 🤔</p></div>
+        <div class="hearts-counter" id="heartsCounter"></div>
+        <div class="question-card" id="questionCard">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+            <div class="score-display"><span>✨</span><span id="scoreText">Score: 0 / 5</span></div>
+            <div class="question-header">
+                <div class="question-number" id="questionNum">1</div>
+                <div class="question-text" id="questionText"></div>
             </div>
+            <div class="options-grid" id="optionsGrid"></div>
         </div>
+    </div>
 
-        <!-- SCREEN 4: Fail -->
-        <div class="screen" id="screen-fail">
-            <div class="character-wrapper sad" style="transform: scale(0.65); margin-bottom: 5px;">
-                <div class="char-body">
-                    <div class="char-hair"><div class="char-hair-flower">🌸</div></div>
-                    <div class="char-face">
-                        <div class="char-eyes">
-                            <div class="char-eye sad-eye"></div>
-                            <div class="char-eye sad-eye"></div>
-                        </div>
-                        <div class="char-mouth sad-mouth"></div>
-                        <div class="char-blush left"></div>
-                        <div class="char-blush right"></div>
-                    </div>
-                    <div class="char-neck"></div>
-                    <div class="char-dress"></div>
-                    <div class="char-dress-bow">🎀</div>
-                    <div class="char-dress-belt"></div>
-                    <div class="char-left-arm" style="transform: rotate(5deg);"></div>
-                    <div class="char-right-arm" style="transform: rotate(-5deg);"></div>
-                    <div class="char-left-leg"></div>
-                    <div class="char-right-leg"></div>
-                </div>
+    <!-- SCREEN 3: GIFT -->
+    <div class="screen" id="screen-gift">
+        <div class="gift-reveal">
+            <div class="character-stage happy" style="transform:scale(.55);margin-bottom:0">
+                <svg viewBox="0 0 220 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="110" cy="290" rx="40" ry="6" fill="rgba(0,0,0,.08)"/>
+                    <rect x="88" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="84" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
+                    <rect x="116" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="112" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
+                    <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#sg3)"/>
+                    <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#tg3)"/>
+                    <path d="M98 130 L110 148 L122 130" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>
+                    <g style="transform-origin:90px 135px;transform:rotate(30deg)"><rect x="60" y="132" width="22" height="55" rx="11" fill="url(#sg3)"/><circle cx="71" cy="192" r="9" fill="#e8b89d"/></g>
+                    <g style="transform-origin:130px 135px;transform:rotate(-30deg)"><rect x="138" y="132" width="22" height="55" rx="11" fill="url(#sg3)"/><circle cx="149" cy="192" r="9" fill="#e8b89d"/></g>
+                    <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
+                    <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
+                    <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
+                    <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/><rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
+                    <path d="M78 80 Q72 90 76 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
+                    <path d="M142 80 Q148 90 144 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
+                    <!-- Happy eyes (closed arcs) -->
+                    <path d="M93 90 Q98 84 103 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                    <path d="M117 90 Q122 84 127 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                    <path d="M100 104 Q110 116 120 104" stroke="#c0392b" stroke-width="2.5" fill="#c0392b" opacity=".8" stroke-linecap="round"/>
+                    <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".45"/>
+                    <ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".45"/>
+                    <defs><linearGradient id="sg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient><linearGradient id="tg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+                </svg>
             </div>
-            <div style="text-align: center;">
-                <div class="fail-text" id="failTitle">Hmmm... Really?!</div>
-                <div class="fail-subtitle" id="failSubtitle">
-                    You forgot some of our special moments?!
-                    <br>I'm giving you another chance only because it's my birthday! 😏
+            <div class="birthday-text">Happy Birthday!</div>
+            <div class="intro-flowers">🌸 🌺 🌷 🌹 🌸</div>
+            <p style="color:var(--text2);margin:8px 0;font-size:14px">You got all answers right! You really remember everything about us!</p>
+            <p style="color:var(--text);font-weight:600;margin:14px 0">Tap the gift to reveal your surprise...</p>
+            <div class="gift-box" id="giftBox" onclick="openGift()">🎁</div>
+            <div id="giftContent" class="hidden">
+                <div class="teddy-reveal">🧸</div>
+                <div class="gift-title">A Big Teddy Bear!</div>
+                <div class="gift-message">
+                    Because you deserve the biggest, softest, most huggable teddy in the world...
+                    <br>just like how you make my world the warmest place!
+                    <br><br>I love you more than words can say 💕
                 </div>
-                <div class="hearts-counter" id="failHearts"></div>
-                <button class="btn" onclick="restartQuiz()">Try Again! 🔄</button>
+                <div class="intro-flowers">💝 🧸 💝 🧸 💝</div>
             </div>
         </div>
     </div>
 
-    <script>
-        // ========== DATA ==========
-        const questions = [
-            { question: "When did he first approach you? 😏", correct: "Apr 2, 2025", options: ["Mar 31, 2025", "Apr 2, 2025", "Apr 4, 2025", "Apr 1, 2025"] },
-            { question: "When was your first kiss? 💋", correct: "Aug 15, 2025", options: ["Aug 13, 2025", "Aug 16, 2025", "Aug 15, 2025", "Aug 14, 2025"] },
-            { question: "When was your first fight? 😡💕", correct: "Aug 26, 2025", options: ["Aug 25, 2025", "Aug 26, 2025", "Aug 28, 2025", "Aug 24, 2025"] },
-            { question: "When did the home engagement happen? 💍", correct: "Aug 27, 2025", options: ["Aug 29, 2025", "Aug 26, 2025", "Aug 27, 2025", "Aug 28, 2025"] },
-            { question: "When was your first movie together? 🎬🍿", correct: "Sep 21, 2025", options: ["Sep 20, 2025", "Sep 22, 2025", "Sep 19, 2025", "Sep 21, 2025"] }
-        ];
+    <!-- SCREEN 4: FAIL -->
+    <div class="screen" id="screen-fail">
+        <div class="character-stage sad" style="transform:scale(.55);margin-bottom:5px">
+            <svg viewBox="0 0 220 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="110" cy="290" rx="40" ry="6" fill="rgba(0,0,0,.08)"/>
+                <rect x="88" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="84" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
+                <rect x="116" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="112" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
+                <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#sg4)"/>
+                <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#tg4)"/>
+                <path d="M98 130 L110 148 L122 130" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>
+                <g style="transform-origin:90px 135px;transform:rotate(5deg)"><rect x="60" y="132" width="22" height="55" rx="11" fill="url(#sg4)"/><circle cx="71" cy="192" r="9" fill="#e8b89d"/></g>
+                <g style="transform-origin:130px 135px;transform:rotate(-5deg)"><rect x="138" y="132" width="22" height="55" rx="11" fill="url(#sg4)"/><circle cx="149" cy="192" r="9" fill="#e8b89d"/></g>
+                <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
+                <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
+                <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
+                <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/><rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
+                <path d="M78 80 Q72 90 76 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
+                <path d="M142 80 Q148 90 144 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
+                <!-- Sad eyebrows -->
+                <line x1="93" y1="78" x2="103" y2="82" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
+                <line x1="117" y1="82" x2="127" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
+                <ellipse cx="98" cy="90" rx="5" ry="6" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/>
+                <ellipse cx="122" cy="90" rx="5" ry="6" fill="#1a1a2e"/><circle cx="123.5" cy="88.5" r="1.8" fill="#fff"/>
+                <!-- Sad mouth -->
+                <path d="M104 110 Q110 102 116 110" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
+                <ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
+                <defs><linearGradient id="sg4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient><linearGradient id="tg4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+            </svg>
+        </div>
+        <div style="text-align:center">
+            <div class="fail-text" id="failTitle">Hmmm... Really?!</div>
+            <div class="fail-subtitle" id="failSubtitle">You forgot some of our special moments?!<br>I'm giving you another chance only because it's my birthday! 😏</div>
+            <div class="hearts-counter" id="failHearts"></div>
+            <button class="btn" onclick="restartQuiz()">Try Again! 🔄</button>
+        </div>
+    </div>
+</div>
 
-        const wrongAnswerReactions = [
-            { title: "Excuse me?!", msg: "You forgot when he approached you?! That man gathered all his courage and you don't even remember the date! The audacity! 😤", expression: "surprised" },
-            { title: "Girl... NO!", msg: "You forgot your FIRST KISS?! That man's lips are crying right now. Somewhere a romantic movie just stopped playing out of respect. 😭", expression: "sad" },
-            { title: "Oh wow!", msg: "You forgot your first FIGHT?! That's the day you both learned love isn't just butterflies — it's also dramatic WhatsApp statuses! 📱😂", expression: "smirk" },
-            { title: "This is painful!", msg: "The ENGAGEMENT date?! You know... that tiny little moment where you both said 'yes' to FOREVER?! Ring any bells? 💍🔔", expression: "sad" },
-            { title: "Are you serious?!", msg: "You forgot your first movie date?! The popcorn remembers. The seats remember. Even the interval samosa remembers. But you don't! 🍿😩", expression: "surprised" }
-        ];
+<script>
+// ===== DATA =====
+const questions = [
+    {question:"When did he first approach you? 😏",correct:"Apr 2, 2025",options:["Mar 31, 2025","Apr 2, 2025","Apr 4, 2025","Apr 1, 2025"]},
+    {question:"When was your first kiss? 💋",correct:"Aug 15, 2025",options:["Aug 13, 2025","Aug 16, 2025","Aug 15, 2025","Aug 14, 2025"]},
+    {question:"When was your first fight? 😡💕",correct:"Aug 26, 2025",options:["Aug 25, 2025","Aug 26, 2025","Aug 28, 2025","Aug 24, 2025"]},
+    {question:"When did the home engagement happen? 💍",correct:"Aug 27, 2025",options:["Aug 29, 2025","Aug 26, 2025","Aug 27, 2025","Aug 28, 2025"]},
+    {question:"When was your first movie together? 🎬🍿",correct:"Sep 21, 2025",options:["Sep 20, 2025","Sep 22, 2025","Sep 19, 2025","Sep 21, 2025"]}
+];
 
-        const chatMessages = [
-            { text: "Hiii! 👋✨", delay: 800, charAction: "wave" },
-            { text: "Wait... is that really you? OMG!", delay: 1800, charAction: "surprised" },
-            { text: "I've been waiting to talk to you! I'm your Birthday Fairy! 💫", delay: 2000, charAction: "happy" },
-            { text: "Someone very special asked me to arrange a surprise for you today... 🎁", delay: 2200, charAction: "wink" },
-            { text: "But first... HAPPY BIRTHDAY! 🎂🎉🥳", delay: 1500, special: true, charAction: "celebrate" },
-            { text: "Now, here's the deal... I have a GIFT for you! 🎁✨ But you have to earn it! 😏", delay: 2200, charAction: "smirk" },
-            { text: "I'll ask you 5 questions about your love story... Answer ALL correctly and the gift is yours! Ready? 💕", delay: 2500, showButton: true, charAction: "happy" }
-        ];
+const wrongReactions = [
+    {title:"Excuse me?!",msg:"You forgot when I approached you?! I gathered all my courage that day and you don't even remember the date! The audacity! 😤",expr:"surprised"},
+    {title:"Girl... NO!",msg:"You forgot our FIRST KISS?! My lips are crying right now. Somewhere a romantic movie just stopped playing out of respect. 😭",expr:"sad"},
+    {title:"Oh wow!",msg:"You forgot our first FIGHT?! That's the day we learned love isn't just butterflies — it's also dramatic WhatsApp statuses! 📱😂",expr:"smirk"},
+    {title:"This is painful!",msg:"The ENGAGEMENT date?! You know... that tiny little moment where we said 'yes' to FOREVER?! Ring any bells? 💍🔔",expr:"sad"},
+    {title:"Are you serious?!",msg:"You forgot our first movie date?! The popcorn remembers. The seats remember. Even the interval samosa remembers. But you don't! 🍿😩",expr:"surprised"}
+];
 
-        let currentQuestion = 0;
-        let score = 0;
-        let answered = false;
+const chatMessages = [
+    {text:"Hey there! 👋✨",delay:800,action:"wave"},
+    {text:"Wait... is that really you? Oh my! 😍",delay:1800,action:"surprised"},
+    {text:"I'm so glad you're here! I've got something special planned... 💫",delay:2000,action:"happy"},
+    {text:"Someone who loves you very much asked me to do this today... 🌹",delay:2200,action:"flower"},
+    {text:"But first... HAPPY BIRTHDAY! 🎂🎉🥳",delay:1500,special:true,action:"celebrate"},
+    {text:"Now here's the deal — I have a GIFT for you! 🎁✨ But you've got to earn it! 😏",delay:2200,action:"smirk"},
+    {text:"I'll ask you 5 questions about our love story... Get ALL of them right and the gift is yours! Ready? 💕",delay:2500,showButton:true,action:"happy"}
+];
 
-        // ========== BACKGROUND EFFECTS ==========
-        function createFloatingHearts() {
-            const bg = document.getElementById('heartsBg');
-            const hearts = ['💕', '💗', '💖', '💝', '🌸', '✨', '🦋', '💐'];
-            for (let i = 0; i < 15; i++) {
-                const heart = document.createElement('span');
-                heart.className = 'floating-heart';
-                heart.textContent = hearts[Math.floor(Math.random() * hearts.length)];
-                heart.style.left = Math.random() * 100 + '%';
-                heart.style.fontSize = (Math.random() * 20 + 14) + 'px';
-                heart.style.animationDuration = (Math.random() * 8 + 8) + 's';
-                heart.style.animationDelay = (Math.random() * 10) + 's';
-                bg.appendChild(heart);
+let currentQuestion=0, score=0, answered=false;
+
+// ===== PARTICLES =====
+const canvas=document.getElementById('particles');
+const ctx=canvas.getContext('2d');
+let particles=[];
+function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight}
+window.addEventListener('resize',resizeCanvas);resizeCanvas();
+
+class Particle{
+    constructor(){this.reset()}
+    reset(){
+        this.x=Math.random()*canvas.width;
+        this.y=Math.random()*canvas.height;
+        this.size=Math.random()*3+1;
+        this.speedY=Math.random()*-.3-.1;
+        this.speedX=Math.random()*.4-.2;
+        this.opacity=Math.random()*.4+.1;
+        this.hue=Math.random()>0.5?330:270;
+    }
+    update(){
+        this.y+=this.speedY;this.x+=this.speedX;
+        this.opacity-=.001;
+        if(this.y<0||this.opacity<=0)this.reset();
+    }
+    draw(){
+        ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+        ctx.fillStyle=`hsla(${this.hue},80%,70%,${this.opacity})`;ctx.fill();
+    }
+}
+for(let i=0;i<50;i++)particles.push(new Particle());
+function animateParticles(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{p.update();p.draw()});
+    requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+// ===== CHARACTER ANIMATIONS (SVG) =====
+function animateArm(armId, angle, dur=400){
+    const arm=document.getElementById(armId);
+    if(!arm)return;
+    arm.style.transition=`transform ${dur}ms cubic-bezier(.16,1,.3,1)`;
+    arm.style.transform=`rotate(${angle}deg)`;
+}
+function resetArm(armId,dur=400){
+    const arm=document.getElementById(armId);
+    if(!arm)return;
+    arm.style.transition=`transform ${dur}ms cubic-bezier(.16,1,.3,1)`;
+    arm.style.transform='rotate(0deg)';
+}
+
+function setMouth(mouthId, type){
+    const mouth=document.getElementById(mouthId);
+    if(!mouth)return;
+    switch(type){
+        case 'smile': mouth.innerHTML='<path d="M104 104 Q110 112 116 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';break;
+        case 'big-smile': mouth.innerHTML='<path d="M100 104 Q110 116 120 104" stroke="#c0392b" stroke-width="2.5" fill="#c0392b" opacity=".8" stroke-linecap="round"/>';break;
+        case 'open': mouth.innerHTML='<ellipse cx="110" cy="108" rx="6" ry="8" fill="#c0392b" opacity=".8"/>';break;
+        case 'sad': mouth.innerHTML='<path d="M104 110 Q110 102 116 110" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';break;
+        case 'smirk': mouth.innerHTML='<path d="M104 106 Q112 112 118 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';break;
+    }
+}
+
+function setEyes(eyesId, type){
+    const eyes=document.getElementById(eyesId);
+    if(!eyes)return;
+    switch(type){
+        case 'normal':
+            eyes.innerHTML=`<g><ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/></g>
+            <g><ellipse cx="122" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="123.5" cy="88.5" r="1.8" fill="#fff"/></g>`;break;
+        case 'happy':
+            eyes.innerHTML=`<path d="M93 90 Q98 84 103 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path d="M117 90 Q122 84 127 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;break;
+        case 'surprised':
+            eyes.innerHTML=`<ellipse cx="98" cy="89" rx="7" ry="8" fill="#1a1a2e"/><circle cx="100" cy="87" r="2.5" fill="#fff"/>
+            <ellipse cx="122" cy="89" rx="7" ry="8" fill="#1a1a2e"/><circle cx="124" cy="87" r="2.5" fill="#fff"/>`;break;
+        case 'wink':
+            eyes.innerHTML=`<g><ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/></g>
+            <path d="M117 90 Q122 87 127 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;break;
+        case 'sad':
+            eyes.innerHTML=`<ellipse cx="98" cy="91" rx="5" ry="6" fill="#1a1a2e"/><circle cx="99" cy="89" r="1.8" fill="#fff"/>
+            <ellipse cx="122" cy="91" rx="5" ry="6" fill="#1a1a2e"/><circle cx="123" cy="89" r="1.8" fill="#fff"/>`;break;
+    }
+}
+
+function setBrows(browsId, type){
+    const brows=document.getElementById(browsId);
+    if(!brows)return;
+    switch(type){
+        case 'normal': brows.innerHTML='<line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="78" x2="127" y2="80" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';break;
+        case 'raised': brows.innerHTML='<line x1="93" y1="76" x2="103" y2="74" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="74" x2="127" y2="76" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';break;
+        case 'sad': brows.innerHTML='<line x1="93" y1="78" x2="103" y2="82" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="82" x2="127" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';break;
+        case 'one-up': brows.innerHTML='<line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="74" x2="127" y2="76" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';break;
+    }
+}
+
+function setExpression(prefix, expr){
+    const eyesId = prefix+'Eyes', mouthId = prefix+'Mouth', browsId = prefix+'Brows';
+    switch(expr){
+        case 'smile': setEyes(eyesId,'normal'); setMouth(mouthId,'smile'); setBrows(browsId,'normal'); break;
+        case 'happy': setEyes(eyesId,'happy'); setMouth(mouthId,'big-smile'); setBrows(browsId,'normal'); break;
+        case 'surprised': setEyes(eyesId,'surprised'); setMouth(mouthId,'open'); setBrows(browsId,'raised'); break;
+        case 'wink': setEyes(eyesId,'wink'); setMouth(mouthId,'smirk'); setBrows(browsId,'one-up'); break;
+        case 'smirk': setEyes(eyesId,'normal'); setMouth(mouthId,'smirk'); setBrows(browsId,'one-up'); break;
+        case 'sad': setEyes(eyesId,'sad'); setMouth(mouthId,'sad'); setBrows(browsId,'sad'); break;
+        case 'thinking': setEyes(eyesId,'normal'); setMouth(mouthId,'smirk'); setBrows(browsId,'one-up'); break;
+    }
+}
+
+function doWave(){
+    let count=0;
+    const wave=setInterval(()=>{
+        animateArm('mainRightArm', count%2===0 ? -50 : -20, 300);
+        count++;
+        if(count>5){clearInterval(wave);resetArm('mainRightArm');}
+    },300);
+}
+
+function showFlower(){
+    const f=document.getElementById('flowerInHand');
+    if(f){
+        animateArm('mainRightArm',-60,500);
+        setTimeout(()=>f.setAttribute('opacity','1'),400);
+        setTimeout(()=>{f.setAttribute('opacity','0');resetArm('mainRightArm');},2500);
+    }
+}
+
+// ===== CHAT SEQUENCE =====
+function startChat(){
+    const container=document.getElementById('chatSequence');
+    const stage=document.getElementById('mainStage');
+    let index=0;
+
+    stage.classList.add('walk-in');
+
+    setTimeout(()=>{
+        stage.classList.remove('walk-in');
+        stage.classList.add('idle');
+
+        function next(){
+            if(index>=chatMessages.length)return;
+            const msg=chatMessages[index];
+
+            // Character action
+            switch(msg.action){
+                case 'wave': setExpression('main','happy'); doWave(); break;
+                case 'surprised': setExpression('main','surprised'); break;
+                case 'happy': setExpression('main','happy'); break;
+                case 'flower': setExpression('main','wink'); showFlower(); break;
+                case 'celebrate': setExpression('main','happy'); stage.className='character-stage happy'; setTimeout(()=>stage.className='character-stage idle',2000); break;
+                case 'smirk': setExpression('main','smirk'); break;
             }
-        }
 
-        function createSparkles() {
-            setInterval(() => {
-                const sparkle = document.createElement('div');
-                sparkle.className = 'sparkle';
-                sparkle.style.left = Math.random() * 100 + 'vw';
-                sparkle.style.top = Math.random() * 100 + 'vh';
-                sparkle.style.animationDelay = Math.random() + 's';
-                document.body.appendChild(sparkle);
-                setTimeout(() => sparkle.remove(), 2000);
-            }, 400);
-        }
+            const bubble=document.createElement('div');
+            bubble.className='chat-bubble';
+            bubble.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+            container.appendChild(bubble);
+            window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
 
-        // ========== CHARACTER EXPRESSIONS ==========
-        function setCharacterExpression(action) {
-            const char = document.getElementById('mainCharacter');
-            const eyeL = document.getElementById('eyeLeft');
-            const eyeR = document.getElementById('eyeRight');
-            const mouth = document.getElementById('mainMouth');
-
-            // Reset
-            eyeL.className = 'char-eye';
-            eyeR.className = 'char-eye';
-            mouth.className = 'char-mouth smile';
-            char.className = 'character-wrapper idle';
-
-            switch (action) {
-                case 'wave':
-                    char.className = 'character-wrapper idle waving';
-                    mouth.className = 'char-mouth big-smile';
-                    break;
-                case 'surprised':
-                    eyeL.classList.add('surprised-eye');
-                    eyeR.classList.add('surprised-eye');
-                    mouth.className = 'char-mouth open-mouth';
-                    break;
-                case 'happy':
-                    eyeL.classList.add('happy-eye');
-                    eyeR.classList.add('happy-eye');
-                    mouth.className = 'char-mouth big-smile';
-                    char.className = 'character-wrapper happy';
-                    break;
-                case 'wink':
-                    eyeL.classList.add('wink-eye-left');
-                    eyeR.classList.add('wink-eye-right');
-                    mouth.className = 'char-mouth smirk';
-                    break;
-                case 'celebrate':
-                    eyeL.classList.add('happy-eye');
-                    eyeR.classList.add('happy-eye');
-                    mouth.className = 'char-mouth big-smile';
-                    char.className = 'character-wrapper happy';
-                    break;
-                case 'smirk':
-                    eyeL.classList.add('wink-eye-left');
-                    eyeR.classList.add('wink-eye-right');
-                    mouth.className = 'char-mouth smirk';
-                    break;
-                case 'sad':
-                    eyeL.classList.add('sad-eye');
-                    eyeR.classList.add('sad-eye');
-                    mouth.className = 'char-mouth sad-mouth';
-                    char.className = 'character-wrapper sad';
-                    break;
-                case 'thinking':
-                    mouth.className = 'char-mouth smirk';
-                    char.className = 'character-wrapper idle thinking';
-                    break;
-            }
-        }
-
-        // ========== BUILD MINI CHARACTER HTML ==========
-        function getMiniCharHTML(expression) {
-            let eyeClassL = 'char-eye', eyeClassR = 'char-eye', mouthClass = 'char-mouth smile';
-            let armStyleL = '', armStyleR = '';
-
-            if (expression === 'surprised') {
-                eyeClassL = 'char-eye surprised-eye';
-                eyeClassR = 'char-eye surprised-eye';
-                mouthClass = 'char-mouth open-mouth';
-            } else if (expression === 'sad') {
-                eyeClassL = 'char-eye sad-eye';
-                eyeClassR = 'char-eye sad-eye';
-                mouthClass = 'char-mouth sad-mouth';
-                armStyleL = 'style="transform: rotate(5deg);"';
-                armStyleR = 'style="transform: rotate(-5deg);"';
-            } else if (expression === 'smirk') {
-                eyeClassL = 'char-eye wink-eye-left';
-                eyeClassR = 'char-eye wink-eye-right';
-                mouthClass = 'char-mouth smirk';
-            }
-
-            return `
-                <div class="mini-character">
-                    <div class="char-body">
-                        <div class="char-hair"><div class="char-hair-flower">🌸</div></div>
-                        <div class="char-face">
-                            <div class="char-eyes"><div class="${eyeClassL}"></div><div class="${eyeClassR}"></div></div>
-                            <div class="${mouthClass}"></div>
-                            <div class="char-blush left"></div>
-                            <div class="char-blush right"></div>
-                        </div>
-                        <div class="char-neck"></div>
-                        <div class="char-dress"></div>
-                        <div class="char-dress-bow">🎀</div>
-                        <div class="char-dress-belt"></div>
-                        <div class="char-left-arm" ${armStyleL}></div>
-                        <div class="char-right-arm" ${armStyleR}></div>
-                        <div class="char-left-leg"></div>
-                        <div class="char-right-leg"></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // ========== CHAT SEQUENCE ==========
-        function startChatSequence() {
-            const container = document.getElementById('chatSequence');
-            const char = document.getElementById('mainCharacter');
-            let index = 0;
-
-            // Character walks in first
-            char.classList.add('walk-in');
-
-            setTimeout(() => {
-                char.classList.remove('walk-in');
-                char.classList.add('idle');
-
-                function showNextMessage() {
-                    if (index >= chatMessages.length) return;
-
-                    const msg = chatMessages[index];
-
-                    // Set character expression
-                    if (msg.charAction) setCharacterExpression(msg.charAction);
-
-                    const typingBubble = document.createElement('div');
-                    typingBubble.className = 'chat-bubble';
-                    typingBubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
-                    container.appendChild(typingBubble);
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-
-                    setTimeout(() => {
-                        typingBubble.innerHTML = `<p>${msg.special ? '<span class="birthday-text" style="font-size: 24px;">' + msg.text + '</span>' : msg.text}</p>`;
-                        typingBubble.style.animation = 'none';
-                        typingBubble.offsetHeight;
-                        typingBubble.style.animation = 'fadeInScale 0.4s ease-out';
-
-                        if (msg.special) launchConfetti();
-
-                        if (msg.showButton) {
-                            const btnDiv = document.createElement('div');
-                            btnDiv.style.animation = 'fadeInUp 0.5s ease-out';
-                            btnDiv.innerHTML = '<button class="btn" onclick="startQuiz()">I\'m Ready! Let\'s Go! 💪</button>';
-                            container.appendChild(btnDiv);
-                        }
-
-                        index++;
-                        if (index < chatMessages.length) {
-                            setTimeout(showNextMessage, msg.delay || 1500);
-                        }
-
-                        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                    }, 1200);
+            setTimeout(()=>{
+                bubble.innerHTML=`<p>${msg.special?'<span class="birthday-text" style="font-size:26px">'+msg.text+'</span>':msg.text}</p>`;
+                bubble.style.animation='none';bubble.offsetHeight;bubble.style.animation='scaleIn .4s cubic-bezier(.16,1,.3,1)';
+                if(msg.special)launchConfetti();
+                if(msg.showButton){
+                    const d=document.createElement('div');
+                    d.style.animation='slideUp .5s cubic-bezier(.16,1,.3,1)';
+                    d.innerHTML='<button class="btn" onclick="startQuiz()">I\'m Ready! Let\'s Go! 💪</button>';
+                    container.appendChild(d);
                 }
-
-                setTimeout(showNextMessage, 500);
-            }, 1600);
+                index++;
+                if(index<chatMessages.length)setTimeout(next,msg.delay||1500);
+                window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+            },1100);
         }
+        setTimeout(next,500);
+    },1900);
+}
 
-        // ========== QUIZ ==========
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+// ===== QUIZ =====
+function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+}
 
-        function startQuiz() {
-            currentQuestion = 0;
-            score = 0;
-            showScreen('screen-quiz');
-            updateHeartsCounter();
-            loadQuestion();
-        }
+function startQuiz(){currentQuestion=0;score=0;showScreen('screen-quiz');updateHearts();loadQ()}
 
-        function updateHeartsCounter() {
-            const counter = document.getElementById('heartsCounter');
-            counter.innerHTML = '';
-            for (let i = 0; i < questions.length; i++) {
-                const heart = document.createElement('span');
-                heart.className = 'heart-icon';
-                if (i < score) { heart.textContent = '💖'; heart.classList.add('filled'); }
-                else if (i < currentQuestion) { heart.textContent = '💔'; heart.classList.add('empty'); }
-                else heart.textContent = '🤍';
-                counter.appendChild(heart);
-            }
-        }
+function updateHearts(){
+    const c=document.getElementById('heartsCounter');c.innerHTML='';
+    for(let i=0;i<questions.length;i++){
+        const h=document.createElement('span');h.className='heart-icon';
+        if(i<score){h.textContent='💖';h.classList.add('filled')}
+        else if(i<currentQuestion){h.textContent='💔';h.classList.add('empty')}
+        else h.textContent='🤍';
+        c.appendChild(h);
+    }
+}
 
-        function loadQuestion() {
-            if (currentQuestion >= questions.length) { finishQuiz(); return; }
-            answered = false;
-            const q = questions[currentQuestion];
+function loadQ(){
+    if(currentQuestion>=questions.length){finish();return}
+    answered=false;
+    const q=questions[currentQuestion];
+    document.getElementById('questionNum').textContent=currentQuestion+1;
+    document.getElementById('questionText').textContent=q.question;
+    document.getElementById('progressFill').style.width=((currentQuestion)/questions.length*100)+'%';
+    document.getElementById('scoreText').textContent=`Score: ${score} / ${questions.length}`;
+    const grid=document.getElementById('optionsGrid');grid.innerHTML='';
+    [...q.options].sort(()=>Math.random()-.5).forEach(opt=>{
+        const btn=document.createElement('button');btn.className='option-btn';btn.textContent=opt;
+        btn.onclick=()=>selectAnswer(btn,opt,q.correct);grid.appendChild(btn);
+    });
+    const card=document.getElementById('questionCard');card.style.animation='none';card.offsetHeight;card.style.animation='slideUp .5s cubic-bezier(.16,1,.3,1)';
+    updateQuizChat();
+    setExpression('q','thinking');
+}
 
-            document.getElementById('questionNum').textContent = currentQuestion + 1;
-            document.getElementById('questionText').textContent = q.question;
-            document.getElementById('progressFill').style.width = ((currentQuestion) / questions.length * 100) + '%';
-            document.getElementById('scoreText').textContent = `Score: ${score} / ${questions.length}`;
+function updateQuizChat(){
+    const t=["Okay here we go... 🤔","Ooh this one's important! 😏","Hmm, let's see if you remember THIS one... 👀","Almost there! Don't mess up now! 😬","Last one! No pressure... okay maybe a little! 🤭"];
+    document.getElementById('quizChatText').textContent=t[currentQuestion]||t[0];
+}
 
-            const grid = document.getElementById('optionsGrid');
-            grid.innerHTML = '';
-            const shuffled = [...q.options].sort(() => Math.random() - 0.5);
-            shuffled.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = 'option-btn';
-                btn.textContent = opt;
-                btn.onclick = () => selectAnswer(btn, opt, q.correct);
-                grid.appendChild(btn);
-            });
+function selectAnswer(btn,selected,correct){
+    if(answered)return;answered=true;
+    document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+    if(selected===correct){
+        btn.classList.add('correct');score++;createStarBurst(btn);
+        setExpression('q','happy');
+        const qs=document.getElementById('quizStage');qs.className='character-stage happy';setTimeout(()=>qs.className='character-stage idle',1500);
+        setTimeout(()=>{currentQuestion++;updateHearts();loadQ()},1200);
+    }else{
+        btn.classList.add('wrong');
+        document.querySelectorAll('.option-btn').forEach(b=>{if(b.textContent===correct)b.classList.add('correct')});
+        setExpression('q','sad');
+        const qs=document.getElementById('quizStage');qs.className='character-stage sad';setTimeout(()=>qs.className='character-stage idle',1500);
+        showWrongPopup();
+        setTimeout(()=>{currentQuestion++;updateHearts();loadQ()},3500);
+    }
+}
 
-            const card = document.getElementById('questionCard');
-            card.style.animation = 'none';
-            card.offsetHeight;
-            card.style.animation = 'fadeInUp 0.5s ease-out';
-            updateQuizChat();
-            setQuizCharExpression('thinking');
-        }
+function createStarBurst(el){
+    const r=el.getBoundingClientRect();const b=document.createElement('div');b.className='star-burst';
+    b.style.left=r.left+r.width/2+'px';b.style.top=r.top+r.height/2+'px';
+    ['⭐','✨','💖','🌟','💫','🎉','💕','✨'].forEach((e,i)=>{
+        const s=document.createElement('span');s.textContent=e;
+        const a=(i/8)*Math.PI*2;
+        s.style.setProperty('--tx',Math.cos(a)*65+'px');s.style.setProperty('--ty',Math.sin(a)*65+'px');
+        b.appendChild(s);
+    });
+    document.body.appendChild(b);setTimeout(()=>b.remove(),1000);
+}
 
-        function setQuizCharExpression(type) {
-            const eyes = document.getElementById('quizEyes');
-            const mouth = document.getElementById('quizMouth');
-            const char = document.getElementById('quizCharacter');
+function buildMiniChar(expr){
+    let eyesHtml,mouthHtml,browsHtml;
+    switch(expr){
+        case 'surprised':
+            browsHtml='<line x1="93" y1="76" x2="103" y2="74" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="74" x2="127" y2="76" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';
+            eyesHtml='<ellipse cx="98" cy="89" rx="7" ry="8" fill="#1a1a2e"/><circle cx="100" cy="87" r="2.5" fill="#fff"/><ellipse cx="122" cy="89" rx="7" ry="8" fill="#1a1a2e"/><circle cx="124" cy="87" r="2.5" fill="#fff"/>';
+            mouthHtml='<ellipse cx="110" cy="108" rx="6" ry="8" fill="#c0392b" opacity=".8"/>';break;
+        case 'sad':
+            browsHtml='<line x1="93" y1="78" x2="103" y2="82" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="82" x2="127" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';
+            eyesHtml='<ellipse cx="98" cy="91" rx="5" ry="6" fill="#1a1a2e"/><circle cx="99" cy="89" r="1.8" fill="#fff"/><ellipse cx="122" cy="91" rx="5" ry="6" fill="#1a1a2e"/><circle cx="123" cy="89" r="1.8" fill="#fff"/>';
+            mouthHtml='<path d="M104 110 Q110 102 116 110" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';break;
+        default:
+            browsHtml='<line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="74" x2="127" y2="76" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';
+            eyesHtml='<ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/><path d="M117 90 Q122 87 127 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>';
+            mouthHtml='<path d="M104 106 Q112 112 118 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';
+    }
+    return `<svg viewBox="0 0 220 300" fill="none" style="width:120px;height:160px;margin:0 auto;display:block">
+        <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#spg)"/>
+        <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#stg)"/>
+        <rect x="60" y="132" width="22" height="55" rx="11" fill="url(#spg)"/><rect x="138" y="132" width="22" height="55" rx="11" fill="url(#spg)"/>
+        <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
+        <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
+        <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
+        <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/><rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
+        ${browsHtml}${eyesHtml}${mouthHtml}
+        <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".4"/><ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".4"/>
+        <defs><linearGradient id="spg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient><linearGradient id="stg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+    </svg>`;
+}
 
-            const e = eyes.querySelectorAll('.char-eye');
-            e.forEach(el => el.className = 'char-eye');
-            mouth.className = 'char-mouth smile';
-            char.className = 'character-wrapper idle';
+function showWrongPopup(){
+    const r=wrongReactions[currentQuestion];
+    const ov=document.createElement('div');ov.className='overlay';document.body.appendChild(ov);
+    const p=document.createElement('div');p.className='wrong-popup';
+    p.innerHTML=`<div class="popup-char-wrap">${buildMiniChar(r.expr)}</div><h3>${r.title}</h3><p>${r.msg}</p>`;
+    document.body.appendChild(p);
+    setTimeout(()=>{ov.remove();p.remove()},3200);
+}
 
-            switch (type) {
-                case 'thinking':
-                    mouth.className = 'char-mouth smirk';
-                    char.className = 'character-wrapper idle thinking';
-                    break;
-                case 'happy':
-                    e.forEach(el => el.classList.add('happy-eye'));
-                    mouth.className = 'char-mouth big-smile';
-                    char.className = 'character-wrapper happy';
-                    break;
-                case 'sad':
-                    e.forEach(el => el.classList.add('sad-eye'));
-                    mouth.className = 'char-mouth sad-mouth';
-                    char.className = 'character-wrapper sad';
-                    break;
-                case 'surprised':
-                    e.forEach(el => el.classList.add('surprised-eye'));
-                    mouth.className = 'char-mouth open-mouth';
-                    break;
-            }
-        }
+function finish(){
+    document.getElementById('progressFill').style.width='100%';
+    if(score===questions.length)setTimeout(()=>{showScreen('screen-gift');launchConfetti()},500);
+    else setTimeout(()=>{showScreen('screen-fail');updateFail()},500);
+}
 
-        function updateQuizChat() {
-            const chatTexts = [
-                "Okay here we go... 🤔",
-                "Ooh this one's important! 😏",
-                "Hmm, let's see if you remember THIS one... 👀",
-                "Almost there! Don't mess up now! 😬",
-                "Last one! No pressure... okay maybe a little! 🤭"
-            ];
-            document.getElementById('quizChatText').textContent = chatTexts[currentQuestion] || chatTexts[0];
-        }
+function updateFail(){
+    const c=document.getElementById('failHearts');c.innerHTML='';
+    for(let i=0;i<questions.length;i++){
+        const h=document.createElement('span');h.className='heart-icon';
+        h.textContent=i<score?'💖':'💔';h.classList.add(i<score?'filled':'empty');c.appendChild(h);
+    }
+    const m=[
+        {t:"Zero?! ZERO?!",s:"You got NONE right?! Do you even know me?! 😭 Try again and THINK this time!"},
+        {t:"Just one?! Seriously?!",s:"One out of five... I've seen goldfish with better memory! 🐠"},
+        {t:"Not bad, not great!",s:"You remember SOME things but clearly need a calendar reminder! 📅"},
+        {t:"Sooo close!",s:"3 out of 5! Almost there but 'almost' doesn't get you a gift! 🎁"},
+        {t:"Just ONE more!",s:"4 out of 5! You were THIS close! 🤏 One more round!"}
+    ];
+    const d=m[score]||m[2];
+    document.getElementById('failTitle').textContent=d.t;
+    document.getElementById('failSubtitle').innerHTML=d.s;
+}
 
-        function selectAnswer(btn, selected, correct) {
-            if (answered) return;
-            answered = true;
-            const buttons = document.querySelectorAll('.option-btn');
-            buttons.forEach(b => b.disabled = true);
+function restartQuiz(){currentQuestion=0;score=0;showScreen('screen-quiz');updateHearts();loadQ()}
 
-            if (selected === correct) {
-                btn.classList.add('correct');
-                score++;
-                createStarBurst(btn);
-                setQuizCharExpression('happy');
+function openGift(){
+    const box=document.getElementById('giftBox'),content=document.getElementById('giftContent');
+    if(!content.classList.contains('hidden'))return;
+    box.style.animation='shake .5s ease';
+    setTimeout(()=>{box.textContent='🎊';setTimeout(()=>{box.classList.add('hidden');content.classList.remove('hidden');launchConfetti();launchConfetti()},600)},500);
+}
 
-                setTimeout(() => {
-                    currentQuestion++;
-                    updateHeartsCounter();
-                    loadQuestion();
-                }, 1200);
-            } else {
-                btn.classList.add('wrong');
-                buttons.forEach(b => { if (b.textContent === correct) b.classList.add('correct'); });
-                setQuizCharExpression('sad');
-                showWrongPopup();
+function launchConfetti(){
+    const colors=['#ec4899','#a855f7','#f43f5e','#f59e0b','#f9a8d4','#10b981','#fbbf24','#c084fc'];
+    const shapes=['■','●','▲','★','💕','✨'];
+    for(let i=0;i<60;i++){
+        setTimeout(()=>{
+            const c=document.createElement('div');c.className='confetti-piece';
+            c.textContent=shapes[Math.floor(Math.random()*shapes.length)];
+            c.style.left=Math.random()*100+'vw';c.style.color=colors[Math.floor(Math.random()*colors.length)];
+            c.style.fontSize=(Math.random()*12+8)+'px';c.style.animationDuration=(Math.random()*2+2)+'s';
+            c.style.animationDelay=Math.random()*.5+'s';document.body.appendChild(c);
+            setTimeout(()=>c.remove(),4000);
+        },i*30);
+    }
+}
 
-                setTimeout(() => {
-                    currentQuestion++;
-                    updateHeartsCounter();
-                    loadQuestion();
-                }, 3500);
-            }
-        }
-
-        function createStarBurst(element) {
-            const rect = element.getBoundingClientRect();
-            const burst = document.createElement('div');
-            burst.className = 'star-burst';
-            burst.style.left = rect.left + rect.width / 2 + 'px';
-            burst.style.top = rect.top + rect.height / 2 + 'px';
-            const emojis = ['⭐', '✨', '💖', '🌟', '💫', '🎉'];
-            for (let i = 0; i < 8; i++) {
-                const star = document.createElement('span');
-                star.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-                const angle = (i / 8) * Math.PI * 2;
-                star.style.setProperty('--tx', Math.cos(angle) * 60 + 'px');
-                star.style.setProperty('--ty', Math.sin(angle) * 60 + 'px');
-                burst.appendChild(star);
-            }
-            document.body.appendChild(burst);
-            setTimeout(() => burst.remove(), 1000);
-        }
-
-        function showWrongPopup() {
-            const reaction = wrongAnswerReactions[currentQuestion];
-
-            const overlay = document.createElement('div');
-            overlay.className = 'overlay';
-            document.body.appendChild(overlay);
-
-            const popup = document.createElement('div');
-            popup.className = 'wrong-popup';
-            popup.innerHTML = `
-                <div class="popup-char">${getMiniCharHTML(reaction.expression)}</div>
-                <h3>${reaction.title}</h3>
-                <p>${reaction.msg}</p>
-            `;
-            document.body.appendChild(popup);
-
-            setTimeout(() => { overlay.remove(); popup.remove(); }, 3200);
-        }
-
-        function finishQuiz() {
-            document.getElementById('progressFill').style.width = '100%';
-            if (score === questions.length) {
-                setTimeout(() => { showScreen('screen-gift'); launchConfetti(); }, 500);
-            } else {
-                setTimeout(() => { showScreen('screen-fail'); updateFailScreen(); }, 500);
-            }
-        }
-
-        function updateFailScreen() {
-            const failHearts = document.getElementById('failHearts');
-            failHearts.innerHTML = '';
-            for (let i = 0; i < questions.length; i++) {
-                const heart = document.createElement('span');
-                heart.className = 'heart-icon';
-                heart.textContent = i < score ? '💖' : '💔';
-                heart.classList.add(i < score ? 'filled' : 'empty');
-                failHearts.appendChild(heart);
-            }
-            const failMsgs = [
-                { title: "Zero?! ZERO?!", subtitle: "You got NONE right?! Do you even know this person?! 😭 Okay deep breaths... try again and THINK this time!" },
-                { title: "Just one?! Seriously?!", subtitle: "One out of five... I've seen goldfish with better memory! 🐠 Come on, you can do better!" },
-                { title: "Hmm... Not bad, not great!", subtitle: "You remember SOME things but clearly the important dates need a calendar reminder! 📅 Try again!" },
-                { title: "Sooo close!", subtitle: "3 out of 5! You're almost there but 'almost' doesn't get you a gift! One more try? 🎁" },
-                { title: "Just ONE more!", subtitle: "4 out of 5! You were THIS close! 🤏 Come on, you got this! One more round!" }
-            ];
-            const msgData = failMsgs[score] || failMsgs[2];
-            document.getElementById('failTitle').textContent = msgData.title;
-            document.getElementById('failSubtitle').innerHTML = msgData.subtitle;
-        }
-
-        function restartQuiz() {
-            currentQuestion = 0; score = 0;
-            showScreen('screen-quiz');
-            updateHeartsCounter();
-            loadQuestion();
-        }
-
-        // ========== GIFT ==========
-        function openGift() {
-            const box = document.getElementById('giftBox');
-            const content = document.getElementById('giftContent');
-            if (!content.classList.contains('hidden')) return;
-
-            box.style.animation = 'shake 0.5s ease';
-            setTimeout(() => {
-                box.textContent = '🎊';
-                box.classList.add('opened');
-                setTimeout(() => {
-                    box.classList.add('hidden');
-                    content.classList.remove('hidden');
-                    launchConfetti();
-                    launchConfetti();
-                }, 600);
-            }, 500);
-        }
-
-        function launchConfetti() {
-            const colors = ['#e91e63', '#ab47bc', '#ff8a80', '#ffd54f', '#f48fb1', '#b2dfdb', '#ffe0b2', '#ce93d8'];
-            const shapes = ['■', '●', '▲', '★', '💕', '✨'];
-            for (let i = 0; i < 60; i++) {
-                setTimeout(() => {
-                    const confetti = document.createElement('div');
-                    confetti.className = 'confetti-piece';
-                    confetti.textContent = shapes[Math.floor(Math.random() * shapes.length)];
-                    confetti.style.left = Math.random() * 100 + 'vw';
-                    confetti.style.color = colors[Math.floor(Math.random() * colors.length)];
-                    confetti.style.fontSize = (Math.random() * 12 + 8) + 'px';
-                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
-                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
-                    document.body.appendChild(confetti);
-                    setTimeout(() => confetti.remove(), 4000);
-                }, i * 30);
-            }
-        }
-
-        // ========== INIT ==========
-        createFloatingHearts();
-        createSparkles();
-        startChatSequence();
-    </script>
+// ===== INIT =====
+startChat();
+</script>
 </body>
 </html>
