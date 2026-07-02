@@ -4,808 +4,941 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A Special Surprise For You</title>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         :root{
-            --bg1:#fdf2f8;--bg2:#fce7f3;--bg3:#f5e6ff;
-            --pink:#ec4899;--rose:#f43f5e;--purple:#a855f7;
-            --gold:#f59e0b;--emerald:#10b981;
-            --glass:rgba(255,255,255,0.65);--glass-border:rgba(255,255,255,0.35);
+            --pink:#ec4899;--rose:#f43f5e;--purple:#a855f7;--indigo:#6366f1;
+            --gold:#f59e0b;--emerald:#10b981;--sky:#38bdf8;
+            --glass:rgba(255,255,255,0.6);--glass-border:rgba(255,255,255,0.3);
             --text:#1e1b4b;--text2:#6b21a8;--text-muted:#a78bfa;
+            --sunset1:#ff6b35;--sunset2:#f7931e;--sunset3:#ffd23f;
         }
-        body{
-            font-family:'Inter',sans-serif;
-            background:linear-gradient(160deg,#fdf2f8 0%,#fce7f3 30%,#f5e6ff 60%,#ede9fe 100%);
-            min-height:100vh;overflow-x:hidden;color:var(--text);
-        }
-
-        /* ===== AMBIENT PARTICLES ===== */
+        body{font-family:'Inter',sans-serif;background:#0a0a1a;min-height:100vh;overflow-x:hidden;color:#fff}
         canvas#particles{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
 
-        /* ===== LAYOUT ===== */
-        .container{position:relative;z-index:2;max-width:520px;margin:0 auto;padding:20px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
-        .screen{display:none;width:100%;animation:slideUp .7s cubic-bezier(.16,1,.3,1)}
-        .screen.active{display:flex;flex-direction:column;align-items:center}
-        .hidden{display:none!important}
-
-        @keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes scaleIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
-        @keyframes bounceIn{0%{transform:scale(0)}50%{transform:scale(1.12)}70%{transform:scale(.96)}100%{transform:scale(1)}}
-        @keyframes shake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-6px)}30%,60%,90%{transform:translateX(6px)}}
-        @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-        @keyframes confettiFall{0%{transform:translateY(-100vh) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
-
-        /* ===== SVG CHARACTER STAGE ===== */
-        .character-stage{
-            width:220px;height:300px;margin:0 auto 5px;position:relative;
+        /* ===== CINEMATIC WRAPPER ===== */
+        .cinema-wrapper{
+            position:relative;z-index:2;max-width:480px;margin:0 auto;
+            min-height:100vh;overflow:hidden;
         }
-        .character-stage svg{width:100%;height:100%}
 
-        /* Walk in */
-        .character-stage.walk-in{animation:charWalkIn 1.8s cubic-bezier(.16,1,.3,1) forwards}
-        @keyframes charWalkIn{
-            0%{transform:translateX(-280px) scale(.9);opacity:0}
-            50%{opacity:1}
-            70%{transform:translateX(12px) scale(1.02)}
-            85%{transform:translateX(-4px) scale(1)}
-            100%{transform:translateX(0) scale(1);opacity:1}
+        /* ===== TITLE CARD ===== */
+        .title-card{
+            height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+            background:radial-gradient(ellipse at center,#1a1035 0%,#0a0a1a 70%);
+            text-align:center;padding:40px 20px;position:relative;
         }
-        .character-stage.idle{animation:charIdle 4s ease-in-out infinite}
+        .title-card .filmgrain{
+            position:absolute;top:0;left:0;width:100%;height:100%;
+            background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+            opacity:.5;pointer-events:none;
+        }
+        .title-main{
+            font-family:'Dancing Script',cursive;font-size:clamp(32px,8vw,48px);
+            background:linear-gradient(135deg,#f9a8d4,#c084fc,#f9a8d4);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+            opacity:0;animation:titleFadeIn 2s ease 0.5s forwards;
+        }
+        .title-sub{
+            font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(14px,3.5vw,18px);
+            color:#a78bfa;margin-top:12px;opacity:0;animation:titleFadeIn 2s ease 1.5s forwards;
+        }
+        .title-names{
+            font-family:'Caveat',cursive;font-size:clamp(22px,5vw,30px);color:#f9a8d4;
+            margin-top:20px;opacity:0;animation:titleFadeIn 2s ease 2.5s forwards;
+        }
+        .tap-hint{
+            position:absolute;bottom:40px;font-size:13px;color:rgba(255,255,255,.4);
+            animation:titleFadeIn 2s ease 3.5s forwards,pulse 2s ease-in-out infinite;opacity:0;
+        }
+        @keyframes titleFadeIn{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.8}}
+
+        /* ===== SCENES ===== */
+        .scene{
+            min-height:100vh;display:none;flex-direction:column;
+            position:relative;overflow:hidden;
+        }
+        .scene.active{display:flex}
+        .scene-bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
+        .scene-content{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;padding:20px}
+        .scene-label{
+            position:absolute;top:20px;left:20px;z-index:10;
+            font-family:'Caveat',cursive;font-size:14px;color:rgba(255,255,255,.5);
+            background:rgba(0,0,0,.3);padding:4px 14px;border-radius:20px;
+            backdrop-filter:blur(10px);
+        }
+        .scene-music{
+            position:absolute;bottom:20px;left:20px;z-index:10;
+            font-size:12px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:6px;
+        }
+        .music-bars{display:flex;gap:2px;align-items:flex-end;height:14px}
+        .music-bars span{width:3px;background:var(--pink);border-radius:2px;animation:musicBar .8s ease-in-out infinite alternate}
+        .music-bars span:nth-child(1){height:6px;animation-delay:0s}
+        .music-bars span:nth-child(2){height:10px;animation-delay:.15s}
+        .music-bars span:nth-child(3){height:4px;animation-delay:.3s}
+        .music-bars span:nth-child(4){height:12px;animation-delay:.1s}
+        @keyframes musicBar{to{height:14px}}
+
+        .scene-next{
+            position:absolute;bottom:20px;right:20px;z-index:10;
+            background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);
+            color:#fff;padding:8px 20px;border-radius:30px;font-family:'Inter',sans-serif;
+            font-size:13px;cursor:pointer;backdrop-filter:blur(10px);
+            transition:all .3s ease;opacity:0;animation:fadeIn .5s ease 2s forwards;
+        }
+        .scene-next:hover{background:rgba(255,255,255,.25);transform:scale(1.05)}
+        @keyframes fadeIn{to{opacity:1}}
+
+        /* ===== SCENE BACKGROUNDS ===== */
+        .bg-room{background:linear-gradient(180deg,#1a1520 0%,#2d1f3d 50%,#1a1520 100%)}
+        .bg-phone{background:linear-gradient(180deg,#0f0a1a 0%,#1a1035 100%)}
+        .bg-street{background:linear-gradient(180deg,#87ceeb 0%,#e0f0ff 40%,#c8dbbe 70%,#8fbc8f 100%)}
+        .bg-montage{background:linear-gradient(180deg,#87ceeb 0%,#98d8c8 50%,#7ec8a4 100%)}
+        .bg-beach{background:linear-gradient(180deg,#1a0a2e 0%,#ff6b35 30%,#f7931e 50%,#ffd23f 70%,#1a0a2e 100%)}
+        .bg-sunset{
+            background:linear-gradient(180deg,
+                #0d0221 0%,#1a0533 10%,#3d1155 20%,
+                #ff6b35 45%,#f7931e 55%,#ffd23f 65%,
+                #ff6b35 75%,#1a0533 90%,#0d0221 100%);
+        }
+
+        /* ===== ANIMATED ELEMENTS ===== */
+
+        /* TV in room */
+        .tv-frame{
+            width:180px;height:120px;background:#111;border:4px solid #333;border-radius:8px;
+            margin:20px auto;position:relative;overflow:hidden;
+            box-shadow:0 0 30px rgba(168,85,247,.3);
+        }
+        .tv-glow{
+            width:100%;height:100%;background:linear-gradient(135deg,#1a1035,#2d1f5e);
+            display:flex;align-items:center;justify-content:center;
+            font-family:'Dancing Script',cursive;font-size:18px;color:#c084fc;
+            animation:tvFlicker 3s ease-in-out infinite;
+        }
+        @keyframes tvFlicker{0%,100%{opacity:.8}50%{opacity:1}}
+        .tv-stand{width:60px;height:8px;background:#333;margin:0 auto;border-radius:0 0 4px 4px}
+
+        /* Photo card */
+        .photo-card{
+            width:120px;height:140px;background:linear-gradient(135deg,#fce4ec,#f3e5f5);
+            border-radius:8px;margin:15px auto;box-shadow:0 8px 30px rgba(0,0,0,.3);
+            display:flex;align-items:center;justify-content:center;font-size:50px;
+            transform:rotate(-5deg);opacity:0;
+            animation:photoSlideIn 1s cubic-bezier(.16,1,.3,1) 1s forwards;
+        }
+        @keyframes photoSlideIn{from{opacity:0;transform:rotate(-15deg) scale(.5)}to{opacity:1;transform:rotate(-5deg) scale(1)}}
+
+        /* Phone chat UI */
+        .phone-frame{
+            width:260px;margin:15px auto;background:#111;border-radius:28px;
+            padding:8px;box-shadow:0 10px 40px rgba(0,0,0,.4);
+        }
+        .phone-screen{
+            background:#1a1025;border-radius:22px;padding:14px;min-height:280px;
+            display:flex;flex-direction:column;
+        }
+        .phone-header{
+            text-align:center;font-size:11px;color:rgba(255,255,255,.4);
+            padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:10px;
+        }
+        .phone-header .name{font-size:14px;color:#f9a8d4;font-weight:600}
+        .chat-msgs{flex:1;display:flex;flex-direction:column;gap:8px}
+        .chat-msg{
+            max-width:80%;padding:10px 14px;border-radius:16px;font-size:12.5px;
+            line-height:1.5;opacity:0;animation:msgPopIn .5s cubic-bezier(.16,1,.3,1) forwards;
+        }
+        .chat-msg.sent{
+            align-self:flex-end;background:linear-gradient(135deg,var(--purple),var(--indigo));
+            color:#fff;border-bottom-right-radius:4px;
+        }
+        .chat-msg.received{
+            align-self:flex-start;background:rgba(255,255,255,.1);
+            color:#e2d6f5;border-bottom-left-radius:4px;
+        }
+        .chat-msg.special{
+            align-self:flex-end;background:linear-gradient(135deg,var(--pink),var(--rose));
+            color:#fff;border-bottom-right-radius:4px;font-size:14px;font-weight:600;
+        }
+        @keyframes msgPopIn{from{opacity:0;transform:translateY(10px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+        /* Bike */
+        .bike-scene{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+        .bike-svg{animation:bikeRide 3s ease-in-out infinite}
+        @keyframes bikeRide{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-4px) rotate(-1deg)}75%{transform:translateY(-4px) rotate(1deg)}}
+
+        /* Road */
+        .road{
+            position:absolute;bottom:0;left:0;width:100%;height:35%;
+            background:linear-gradient(180deg,#555 0%,#444 100%);
+        }
+        .road::before{
+            content:'';position:absolute;top:50%;left:0;width:100%;height:3px;
+            background:repeating-linear-gradient(90deg,#ffd23f 0%,#ffd23f 30px,transparent 30px,transparent 60px);
+            animation:roadMove 1s linear infinite;
+        }
+        @keyframes roadMove{to{transform:translateX(-60px)}}
+        .road-side{position:absolute;bottom:35%;left:0;width:100%;height:4px;background:#6b7280}
+
+        /* Silhouette couple */
+        .silhouette-scene{
+            flex:1;display:flex;align-items:flex-end;justify-content:center;
+            padding-bottom:15%;position:relative;
+        }
+        .silhouette-couple{
+            opacity:0;animation:silhouetteFadeIn 2s ease 1s forwards;
+        }
+        @keyframes silhouetteFadeIn{to{opacity:1}}
+
+        /* Sun */
+        .sunset-sun{
+            position:absolute;top:30%;left:50%;transform:translateX(-50%);
+            width:120px;height:120px;border-radius:50%;
+            background:radial-gradient(circle,#ffd23f 0%,#f7931e 40%,#ff6b35 70%,transparent 100%);
+            box-shadow:0 0 60px rgba(255,210,63,.4),0 0 120px rgba(247,147,30,.2);
+            animation:sunPulse 4s ease-in-out infinite;
+        }
+        @keyframes sunPulse{0%,100%{transform:translateX(-50%) scale(1);opacity:.9}50%{transform:translateX(-50%) scale(1.05);opacity:1}}
+
+        /* Water */
+        .water{
+            position:absolute;bottom:0;left:0;width:100%;height:25%;
+            background:linear-gradient(180deg,rgba(255,107,53,.3),rgba(26,5,51,.8));
+        }
+        .water::before{
+            content:'';position:absolute;top:0;left:0;width:200%;height:100%;
+            background:repeating-linear-gradient(90deg,transparent,rgba(255,255,255,.05) 50px,transparent 100px);
+            animation:waterShimmer 4s linear infinite;
+        }
+        @keyframes waterShimmer{to{transform:translateX(-50%)}}
+
+        /* Montage grid */
+        .montage-grid{
+            display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:15px;margin-top:auto;margin-bottom:auto;
+        }
+        .montage-card{
+            background:rgba(255,255,255,.15);backdrop-filter:blur(10px);
+            border-radius:16px;padding:20px 14px;text-align:center;
+            border:1px solid rgba(255,255,255,.2);
+            opacity:0;transform:scale(.8);
+        }
+        .montage-card.show{animation:cardPop .6s cubic-bezier(.16,1,.3,1) forwards}
+        @keyframes cardPop{to{opacity:1;transform:scale(1)}}
+        .montage-icon{font-size:36px;margin-bottom:8px}
+        .montage-label{font-size:12px;color:rgba(255,255,255,.7);font-family:'Caveat',cursive;font-size:16px}
+
+        /* Scene narration text */
+        .narration{
+            font-family:'Playfair Display',serif;font-style:italic;
+            font-size:clamp(16px,4vw,20px);color:rgba(255,255,255,.85);
+            text-align:center;padding:20px;line-height:1.7;
+            opacity:0;animation:narrateFadeIn 1.5s ease .5s forwards;
+        }
+        @keyframes narrateFadeIn{to{opacity:1}}
+
+        /* ===== TRANSITION ===== */
+        .scene-transition{
+            position:fixed;top:0;left:0;width:100%;height:100%;z-index:999;
+            background:#0a0a1a;display:none;align-items:center;justify-content:center;
+        }
+        .scene-transition.active{display:flex;animation:transFlash .8s ease forwards}
+        @keyframes transFlash{0%{opacity:0}30%{opacity:1}70%{opacity:1}100%{opacity:0}}
+
+        /* ============================
+           QUIZ / GIFT SECTION (Light BG)
+           ============================ */
+        .app-section{
+            background:linear-gradient(160deg,#fdf2f8 0%,#fce7f3 30%,#f5e6ff 60%,#ede9fe 100%);
+            min-height:100vh;display:none;color:var(--text);
+        }
+        .app-section.active{display:block}
+        .app-container{
+            max-width:520px;margin:0 auto;padding:20px;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            min-height:100vh;
+        }
+
+        /* Character stage (reused from before) */
+        .char-stage{width:180px;height:240px;margin:0 auto 8px}
+        .char-stage svg{width:100%;height:100%}
+        .char-stage.idle{animation:charIdle 4s ease-in-out infinite}
+        .char-stage.happy{animation:charHappy .6s ease-in-out 3}
+        .char-stage.sad{animation:charSad .5s ease-in-out 2}
         @keyframes charIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-        .character-stage.happy{animation:charHappy .6s ease-in-out 3}
-        @keyframes charHappy{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-18px) rotate(-3deg)}70%{transform:translateY(-18px) rotate(3deg)}}
-        .character-stage.sad{animation:charSad .5s ease-in-out 2}
+        @keyframes charHappy{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-15px) rotate(-3deg)}70%{transform:translateY(-15px) rotate(3deg)}}
         @keyframes charSad{0%,100%{transform:rotate(0)}25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
 
-        /* ===== GLASS CHAT BUBBLE ===== */
-        .chat-bubble{
-            background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-            border:1px solid var(--glass-border);
-            border-radius:20px;padding:16px 22px;margin:8px 0;
+        /* Glass bubble */
+        .g-bubble{
+            background:var(--glass);backdrop-filter:blur(20px);
+            border:1px solid var(--glass-border);border-radius:20px;
+            padding:14px 20px;margin:8px 0;max-width:92%;
             box-shadow:0 8px 32px rgba(168,85,247,.12);
-            max-width:92%;position:relative;animation:scaleIn .5s cubic-bezier(.16,1,.3,1);
+            animation:scaleIn .5s cubic-bezier(.16,1,.3,1);position:relative;
         }
-        .chat-bubble::after{
-            content:'';position:absolute;top:-7px;left:50%;transform:translateX(-50%);
-            width:14px;height:14px;background:var(--glass);
+        .g-bubble::after{
+            content:'';position:absolute;top:-6px;left:50%;
+            width:12px;height:12px;background:var(--glass);
             border:1px solid var(--glass-border);border-bottom:0;border-right:0;
-            transform:translateX(-50%) rotate(45deg);
-            backdrop-filter:blur(20px);
+            transform:translateX(-50%) rotate(45deg);backdrop-filter:blur(20px);
         }
-        .chat-bubble p{font-size:15px;line-height:1.65;color:var(--text)}
+        .g-bubble p{font-size:14.5px;line-height:1.6;color:var(--text)}
+        @keyframes scaleIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+
         .typing-dots{display:inline-flex;gap:5px;padding:6px 0}
-        .typing-dots span{width:8px;height:8px;border-radius:50%;background:var(--purple);animation:dotBounce 1.4s ease-in-out infinite}
+        .typing-dots span{width:7px;height:7px;border-radius:50%;background:var(--purple);animation:dotB 1.4s ease-in-out infinite}
         .typing-dots span:nth-child(2){animation-delay:.15s}
         .typing-dots span:nth-child(3){animation-delay:.3s}
-        @keyframes dotBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-10px);opacity:1}}
+        @keyframes dotB{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-8px);opacity:1}}
 
-        /* ===== BUTTONS ===== */
         .btn{
             background:linear-gradient(135deg,var(--pink),var(--purple));
-            color:#fff;border:none;padding:14px 40px;border-radius:60px;
+            color:#fff;border:none;padding:13px 36px;border-radius:60px;
             font-family:'Inter',sans-serif;font-size:15px;font-weight:600;
             cursor:pointer;transition:all .3s cubic-bezier(.16,1,.3,1);
-            box-shadow:0 6px 24px rgba(168,85,247,.35);margin-top:18px;letter-spacing:.3px;
+            box-shadow:0 6px 24px rgba(168,85,247,.35);margin-top:15px;
         }
         .btn:hover{transform:translateY(-3px) scale(1.03);box-shadow:0 10px 32px rgba(168,85,247,.45)}
-        .btn:active{transform:translateY(0) scale(.98)}
 
-        /* ===== QUESTION CARD ===== */
-        .question-card{
-            background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-            border:1px solid var(--glass-border);
-            border-radius:24px;padding:26px;width:100%;
-            box-shadow:0 8px 40px rgba(168,85,247,.1);animation:slideUp .6s cubic-bezier(.16,1,.3,1);
+        .q-card{
+            background:var(--glass);backdrop-filter:blur(20px);
+            border:1px solid var(--glass-border);border-radius:24px;
+            padding:24px;width:100%;box-shadow:0 8px 40px rgba(168,85,247,.1);
+            animation:slideUp .6s cubic-bezier(.16,1,.3,1);
         }
-        .question-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-        .question-number{
-            width:38px;height:38px;border-radius:50%;
+        @keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+        .q-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+        .q-num{
+            width:36px;height:36px;border-radius:50%;
             background:linear-gradient(135deg,var(--pink),var(--purple));
             color:#fff;display:flex;align-items:center;justify-content:center;
-            font-weight:700;font-size:16px;flex-shrink:0;
+            font-weight:700;font-size:15px;flex-shrink:0;
         }
-        .question-text{font-size:16px;font-weight:600;color:var(--text);font-family:'Playfair Display',serif}
-        .progress-bar{width:100%;height:5px;background:rgba(168,85,247,.12);border-radius:3px;margin-bottom:20px;overflow:hidden}
-        .progress-fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple));border-radius:3px;transition:width .5s ease}
-        .options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-        .option-btn{
+        .q-text{font-size:15px;font-weight:600;color:var(--text);font-family:'Playfair Display',serif}
+        .prog-bar{width:100%;height:5px;background:rgba(168,85,247,.12);border-radius:3px;margin-bottom:18px;overflow:hidden}
+        .prog-fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple));border-radius:3px;transition:width .5s ease}
+        .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+        .opt{
             background:rgba(255,255,255,.7);backdrop-filter:blur(10px);
-            border:2px solid rgba(168,85,247,.15);border-radius:16px;
-            padding:15px 12px;font-family:'Inter',sans-serif;
-            font-size:13.5px;font-weight:500;color:var(--text);
-            cursor:pointer;transition:all .3s ease;text-align:center;
+            border:2px solid rgba(168,85,247,.12);border-radius:16px;
+            padding:14px 10px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;
+            color:var(--text);cursor:pointer;transition:all .3s ease;text-align:center;
         }
-        .option-btn:hover{border-color:var(--purple);transform:translateY(-2px);box-shadow:0 6px 20px rgba(168,85,247,.15)}
-        .option-btn.correct{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:var(--emerald);animation:bounceIn .5s ease}
-        .option-btn.wrong{background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:var(--rose);animation:shake .5s ease}
-        .option-btn:disabled{cursor:not-allowed;opacity:.65}
+        .opt:hover{border-color:var(--purple);transform:translateY(-2px);box-shadow:0 6px 20px rgba(168,85,247,.15)}
+        .opt.correct{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:var(--emerald);animation:bounceIn .5s ease}
+        .opt.wrong{background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:var(--rose);animation:shake .5s ease}
+        .opt:disabled{cursor:not-allowed;opacity:.6}
+        @keyframes bounceIn{0%{transform:scale(0)}50%{transform:scale(1.12)}70%{transform:scale(.96)}100%{transform:scale(1)}}
+        @keyframes shake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-6px)}30%,60%,90%{transform:translateX(6px)}}
 
-        .score-display{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);margin-bottom:10px}
-        .hearts-counter{display:flex;gap:8px;justify-content:center;margin:12px 0}
-        .heart-icon{font-size:22px;transition:all .3s ease}
-        .heart-icon.filled{animation:bounceIn .4s ease}
-        .heart-icon.empty{filter:grayscale(1);opacity:.25}
+        .hearts-row{display:flex;gap:8px;justify-content:center;margin:10px 0}
+        .h-icon{font-size:22px;transition:all .3s}
+        .h-icon.filled{animation:bounceIn .4s ease}
+        .h-icon.empty{filter:grayscale(1);opacity:.25}
+        .score-row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);margin-bottom:10px}
 
-        /* ===== WRONG POPUP ===== */
-        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(30,27,75,.45);backdrop-filter:blur(4px);z-index:99;animation:fadeIn .3s ease}
-        .wrong-popup{
-            position:fixed;top:50%;left:50%;
-            transform:translate(-50%,-50%) scale(0);
-            background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-            border:1px solid var(--glass-border);
-            border-radius:28px;padding:32px;z-index:100;
+        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(30,27,75,.45);backdrop-filter:blur(4px);z-index:99;animation:fadeInQ .3s ease}
+        @keyframes fadeInQ{from{opacity:0}to{opacity:1}}
+        .popup{
+            position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+            background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--glass-border);
+            border-radius:28px;padding:30px;z-index:100;
             box-shadow:0 24px 64px rgba(30,27,75,.25);
             text-align:center;max-width:400px;width:90%;
             animation:bounceIn .5s cubic-bezier(.16,1,.3,1) forwards;
         }
-        .wrong-popup .popup-char-wrap{margin:0 auto 12px;width:140px;height:190px}
-        .wrong-popup h3{font-family:'Playfair Display',serif;color:var(--text);margin-bottom:8px;font-size:20px}
-        .wrong-popup p{color:var(--text2);font-size:14px;line-height:1.65}
+        .popup h3{font-family:'Playfair Display',serif;color:var(--text);margin-bottom:8px;font-size:20px}
+        .popup p{color:var(--text2);font-size:14px;line-height:1.6}
 
-        /* ===== GIFT ===== */
         .gift-reveal{text-align:center;padding:15px}
         .gift-box{
-            width:160px;height:160px;margin:18px auto;cursor:pointer;
-            animation:float 2.5s ease-in-out infinite;
-            font-size:110px;display:flex;align-items:center;justify-content:center;
-            transition:transform .4s cubic-bezier(.16,1,.3,1);
-            filter:drop-shadow(0 12px 30px rgba(236,72,153,.35));
+            width:150px;height:150px;margin:16px auto;cursor:pointer;
+            animation:float 2.5s ease-in-out infinite;font-size:100px;
+            display:flex;align-items:center;justify-content:center;
+            transition:transform .4s;filter:drop-shadow(0 12px 30px rgba(236,72,153,.35));
         }
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
         .gift-box:hover{transform:scale(1.12)}
-        .gift-title{font-family:'Dancing Script',cursive;font-size:38px;color:var(--pink);margin:12px 0;animation:slideUp 1s ease}
-        .teddy-reveal{font-size:140px;animation:bounceIn 1s cubic-bezier(.16,1,.3,1);filter:drop-shadow(0 10px 30px rgba(0,0,0,.15))}
-        .gift-message{font-family:'Dancing Script',cursive;font-size:22px;color:var(--text);margin:18px 0;line-height:1.85}
-        .birthday-text{
-            font-family:'Dancing Script',cursive;font-size:44px;
+        .gift-title{font-family:'Dancing Script',cursive;font-size:36px;color:var(--pink);margin:10px 0}
+        .teddy-reveal{font-size:130px;animation:bounceIn 1s cubic-bezier(.16,1,.3,1);filter:drop-shadow(0 10px 30px rgba(0,0,0,.15))}
+        .gift-msg{font-family:'Dancing Script',cursive;font-size:22px;color:var(--text);margin:16px 0;line-height:1.8}
+        .bday-text{
+            font-family:'Dancing Script',cursive;font-size:42px;
             background:linear-gradient(135deg,var(--pink),var(--purple),var(--rose));
             -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
             animation:pulse 2.5s ease-in-out infinite;
         }
-        .intro-flowers{display:flex;gap:10px;font-size:26px;margin:8px 0;animation:float 3s ease-in-out infinite;justify-content:center}
-        .confetti-piece{position:fixed;width:10px;height:10px;top:-10px;z-index:200;animation:confettiFall 3s linear forwards}
+        .flowers{display:flex;gap:10px;font-size:24px;margin:8px 0;justify-content:center;animation:float 3s ease-in-out infinite}
+        .confetti{position:fixed;top:-10px;z-index:200;animation:confettiFall 3s linear forwards}
+        @keyframes confettiFall{0%{transform:translateY(-100vh) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
         .star-burst{position:fixed;pointer-events:none;z-index:50}
-        .star-burst span{position:absolute;font-size:22px;animation:starBurst .8s ease-out forwards}
-        @keyframes starBurst{0%{transform:translate(0,0) scale(0);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(1);opacity:0}}
+        .star-burst span{position:absolute;font-size:20px;animation:starB .8s ease-out forwards}
+        @keyframes starB{0%{transform:translate(0,0) scale(0);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(1);opacity:0}}
 
-        .fail-text{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);margin:10px 0}
-        .fail-subtitle{font-size:14px;color:var(--text2);line-height:1.65;margin-bottom:18px}
-        .chat-sequence{width:100%;display:flex;flex-direction:column;align-items:center}
+        .fail-t{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);margin:10px 0}
+        .fail-s{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:16px}
+
+        .hidden{display:none!important}
 
         @media(max-width:480px){
-            .container{padding:15px}
-            .question-card{padding:18px}
-            .birthday-text{font-size:32px}
-            .character-stage{transform:scale(.82);margin-bottom:0}
-            .option-btn{padding:13px 8px;font-size:12.5px}
+            .phone-frame{width:240px}
+            .phone-screen{min-height:240px;padding:12px}
+            .tv-frame{width:150px;height:100px}
+            .montage-grid{gap:8px;padding:10px}
+            .q-card{padding:18px}
+            .bday-text{font-size:32px}
+            .char-stage{transform:scale(.8)}
         }
     </style>
 </head>
 <body>
 <canvas id="particles"></canvas>
-<div class="container">
 
-    <!-- SCREEN 1: WELCOME -->
-    <div class="screen active" id="screen-welcome">
-        <div class="character-stage" id="mainStage">
-            <svg id="mainChar" viewBox="0 0 220 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <!-- Shadow -->
-                <ellipse cx="110" cy="290" rx="40" ry="6" fill="rgba(0,0,0,.08)">
-                    <animate attributeName="rx" values="40;36;40" dur="4s" repeatCount="indefinite"/>
-                </ellipse>
+<div class="cinema-wrapper" id="cinemaWrapper">
 
-                <!-- LEFT LEG -->
-                <g id="mainLeftLeg">
-                    <rect x="88" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/>
-                    <rect x="84" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
-                </g>
-                <!-- RIGHT LEG -->
-                <g id="mainRightLeg">
-                    <rect x="116" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/>
-                    <rect x="112" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
-                </g>
-
-                <!-- BODY / SUIT -->
-                <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#suitGrad)"/>
-                <!-- Suit lapels -->
-                <path d="M100 130 L110 165 L98 165 Z" fill="#1e1b4b" opacity=".25"/>
-                <path d="M120 130 L110 165 L122 165 Z" fill="#1e1b4b" opacity=".25"/>
-                <!-- Tie -->
-                <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#tieGrad)"/>
-                <!-- Shirt collar -->
-                <path d="M98 130 L110 148 L122 130" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>
-                <!-- Pocket square -->
-                <rect x="120" y="145" width="10" height="8" rx="2" fill="#ec4899" opacity=".7"/>
-
-                <!-- LEFT ARM -->
-                <g id="mainLeftArm" style="transform-origin:90px 135px">
-                    <rect x="60" y="132" width="22" height="55" rx="11" fill="url(#suitGrad)"/>
-                    <circle cx="71" cy="192" r="9" fill="#e8b89d"/>
-                </g>
-                <!-- RIGHT ARM -->
-                <g id="mainRightArm" style="transform-origin:130px 135px">
-                    <rect x="138" y="132" width="22" height="55" rx="11" fill="url(#suitGrad)"/>
-                    <circle cx="149" cy="192" r="9" fill="#e8b89d"/>
-                    <!-- Flower in hand (hidden initially) -->
-                    <g id="flowerInHand" opacity="0">
-                        <text x="142" y="132" font-size="22">🌹</text>
-                    </g>
-                </g>
-
-                <!-- NECK -->
-                <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
-
-                <!-- HEAD -->
-                <g id="mainHead">
-                    <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
-                    <!-- Hair -->
-                    <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
-                    <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
-                    <rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
-                    <!-- Side hair -->
-                    <path d="M78 80 Q72 90 76 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
-                    <path d="M142 80 Q148 90 144 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
-
-                    <!-- FACE -->
-                    <!-- Eyebrows -->
-                    <g id="mainBrows">
-                        <line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
-                        <line x1="117" y1="78" x2="127" y2="80" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
-                    </g>
-                    <!-- Eyes -->
-                    <g id="mainEyes">
-                        <g id="eyeL">
-                            <ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/>
-                            <circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/>
-                        </g>
-                        <g id="eyeR">
-                            <ellipse cx="122" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/>
-                            <circle cx="123.5" cy="88.5" r="1.8" fill="#fff"/>
-                        </g>
-                    </g>
-                    <!-- Blink overlay (animated) -->
-                    <rect id="blinkL" x="91" y="84" width="14" height="12" rx="6" fill="#e8b89d" opacity="0">
-                        <animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/>
-                    </rect>
-                    <rect id="blinkR" x="115" y="84" width="14" height="12" rx="6" fill="#e8b89d" opacity="0">
-                        <animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/>
-                    </rect>
-
-                    <!-- Mouth -->
-                    <g id="mainMouth">
-                        <path d="M104 104 Q110 112 116 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>
-                    </g>
-
-                    <!-- Blush -->
-                    <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
-                    <ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
-                </g>
-
-                <!-- Gradients -->
-                <defs>
-                    <linearGradient id="suitGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#312e81"/>
-                        <stop offset="100%" stop-color="#1e1b4b"/>
-                    </linearGradient>
-                    <linearGradient id="tieGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#ec4899"/>
-                        <stop offset="100%" stop-color="#a855f7"/>
-                    </linearGradient>
-                </defs>
-            </svg>
-        </div>
-        <div class="chat-sequence" id="chatSequence"></div>
+    <!-- TITLE CARD -->
+    <div class="title-card" id="titleCard" onclick="startFilm()">
+        <div class="filmgrain"></div>
+        <div class="title-main">A Love Story</div>
+        <div class="title-sub">told in six scenes</div>
+        <div class="title-names">Vishal & Athishree</div>
+        <div class="tap-hint">tap anywhere to begin</div>
     </div>
 
-    <!-- SCREEN 2: QUIZ -->
-    <div class="screen" id="screen-quiz">
-        <div class="character-stage idle" id="quizStage" style="transform:scale(.6);margin-bottom:0">
-            <svg id="quizChar" viewBox="0 0 220 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="110" cy="290" rx="40" ry="6" fill="rgba(0,0,0,.08)"/>
-                <g id="qLeftLeg"><rect x="88" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="84" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/></g>
-                <g id="qRightLeg"><rect x="116" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="112" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/></g>
-                <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#suitGrad2)"/>
-                <path d="M100 130 L110 165 L98 165 Z" fill="#1e1b4b" opacity=".25"/>
-                <path d="M120 130 L110 165 L122 165 Z" fill="#1e1b4b" opacity=".25"/>
-                <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#tieGrad2)"/>
-                <path d="M98 130 L110 148 L122 130" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>
-                <rect x="120" y="145" width="10" height="8" rx="2" fill="#ec4899" opacity=".7"/>
-                <g id="qLeftArm" style="transform-origin:90px 135px"><rect x="60" y="132" width="22" height="55" rx="11" fill="url(#suitGrad2)"/><circle cx="71" cy="192" r="9" fill="#e8b89d"/></g>
-                <g id="qRightArm" style="transform-origin:130px 135px"><rect x="138" y="132" width="22" height="55" rx="11" fill="url(#suitGrad2)"/><circle cx="149" cy="192" r="9" fill="#e8b89d"/></g>
-                <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
-                <g id="qHead">
-                    <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
-                    <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
-                    <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
-                    <rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
-                    <path d="M78 80 Q72 90 76 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
-                    <path d="M142 80 Q148 90 144 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
-                    <g id="qBrows"><line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="78" x2="127" y2="80" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/></g>
-                    <g id="qEyes">
-                        <ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/>
-                        <ellipse cx="122" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="123.5" cy="88.5" r="1.8" fill="#fff"/>
-                    </g>
-                    <rect x="91" y="84" width="14" height="12" rx="6" fill="#e8b89d" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
-                    <rect x="115" y="84" width="14" height="12" rx="6" fill="#e8b89d" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
-                    <g id="qMouth"><path d="M104 104 Q110 112 116 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/></g>
-                    <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
-                    <ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
-                </g>
-                <defs>
-                    <linearGradient id="suitGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient>
-                    <linearGradient id="tieGrad2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
-                </defs>
-            </svg>
-        </div>
-        <div class="chat-bubble" style="margin-bottom:12px"><p id="quizChatText">Alright! Let's see how well you remember... 🤔</p></div>
-        <div class="hearts-counter" id="heartsCounter"></div>
-        <div class="question-card" id="questionCard">
-            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-            <div class="score-display"><span>✨</span><span id="scoreText">Score: 0 / 5</span></div>
-            <div class="question-header">
-                <div class="question-number" id="questionNum">1</div>
-                <div class="question-text" id="questionText"></div>
+    <!-- SCENE 1: First Glimpse -->
+    <div class="scene" id="scene1">
+        <div class="scene-bg bg-room"></div>
+        <div class="scene-label">Scene 1 — First Glimpse</div>
+        <div class="scene-content" style="align-items:center;justify-content:center">
+            <div class="narration">Vishal walks into the hall...<br>switches on the TV...</div>
+            <div class="tv-frame"><div class="tv-glow">Minnale</div></div>
+            <div class="tv-stand"></div>
+            <div class="narration" style="animation-delay:1.5s;font-size:15px;margin-top:15px">
+                Nitish hands him a photo...<br>and the Minnale title track rises 🎵
             </div>
-            <div class="options-grid" id="optionsGrid"></div>
+            <div class="photo-card">👩</div>
+            <div class="narration" style="animation-delay:2.5s;font-size:14px;color:rgba(255,255,255,.6)">
+                Vishal begins messaging Athishree... 💌
+            </div>
         </div>
+        <div class="scene-music"><div class="music-bars"><span></span><span></span><span></span><span></span></div> Minnale Title Track</div>
+        <button class="scene-next" onclick="goScene(2)">Next →</button>
     </div>
 
-    <!-- SCREEN 3: GIFT -->
-    <div class="screen" id="screen-gift">
-        <div class="gift-reveal">
-            <div class="character-stage happy" style="transform:scale(.55);margin-bottom:0">
-                <svg viewBox="0 0 220 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <ellipse cx="110" cy="290" rx="40" ry="6" fill="rgba(0,0,0,.08)"/>
-                    <rect x="88" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="84" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
-                    <rect x="116" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="112" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
-                    <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#sg3)"/>
-                    <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#tg3)"/>
-                    <path d="M98 130 L110 148 L122 130" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>
-                    <g style="transform-origin:90px 135px;transform:rotate(30deg)"><rect x="60" y="132" width="22" height="55" rx="11" fill="url(#sg3)"/><circle cx="71" cy="192" r="9" fill="#e8b89d"/></g>
-                    <g style="transform-origin:130px 135px;transform:rotate(-30deg)"><rect x="138" y="132" width="22" height="55" rx="11" fill="url(#sg3)"/><circle cx="149" cy="192" r="9" fill="#e8b89d"/></g>
-                    <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
-                    <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
-                    <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
-                    <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/><rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
-                    <path d="M78 80 Q72 90 76 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
-                    <path d="M142 80 Q148 90 144 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
-                    <!-- Happy eyes (closed arcs) -->
-                    <path d="M93 90 Q98 84 103 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-                    <path d="M117 90 Q122 84 127 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-                    <path d="M100 104 Q110 116 120 104" stroke="#c0392b" stroke-width="2.5" fill="#c0392b" opacity=".8" stroke-linecap="round"/>
-                    <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".45"/>
-                    <ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".45"/>
-                    <defs><linearGradient id="sg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient><linearGradient id="tg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+    <!-- SCENE 2: Conversation Begins -->
+    <div class="scene" id="scene2">
+        <div class="scene-bg bg-phone"></div>
+        <div class="scene-label">Scene 2 — Conversation Begins</div>
+        <div class="scene-content" style="align-items:center;justify-content:center">
+            <div class="narration" style="font-size:14px;margin-bottom:10px">Day 1 & Day 2 — The chats that started it all</div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="phone-header"><div class="name">Athishree ❤️</div><div>online</div></div>
+                    <div class="chat-msgs" id="scene2Msgs"></div>
+                </div>
+            </div>
+        </div>
+        <div class="scene-music"><div class="music-bars"><span></span><span></span><span></span><span></span></div> Soft Minnale Motif</div>
+        <button class="scene-next" onclick="goScene(3)">Next →</button>
+    </div>
+
+    <!-- SCENE 3: Ask for Meetup -->
+    <div class="scene" id="scene3">
+        <div class="scene-bg bg-phone"></div>
+        <div class="scene-label">Scene 3 — The Big Question</div>
+        <div class="scene-content" style="align-items:center;justify-content:center">
+            <div class="narration" style="font-size:14px;margin-bottom:10px">Day 3 — The moment of courage</div>
+            <div class="phone-frame">
+                <div class="phone-screen">
+                    <div class="phone-header"><div class="name">Athishree ❤️</div><div>typing...</div></div>
+                    <div class="chat-msgs" id="scene3Msgs"></div>
+                </div>
+            </div>
+            <div class="narration" style="animation-delay:3s;font-size:15px;margin-top:15px;color:#f9a8d4">
+                She blushes and says... "Yes" 🥰
+            </div>
+        </div>
+        <div class="scene-music"><div class="music-bars"><span></span><span></span><span></span><span></span></div> Sirikkadhey 🎵</div>
+        <button class="scene-next" onclick="goScene(4)">Next →</button>
+    </div>
+
+    <!-- SCENE 4: First Meet -->
+    <div class="scene" id="scene4">
+        <div class="scene-bg bg-street"></div>
+        <div class="scene-label">Scene 4 — First Meet</div>
+        <div class="scene-content">
+            <div class="narration" style="color:#1e1b4b;margin-top:30px">
+                Vishal rides his bike...<br>spots Athishree waiting across the road... 🏍️
+            </div>
+            <div class="bike-scene">
+                <svg class="bike-svg" width="180" height="140" viewBox="0 0 180 140">
+                    <!-- Bike -->
+                    <circle cx="40" cy="110" r="22" fill="none" stroke="#333" stroke-width="4"/>
+                    <circle cx="140" cy="110" r="22" fill="none" stroke="#333" stroke-width="4"/>
+                    <path d="M40 110 L80 70 L120 70 L140 110" stroke="#555" stroke-width="3" fill="none"/>
+                    <path d="M80 70 L60 50" stroke="#555" stroke-width="3" fill="none"/>
+                    <line x1="55" y1="48" x2="68" y2="48" stroke="#555" stroke-width="3"/>
+                    <!-- Person on bike -->
+                    <circle cx="72" cy="32" r="12" fill="#e8b89d"/>
+                    <path d="M65 25 Q72 18 79 25" fill="#1a1a2e"/>
+                    <rect x="66" y="42" width="12" height="22" rx="4" fill="#312e81"/>
+                    <polygon points="70,44 74,44 75,58 72,60 69,58" fill="#ec4899" transform="scale(.4) translate(103,55)"/>
                 </svg>
             </div>
-            <div class="birthday-text">Happy Birthday!</div>
-            <div class="intro-flowers">🌸 🌺 🌷 🌹 🌸</div>
-            <p style="color:var(--text2);margin:8px 0;font-size:14px">You got all answers right! You really remember everything about us!</p>
-            <p style="color:var(--text);font-weight:600;margin:14px 0">Tap the gift to reveal your surprise...</p>
-            <div class="gift-box" id="giftBox" onclick="openGift()">🎁</div>
-            <div id="giftContent" class="hidden">
-                <div class="teddy-reveal">🧸</div>
-                <div class="gift-title">A Big Teddy Bear!</div>
-                <div class="gift-message">
-                    Because you deserve the biggest, softest, most huggable teddy in the world...
-                    <br>just like how you make my world the warmest place!
-                    <br><br>I love you more than words can say 💕
-                </div>
-                <div class="intro-flowers">💝 🧸 💝 🧸 💝</div>
+            <div class="road-side"></div>
+            <div class="road"></div>
+            <div class="narration" style="color:#1e1b4b;position:absolute;bottom:38%;left:0;right:0;animation-delay:1.5s;font-size:15px">
+                She walks toward him with joy and anticipation... 💕
             </div>
         </div>
+        <div class="scene-music" style="color:rgba(30,27,75,.5)"><div class="music-bars"><span style="background:#6b21a8"></span><span style="background:#6b21a8"></span><span style="background:#6b21a8"></span><span style="background:#6b21a8"></span></div> Sirikkadhey continues</div>
+        <button class="scene-next" style="color:#1e1b4b;border-color:rgba(30,27,75,.2);background:rgba(30,27,75,.1)" onclick="goScene(5)">Next →</button>
     </div>
 
-    <!-- SCREEN 4: FAIL -->
-    <div class="screen" id="screen-fail">
-        <div class="character-stage sad" style="transform:scale(.55);margin-bottom:5px">
-            <svg viewBox="0 0 220 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <ellipse cx="110" cy="290" rx="40" ry="6" fill="rgba(0,0,0,.08)"/>
-                <rect x="88" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="84" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
-                <rect x="116" y="210" width="16" height="55" rx="8" fill="#2d2d3f"/><rect x="112" y="258" width="24" height="12" rx="6" fill="#1a1a2e"/>
-                <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#sg4)"/>
-                <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#tg4)"/>
-                <path d="M98 130 L110 148 L122 130" stroke="#fff" stroke-width="2" fill="none" opacity=".6"/>
-                <g style="transform-origin:90px 135px;transform:rotate(5deg)"><rect x="60" y="132" width="22" height="55" rx="11" fill="url(#sg4)"/><circle cx="71" cy="192" r="9" fill="#e8b89d"/></g>
-                <g style="transform-origin:130px 135px;transform:rotate(-5deg)"><rect x="138" y="132" width="22" height="55" rx="11" fill="url(#sg4)"/><circle cx="149" cy="192" r="9" fill="#e8b89d"/></g>
-                <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
-                <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
-                <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
-                <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/><rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
-                <path d="M78 80 Q72 90 76 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
-                <path d="M142 80 Q148 90 144 105" stroke="#1a1a2e" stroke-width="6" stroke-linecap="round" fill="none"/>
-                <!-- Sad eyebrows -->
-                <line x1="93" y1="78" x2="103" y2="82" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
-                <line x1="117" y1="82" x2="127" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
-                <ellipse cx="98" cy="90" rx="5" ry="6" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/>
-                <ellipse cx="122" cy="90" rx="5" ry="6" fill="#1a1a2e"/><circle cx="123.5" cy="88.5" r="1.8" fill="#fff"/>
-                <!-- Sad mouth -->
-                <path d="M104 110 Q110 102 116 110" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>
-                <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
-                <ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".35"/>
-                <defs><linearGradient id="sg4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient><linearGradient id="tg4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
-            </svg>
+    <!-- SCENE 5: Montage -->
+    <div class="scene" id="scene5">
+        <div class="scene-bg bg-montage"></div>
+        <div class="scene-label" style="color:rgba(30,27,75,.5)">Scene 5 — Together</div>
+        <div class="scene-content" style="justify-content:center">
+            <div class="narration" style="color:#1e1b4b;font-size:15px;margin-bottom:10px">
+                The memories they made together...
+            </div>
+            <div class="montage-grid" id="montageGrid">
+                <div class="montage-card"><div class="montage-icon">🏍️</div><div class="montage-label">Bike rides</div></div>
+                <div class="montage-card"><div class="montage-icon">😂</div><div class="montage-label">Laughing</div></div>
+                <div class="montage-card"><div class="montage-icon">😜</div><div class="montage-label">Teasing</div></div>
+                <div class="montage-card"><div class="montage-icon">🌅</div><div class="montage-label">Random spots</div></div>
+                <div class="montage-card"><div class="montage-icon">🍦</div><div class="montage-label">Street food</div></div>
+                <div class="montage-card"><div class="montage-icon">💕</div><div class="montage-label">Carefree days</div></div>
+            </div>
         </div>
-        <div style="text-align:center">
-            <div class="fail-text" id="failTitle">Hmmm... Really?!</div>
-            <div class="fail-subtitle" id="failSubtitle">You forgot some of our special moments?!<br>I'm giving you another chance only because it's my birthday! 😏</div>
-            <div class="hearts-counter" id="failHearts"></div>
-            <button class="btn" onclick="restartQuiz()">Try Again! 🔄</button>
+        <div class="scene-music" style="color:rgba(30,27,75,.5)"><div class="music-bars"><span style="background:#6b21a8"></span><span style="background:#6b21a8"></span><span style="background:#6b21a8"></span><span style="background:#6b21a8"></span></div> Sirikkadhey continues</div>
+        <button class="scene-next" style="color:#1e1b4b;border-color:rgba(30,27,75,.2);background:rgba(30,27,75,.1)" onclick="goScene(6)">Next →</button>
+    </div>
+
+    <!-- SCENE 6: Beach / Sunset -->
+    <div class="scene" id="scene6">
+        <div class="scene-bg bg-sunset"></div>
+        <div class="scene-label">Scene 6 — The Beach</div>
+        <div class="scene-content">
+            <div class="sunset-sun"></div>
+            <div class="silhouette-scene">
+                <svg class="silhouette-couple" width="200" height="220" viewBox="0 0 200 220">
+                    <!-- Him -->
+                    <g fill="#0d0221">
+                        <circle cx="70" cy="35" r="18"/>
+                        <rect x="58" y="50" width="24" height="55" rx="6"/>
+                        <rect x="46" y="55" width="14" height="45" rx="7"/>
+                        <rect x="80" y="55" width="14" height="45" rx="7" transform="rotate(-15,87,55)"/>
+                        <rect x="58" y="100" width="12" height="50" rx="6"/>
+                        <rect x="70" y="100" width="12" height="50" rx="6"/>
+                    </g>
+                    <!-- Her -->
+                    <g fill="#0d0221">
+                        <circle cx="130" cy="38" r="17"/>
+                        <path d="M115 55 Q122 52 130 52 Q138 52 145 55 L150 110 Q132 120 110 110 Z"/>
+                        <rect x="105" y="55" width="12" height="40" rx="6" transform="rotate(10,105,55)"/>
+                        <rect x="143" y="55" width="12" height="40" rx="6" transform="rotate(-5,149,55)"/>
+                        <rect x="118" y="108" width="10" height="48" rx="5"/>
+                        <rect x="132" y="108" width="10" height="48" rx="5"/>
+                        <!-- Saree drape -->
+                        <path d="M115 55 Q108 80 115 110" stroke="#0d0221" stroke-width="3" fill="none"/>
+                    </g>
+                    <!-- Holding hands hint -->
+                    <ellipse cx="100" cy="100" rx="8" ry="5" fill="#0d0221"/>
+                </svg>
+            </div>
+            <div class="water"></div>
+            <div class="narration" style="position:absolute;top:12%;left:0;right:0;z-index:5;font-size:14px">
+                Two silhouettes against the sunset...<br>a moment frozen in time ✨
+            </div>
+        </div>
+        <div class="scene-music"><div class="music-bars"><span></span><span></span><span></span><span></span></div> Sirikkadhey (outro)</div>
+        <button class="scene-next" onclick="startApp()">Continue to your surprise →</button>
+    </div>
+</div>
+
+<!-- SCENE TRANSITION FLASH -->
+<div class="scene-transition" id="sceneTrans"></div>
+
+<!-- ===== QUIZ / GIFT APP ===== -->
+<div class="app-section" id="appSection">
+    <div class="app-container">
+        <!-- Welcome chat -->
+        <div id="app-welcome" class="hidden">
+            <div class="char-stage idle" id="appCharStage">
+                <svg id="appChar" viewBox="0 0 180 240" fill="none">
+                    <ellipse cx="90" cy="232" rx="32" ry="5" fill="rgba(0,0,0,.06)"/>
+                    <rect x="72" y="168" width="13" height="44" rx="6" fill="#2d2d3f"/><rect x="68" y="206" width="20" height="10" rx="5" fill="#1a1a2e"/>
+                    <rect x="95" y="168" width="13" height="44" rx="6" fill="#2d2d3f"/><rect x="91" y="206" width="20" height="10" rx="5" fill="#1a1a2e"/>
+                    <rect x="64" y="104" width="52" height="68" rx="10" fill="url(#asg)"/>
+                    <polygon points="87,112 93,112 94,136 90,140 86,136" fill="url(#atg)"/>
+                    <path d="M80 104 L90 118 L100 104" stroke="#fff" stroke-width="1.5" fill="none" opacity=".5"/>
+                    <g style="transform-origin:74px 108px"><rect x="48" y="106" width="18" height="44" rx="9" fill="url(#asg)"/><circle cx="57" cy="154" r="7" fill="#e8b89d"/></g>
+                    <g style="transform-origin:106px 108px"><rect x="114" y="106" width="18" height="44" rx="9" fill="url(#asg)"/><circle cx="123" cy="154" r="7" fill="#e8b89d"/></g>
+                    <rect x="83" y="94" width="14" height="14" rx="3" fill="#e8b89d"/>
+                    <g id="appHead">
+                        <ellipse cx="90" cy="76" rx="26" ry="28" fill="#e8b89d"/>
+                        <path d="M64 68 Q64 44 90 42 Q116 44 116 68 Q114 52 90 50 Q66 52 64 68Z" fill="#1a1a2e"/>
+                        <rect x="64" y="56" width="7" height="20" rx="3" fill="#1a1a2e"/><rect x="109" y="56" width="7" height="20" rx="3" fill="#1a1a2e"/>
+                        <path d="M64 64 Q58 72 62 84" stroke="#1a1a2e" stroke-width="5" stroke-linecap="round" fill="none"/>
+                        <path d="M116 64 Q122 72 118 84" stroke="#1a1a2e" stroke-width="5" stroke-linecap="round" fill="none"/>
+                        <g id="appEyes">
+                            <ellipse cx="80" cy="72" rx="4" ry="4.5" fill="#1a1a2e"/><circle cx="81.2" cy="70.8" r="1.5" fill="#fff"/>
+                            <ellipse cx="100" cy="72" rx="4" ry="4.5" fill="#1a1a2e"/><circle cx="101.2" cy="70.8" r="1.5" fill="#fff"/>
+                        </g>
+                        <rect x="74" y="67" width="12" height="10" rx="5" fill="#e8b89d" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
+                        <rect x="94" y="67" width="12" height="10" rx="5" fill="#e8b89d" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
+                        <g id="appMouth"><path d="M84 84 Q90 92 96 84" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/></g>
+                        <ellipse cx="72" cy="80" rx="6" ry="3" fill="#f9a8d4" opacity=".35"/>
+                        <ellipse cx="108" cy="80" rx="6" ry="3" fill="#f9a8d4" opacity=".35"/>
+                    </g>
+                    <defs><linearGradient id="asg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient><linearGradient id="atg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+                </svg>
+            </div>
+            <div id="appChat" style="width:100%;display:flex;flex-direction:column;align-items:center"></div>
+        </div>
+        <!-- Quiz -->
+        <div id="app-quiz" class="hidden">
+            <div class="char-stage idle" id="qzStage" style="transform:scale(.55);margin-bottom:0">
+                <svg viewBox="0 0 180 240" fill="none">
+                    <ellipse cx="90" cy="232" rx="32" ry="5" fill="rgba(0,0,0,.06)"/>
+                    <rect x="72" y="168" width="13" height="44" rx="6" fill="#2d2d3f"/><rect x="68" y="206" width="20" height="10" rx="5" fill="#1a1a2e"/>
+                    <rect x="95" y="168" width="13" height="44" rx="6" fill="#2d2d3f"/><rect x="91" y="206" width="20" height="10" rx="5" fill="#1a1a2e"/>
+                    <rect x="64" y="104" width="52" height="68" rx="10" fill="url(#qsg)"/>
+                    <polygon points="87,112 93,112 94,136 90,140 86,136" fill="url(#qtg)"/>
+                    <path d="M80 104 L90 118 L100 104" stroke="#fff" stroke-width="1.5" fill="none" opacity=".5"/>
+                    <rect x="48" y="106" width="18" height="44" rx="9" fill="url(#qsg)"/><rect x="114" y="106" width="18" height="44" rx="9" fill="url(#qsg)"/>
+                    <rect x="83" y="94" width="14" height="14" rx="3" fill="#e8b89d"/>
+                    <ellipse cx="90" cy="76" rx="26" ry="28" fill="#e8b89d"/>
+                    <path d="M64 68 Q64 44 90 42 Q116 44 116 68 Q114 52 90 50 Q66 52 64 68Z" fill="#1a1a2e"/>
+                    <rect x="64" y="56" width="7" height="20" rx="3" fill="#1a1a2e"/><rect x="109" y="56" width="7" height="20" rx="3" fill="#1a1a2e"/>
+                    <path d="M64 64 Q58 72 62 84" stroke="#1a1a2e" stroke-width="5" stroke-linecap="round" fill="none"/>
+                    <path d="M116 64 Q122 72 118 84" stroke="#1a1a2e" stroke-width="5" stroke-linecap="round" fill="none"/>
+                    <ellipse cx="80" cy="72" rx="4" ry="4.5" fill="#1a1a2e"/><circle cx="81.2" cy="70.8" r="1.5" fill="#fff"/>
+                    <ellipse cx="100" cy="72" rx="4" ry="4.5" fill="#1a1a2e"/><circle cx="101.2" cy="70.8" r="1.5" fill="#fff"/>
+                    <rect x="74" y="67" width="12" height="10" rx="5" fill="#e8b89d" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
+                    <rect x="94" y="67" width="12" height="10" rx="5" fill="#e8b89d" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
+                    <path d="M84 84 Q90 88 96 84" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <ellipse cx="72" cy="80" rx="6" ry="3" fill="#f9a8d4" opacity=".35"/><ellipse cx="108" cy="80" rx="6" ry="3" fill="#f9a8d4" opacity=".35"/>
+                    <defs><linearGradient id="qsg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient><linearGradient id="qtg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+                </svg>
+            </div>
+            <div class="g-bubble" style="margin-bottom:12px"><p id="qzChat">Let's see how well you remember... 🤔</p></div>
+            <div class="hearts-row" id="hRow"></div>
+            <div class="q-card" id="qCard">
+                <div class="prog-bar"><div class="prog-fill" id="pFill" style="width:0%"></div></div>
+                <div class="score-row"><span>✨</span><span id="sTxt">Score: 0 / 5</span></div>
+                <div class="q-header"><div class="q-num" id="qNum">1</div><div class="q-text" id="qTxt"></div></div>
+                <div class="opts" id="oGrid"></div>
+            </div>
+        </div>
+        <!-- Gift -->
+        <div id="app-gift" class="hidden">
+            <div class="gift-reveal">
+                <div class="bday-text">Happy Birthday!</div>
+                <div class="flowers">🌸 🌺 🌷 🌹 🌸</div>
+                <p style="color:var(--text2);margin:8px 0;font-size:14px">You got all answers right! You truly remember every moment 💕</p>
+                <p style="color:var(--text);font-weight:600;margin:12px 0">Tap the gift to reveal your surprise...</p>
+                <div class="gift-box" id="gBox" onclick="openGift()">🎁</div>
+                <div id="gContent" class="hidden">
+                    <div class="teddy-reveal">🧸</div>
+                    <div class="gift-title">A Big Teddy Bear!</div>
+                    <div class="gift-msg">
+                        Because you deserve the biggest, softest, most huggable teddy...
+                        <br>just like how you make my world the warmest place!
+                        <br><br>I love you more than words can say 💕
+                    </div>
+                    <div class="flowers">💝 🧸 💝 🧸 💝</div>
+                </div>
+            </div>
+        </div>
+        <!-- Fail -->
+        <div id="app-fail" class="hidden">
+            <div style="text-align:center">
+                <div class="fail-t" id="fTitle">Hmmm... Really?!</div>
+                <div class="fail-s" id="fSub">You forgot some of our special moments?!<br>Try again! 😏</div>
+                <div class="hearts-row" id="fHearts"></div>
+                <button class="btn" onclick="restartQuiz()">Try Again! 🔄</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// ===== DATA =====
-const questions = [
-    {question:"When did he first approach you? 😏",correct:"Apr 2, 2025",options:["Mar 31, 2025","Apr 2, 2025","Apr 4, 2025","Apr 1, 2025"]},
-    {question:"When was your first kiss? 💋",correct:"Aug 15, 2025",options:["Aug 13, 2025","Aug 16, 2025","Aug 15, 2025","Aug 14, 2025"]},
-    {question:"When was your first fight? 😡💕",correct:"Aug 26, 2025",options:["Aug 25, 2025","Aug 26, 2025","Aug 28, 2025","Aug 24, 2025"]},
-    {question:"When did the home engagement happen? 💍",correct:"Aug 27, 2025",options:["Aug 29, 2025","Aug 26, 2025","Aug 27, 2025","Aug 28, 2025"]},
-    {question:"When was your first movie together? 🎬🍿",correct:"Sep 21, 2025",options:["Sep 20, 2025","Sep 22, 2025","Sep 19, 2025","Sep 21, 2025"]}
-];
-
-const wrongReactions = [
-    {title:"Excuse me?!",msg:"You forgot when I approached you?! I gathered all my courage that day and you don't even remember the date! The audacity! 😤",expr:"surprised"},
-    {title:"Girl... NO!",msg:"You forgot our FIRST KISS?! My lips are crying right now. Somewhere a romantic movie just stopped playing out of respect. 😭",expr:"sad"},
-    {title:"Oh wow!",msg:"You forgot our first FIGHT?! That's the day we learned love isn't just butterflies — it's also dramatic WhatsApp statuses! 📱😂",expr:"smirk"},
-    {title:"This is painful!",msg:"The ENGAGEMENT date?! You know... that tiny little moment where we said 'yes' to FOREVER?! Ring any bells? 💍🔔",expr:"sad"},
-    {title:"Are you serious?!",msg:"You forgot our first movie date?! The popcorn remembers. The seats remember. Even the interval samosa remembers. But you don't! 🍿😩",expr:"surprised"}
-];
-
-const chatMessages = [
-    {text:"Hey there! 👋✨",delay:800,action:"wave"},
-    {text:"Wait... is that really you? Oh my! 😍",delay:1800,action:"surprised"},
-    {text:"I'm so glad you're here! I've got something special planned... 💫",delay:2000,action:"happy"},
-    {text:"Someone who loves you very much asked me to do this today... 🌹",delay:2200,action:"flower"},
-    {text:"But first... HAPPY BIRTHDAY! 🎂🎉🥳",delay:1500,special:true,action:"celebrate"},
-    {text:"Now here's the deal — I have a GIFT for you! 🎁✨ But you've got to earn it! 😏",delay:2200,action:"smirk"},
-    {text:"I'll ask you 5 questions about our love story... Get ALL of them right and the gift is yours! Ready? 💕",delay:2500,showButton:true,action:"happy"}
-];
-
-let currentQuestion=0, score=0, answered=false;
-
 // ===== PARTICLES =====
-const canvas=document.getElementById('particles');
-const ctx=canvas.getContext('2d');
-let particles=[];
-function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight}
-window.addEventListener('resize',resizeCanvas);resizeCanvas();
+const cv=document.getElementById('particles'),cx=cv.getContext('2d');let pts=[];
+function resizeCv(){cv.width=innerWidth;cv.height=innerHeight}
+addEventListener('resize',resizeCv);resizeCv();
+class Pt{constructor(){this.reset()}
+reset(){this.x=Math.random()*cv.width;this.y=Math.random()*cv.height;this.s=Math.random()*2.5+.5;this.vy=Math.random()*-.3-.05;this.vx=Math.random()*.3-.15;this.o=Math.random()*.3+.05;this.h=Math.random()>.5?330:270}
+update(){this.y+=this.vy;this.x+=this.vx;this.o-=.0005;if(this.y<0||this.o<=0)this.reset()}
+draw(){cx.beginPath();cx.arc(this.x,this.y,this.s,0,Math.PI*2);cx.fillStyle=`hsla(${this.h},80%,70%,${this.o})`;cx.fill()}}
+for(let i=0;i<40;i++)pts.push(new Pt());
+(function anim(){cx.clearRect(0,0,cv.width,cv.height);pts.forEach(p=>{p.update();p.draw()});requestAnimationFrame(anim)})();
 
-class Particle{
-    constructor(){this.reset()}
-    reset(){
-        this.x=Math.random()*canvas.width;
-        this.y=Math.random()*canvas.height;
-        this.size=Math.random()*3+1;
-        this.speedY=Math.random()*-.3-.1;
-        this.speedX=Math.random()*.4-.2;
-        this.opacity=Math.random()*.4+.1;
-        this.hue=Math.random()>0.5?330:270;
-    }
-    update(){
-        this.y+=this.speedY;this.x+=this.speedX;
-        this.opacity-=.001;
-        if(this.y<0||this.opacity<=0)this.reset();
-    }
-    draw(){
-        ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
-        ctx.fillStyle=`hsla(${this.hue},80%,70%,${this.opacity})`;ctx.fill();
-    }
-}
-for(let i=0;i<50;i++)particles.push(new Particle());
-function animateParticles(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    particles.forEach(p=>{p.update();p.draw()});
-    requestAnimationFrame(animateParticles);
-}
-animateParticles();
+// ===== CINEMATIC FLOW =====
+let currentScene=0;
 
-// ===== CHARACTER ANIMATIONS (SVG) =====
-function animateArm(armId, angle, dur=400){
-    const arm=document.getElementById(armId);
-    if(!arm)return;
-    arm.style.transition=`transform ${dur}ms cubic-bezier(.16,1,.3,1)`;
-    arm.style.transform=`rotate(${angle}deg)`;
-}
-function resetArm(armId,dur=400){
-    const arm=document.getElementById(armId);
-    if(!arm)return;
-    arm.style.transition=`transform ${dur}ms cubic-bezier(.16,1,.3,1)`;
-    arm.style.transform='rotate(0deg)';
+function startFilm(){
+    document.getElementById('titleCard').style.display='none';
+    goScene(1);
 }
 
-function setMouth(mouthId, type){
-    const mouth=document.getElementById(mouthId);
-    if(!mouth)return;
-    switch(type){
-        case 'smile': mouth.innerHTML='<path d="M104 104 Q110 112 116 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';break;
-        case 'big-smile': mouth.innerHTML='<path d="M100 104 Q110 116 120 104" stroke="#c0392b" stroke-width="2.5" fill="#c0392b" opacity=".8" stroke-linecap="round"/>';break;
-        case 'open': mouth.innerHTML='<ellipse cx="110" cy="108" rx="6" ry="8" fill="#c0392b" opacity=".8"/>';break;
-        case 'sad': mouth.innerHTML='<path d="M104 110 Q110 102 116 110" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';break;
-        case 'smirk': mouth.innerHTML='<path d="M104 106 Q112 112 118 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';break;
-    }
-}
-
-function setEyes(eyesId, type){
-    const eyes=document.getElementById(eyesId);
-    if(!eyes)return;
-    switch(type){
-        case 'normal':
-            eyes.innerHTML=`<g><ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/></g>
-            <g><ellipse cx="122" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="123.5" cy="88.5" r="1.8" fill="#fff"/></g>`;break;
-        case 'happy':
-            eyes.innerHTML=`<path d="M93 90 Q98 84 103 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-            <path d="M117 90 Q122 84 127 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;break;
-        case 'surprised':
-            eyes.innerHTML=`<ellipse cx="98" cy="89" rx="7" ry="8" fill="#1a1a2e"/><circle cx="100" cy="87" r="2.5" fill="#fff"/>
-            <ellipse cx="122" cy="89" rx="7" ry="8" fill="#1a1a2e"/><circle cx="124" cy="87" r="2.5" fill="#fff"/>`;break;
-        case 'wink':
-            eyes.innerHTML=`<g><ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/></g>
-            <path d="M117 90 Q122 87 127 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;break;
-        case 'sad':
-            eyes.innerHTML=`<ellipse cx="98" cy="91" rx="5" ry="6" fill="#1a1a2e"/><circle cx="99" cy="89" r="1.8" fill="#fff"/>
-            <ellipse cx="122" cy="91" rx="5" ry="6" fill="#1a1a2e"/><circle cx="123" cy="89" r="1.8" fill="#fff"/>`;break;
-    }
-}
-
-function setBrows(browsId, type){
-    const brows=document.getElementById(browsId);
-    if(!brows)return;
-    switch(type){
-        case 'normal': brows.innerHTML='<line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="78" x2="127" y2="80" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';break;
-        case 'raised': brows.innerHTML='<line x1="93" y1="76" x2="103" y2="74" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="74" x2="127" y2="76" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';break;
-        case 'sad': brows.innerHTML='<line x1="93" y1="78" x2="103" y2="82" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="82" x2="127" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';break;
-        case 'one-up': brows.innerHTML='<line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="74" x2="127" y2="76" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';break;
-    }
-}
-
-function setExpression(prefix, expr){
-    const eyesId = prefix+'Eyes', mouthId = prefix+'Mouth', browsId = prefix+'Brows';
-    switch(expr){
-        case 'smile': setEyes(eyesId,'normal'); setMouth(mouthId,'smile'); setBrows(browsId,'normal'); break;
-        case 'happy': setEyes(eyesId,'happy'); setMouth(mouthId,'big-smile'); setBrows(browsId,'normal'); break;
-        case 'surprised': setEyes(eyesId,'surprised'); setMouth(mouthId,'open'); setBrows(browsId,'raised'); break;
-        case 'wink': setEyes(eyesId,'wink'); setMouth(mouthId,'smirk'); setBrows(browsId,'one-up'); break;
-        case 'smirk': setEyes(eyesId,'normal'); setMouth(mouthId,'smirk'); setBrows(browsId,'one-up'); break;
-        case 'sad': setEyes(eyesId,'sad'); setMouth(mouthId,'sad'); setBrows(browsId,'sad'); break;
-        case 'thinking': setEyes(eyesId,'normal'); setMouth(mouthId,'smirk'); setBrows(browsId,'one-up'); break;
-    }
-}
-
-function doWave(){
-    let count=0;
-    const wave=setInterval(()=>{
-        animateArm('mainRightArm', count%2===0 ? -50 : -20, 300);
-        count++;
-        if(count>5){clearInterval(wave);resetArm('mainRightArm');}
-    },300);
-}
-
-function showFlower(){
-    const f=document.getElementById('flowerInHand');
-    if(f){
-        animateArm('mainRightArm',-60,500);
-        setTimeout(()=>f.setAttribute('opacity','1'),400);
-        setTimeout(()=>{f.setAttribute('opacity','0');resetArm('mainRightArm');},2500);
-    }
-}
-
-// ===== CHAT SEQUENCE =====
-function startChat(){
-    const container=document.getElementById('chatSequence');
-    const stage=document.getElementById('mainStage');
-    let index=0;
-
-    stage.classList.add('walk-in');
-
+function goScene(n){
+    const trans=document.getElementById('sceneTrans');
+    trans.classList.add('active');
     setTimeout(()=>{
-        stage.classList.remove('walk-in');
-        stage.classList.add('idle');
-
-        function next(){
-            if(index>=chatMessages.length)return;
-            const msg=chatMessages[index];
-
-            // Character action
-            switch(msg.action){
-                case 'wave': setExpression('main','happy'); doWave(); break;
-                case 'surprised': setExpression('main','surprised'); break;
-                case 'happy': setExpression('main','happy'); break;
-                case 'flower': setExpression('main','wink'); showFlower(); break;
-                case 'celebrate': setExpression('main','happy'); stage.className='character-stage happy'; setTimeout(()=>stage.className='character-stage idle',2000); break;
-                case 'smirk': setExpression('main','smirk'); break;
-            }
-
-            const bubble=document.createElement('div');
-            bubble.className='chat-bubble';
-            bubble.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
-            container.appendChild(bubble);
-            window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
-
-            setTimeout(()=>{
-                bubble.innerHTML=`<p>${msg.special?'<span class="birthday-text" style="font-size:26px">'+msg.text+'</span>':msg.text}</p>`;
-                bubble.style.animation='none';bubble.offsetHeight;bubble.style.animation='scaleIn .4s cubic-bezier(.16,1,.3,1)';
-                if(msg.special)launchConfetti();
-                if(msg.showButton){
-                    const d=document.createElement('div');
-                    d.style.animation='slideUp .5s cubic-bezier(.16,1,.3,1)';
-                    d.innerHTML='<button class="btn" onclick="startQuiz()">I\'m Ready! Let\'s Go! 💪</button>';
-                    container.appendChild(d);
-                }
-                index++;
-                if(index<chatMessages.length)setTimeout(next,msg.delay||1500);
-                window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
-            },1100);
+        // Hide all scenes
+        document.querySelectorAll('.scene').forEach(s=>s.classList.remove('active'));
+        const scene=document.getElementById('scene'+n);
+        if(scene){
+            scene.classList.add('active');
+            currentScene=n;
+            if(n===2)animateScene2();
+            if(n===3)animateScene3();
+            if(n===5)animateScene5();
         }
-        setTimeout(next,500);
-    },1900);
+        setTimeout(()=>trans.classList.remove('active'),100);
+    },400);
+}
+
+function animateScene2(){
+    const msgs=[
+        {type:'sent',text:'Hey! How are you? 😊',delay:500},
+        {type:'received',text:'Hi! I\'m good, you? 😄',delay:1200},
+        {type:'sent',text:'Better now that you replied! 😏',delay:2000},
+        {type:'received',text:'Haha smooth! 😂',delay:2800},
+        {type:'sent',text:'What are you up to today?',delay:3500},
+        {type:'received',text:'Nothing much... just thinking 🤔',delay:4200},
+        {type:'sent',text:'Thinking about me? 😜',delay:5000},
+        {type:'received',text:'Maybe... 🙈💕',delay:5800},
+    ];
+    const container=document.getElementById('scene2Msgs');
+    container.innerHTML='';
+    msgs.forEach(m=>{
+        setTimeout(()=>{
+            const div=document.createElement('div');
+            div.className=`chat-msg ${m.type}`;
+            div.textContent=m.text;
+            div.style.animationDelay='0s';
+            container.appendChild(div);
+            container.scrollTop=container.scrollHeight;
+        },m.delay);
+    });
+}
+
+function animateScene3(){
+    const msgs=[
+        {type:'sent',text:'I need to ask you something...',delay:500},
+        {type:'received',text:'What is it? 🤔',delay:1500},
+        {type:'special',text:'Meet pannalama? 🥺',delay:2500},
+        {type:'received',text:'Yes! 🥰💕',delay:4000},
+    ];
+    const container=document.getElementById('scene3Msgs');
+    container.innerHTML='';
+    msgs.forEach(m=>{
+        setTimeout(()=>{
+            const div=document.createElement('div');
+            div.className=`chat-msg ${m.type}`;
+            div.textContent=m.text;
+            container.appendChild(div);
+            container.scrollTop=container.scrollHeight;
+        },m.delay);
+    });
+}
+
+function animateScene5(){
+    const cards=document.querySelectorAll('#montageGrid .montage-card');
+    cards.forEach((c,i)=>{
+        setTimeout(()=>c.classList.add('show'),300+i*400);
+    });
+}
+
+// ===== TRANSITION TO APP =====
+function startApp(){
+    const trans=document.getElementById('sceneTrans');
+    trans.classList.add('active');
+    setTimeout(()=>{
+        document.getElementById('cinemaWrapper').style.display='none';
+        document.getElementById('appSection').classList.add('active');
+        document.getElementById('app-welcome').classList.remove('hidden');
+        trans.classList.remove('active');
+        setTimeout(startAppChat,500);
+    },600);
+}
+
+// ===== APP CHAT =====
+const appMsgs=[
+    {text:"So... did you enjoy our little movie? 🎬",delay:800},
+    {text:"Now it's time for the real challenge! 😏",delay:1500},
+    {text:"HAPPY BIRTHDAY, my love! 🎂🎉🥳",delay:1500,special:true},
+    {text:"I have a gift for you... but you need to prove you remember our special dates! 💕",delay:2200},
+    {text:"5 questions. Get ALL right and the gift is yours! Ready?",delay:2000,showBtn:true},
+];
+
+function startAppChat(){
+    const chat=document.getElementById('appChat');
+    let i=0;
+    function next(){
+        if(i>=appMsgs.length)return;
+        const m=appMsgs[i];
+        const b=document.createElement('div');
+        b.className='g-bubble';
+        b.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+        chat.appendChild(b);
+        window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+        setTimeout(()=>{
+            b.innerHTML=`<p>${m.special?'<span class="bday-text" style="font-size:24px">'+m.text+'</span>':m.text}</p>`;
+            if(m.special)launchConfetti();
+            if(m.showBtn){
+                const d=document.createElement('div');
+                d.innerHTML='<button class="btn" onclick="startQuiz()">I\'m Ready! 💪</button>';
+                chat.appendChild(d);
+            }
+            i++;if(i<appMsgs.length)setTimeout(next,m.delay||1500);
+            window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+        },1000);
+    }
+    setTimeout(next,500);
 }
 
 // ===== QUIZ =====
-function showScreen(id){
-    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+const questions=[
+    {q:"When did he first approach you? 😏",a:"Apr 2, 2025",o:["Mar 31, 2025","Apr 2, 2025","Apr 4, 2025","Apr 1, 2025"]},
+    {q:"When was your first kiss? 💋",a:"Aug 15, 2025",o:["Aug 13, 2025","Aug 16, 2025","Aug 15, 2025","Aug 14, 2025"]},
+    {q:"When was your first fight? 😡💕",a:"Aug 26, 2025",o:["Aug 25, 2025","Aug 26, 2025","Aug 28, 2025","Aug 24, 2025"]},
+    {q:"When did the home engagement happen? 💍",a:"Aug 27, 2025",o:["Aug 29, 2025","Aug 26, 2025","Aug 27, 2025","Aug 28, 2025"]},
+    {q:"When was your first movie together? 🎬🍿",a:"Sep 21, 2025",o:["Sep 20, 2025","Sep 22, 2025","Sep 19, 2025","Sep 21, 2025"]}
+];
+const wrongR=[
+    {t:"Excuse me?!",m:"You forgot when I approached you?! I gathered all my courage that day! The audacity! 😤"},
+    {t:"Girl... NO!",m:"You forgot our FIRST KISS?! My lips are crying right now. A romantic movie just stopped playing out of respect. 😭"},
+    {t:"Oh wow!",m:"You forgot our first FIGHT?! Love isn't just butterflies — it's also dramatic WhatsApp statuses! 📱😂"},
+    {t:"This is painful!",m:"The ENGAGEMENT date?! That tiny moment where we said 'yes' to FOREVER?! Ring any bells? 💍🔔"},
+    {t:"Are you serious?!",m:"You forgot our first movie?! The popcorn remembers. The seats remember. Even the interval samosa remembers! 🍿😩"}
+];
+
+let cQ=0,sc=0,ans=false;
+
+function showAppView(id){
+    ['app-welcome','app-quiz','app-gift','app-fail'].forEach(v=>document.getElementById(v).classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
     window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function startQuiz(){currentQuestion=0;score=0;showScreen('screen-quiz');updateHearts();loadQ()}
+function startQuiz(){cQ=0;sc=0;showAppView('app-quiz');updH();loadQ()}
 
-function updateHearts(){
-    const c=document.getElementById('heartsCounter');c.innerHTML='';
+function updH(){
+    const r=document.getElementById('hRow');r.innerHTML='';
     for(let i=0;i<questions.length;i++){
-        const h=document.createElement('span');h.className='heart-icon';
-        if(i<score){h.textContent='💖';h.classList.add('filled')}
-        else if(i<currentQuestion){h.textContent='💔';h.classList.add('empty')}
+        const h=document.createElement('span');h.className='h-icon';
+        if(i<sc){h.textContent='💖';h.classList.add('filled')}
+        else if(i<cQ){h.textContent='💔';h.classList.add('empty')}
         else h.textContent='🤍';
-        c.appendChild(h);
+        r.appendChild(h);
     }
 }
 
 function loadQ(){
-    if(currentQuestion>=questions.length){finish();return}
-    answered=false;
-    const q=questions[currentQuestion];
-    document.getElementById('questionNum').textContent=currentQuestion+1;
-    document.getElementById('questionText').textContent=q.question;
-    document.getElementById('progressFill').style.width=((currentQuestion)/questions.length*100)+'%';
-    document.getElementById('scoreText').textContent=`Score: ${score} / ${questions.length}`;
-    const grid=document.getElementById('optionsGrid');grid.innerHTML='';
-    [...q.options].sort(()=>Math.random()-.5).forEach(opt=>{
-        const btn=document.createElement('button');btn.className='option-btn';btn.textContent=opt;
-        btn.onclick=()=>selectAnswer(btn,opt,q.correct);grid.appendChild(btn);
+    if(cQ>=questions.length){finish();return}
+    ans=false;const q=questions[cQ];
+    document.getElementById('qNum').textContent=cQ+1;
+    document.getElementById('qTxt').textContent=q.q;
+    document.getElementById('pFill').style.width=(cQ/questions.length*100)+'%';
+    document.getElementById('sTxt').textContent=`Score: ${sc} / ${questions.length}`;
+    const g=document.getElementById('oGrid');g.innerHTML='';
+    [...q.o].sort(()=>Math.random()-.5).forEach(o=>{
+        const b=document.createElement('button');b.className='opt';b.textContent=o;
+        b.onclick=()=>pick(b,o,q.a);g.appendChild(b);
     });
-    const card=document.getElementById('questionCard');card.style.animation='none';card.offsetHeight;card.style.animation='slideUp .5s cubic-bezier(.16,1,.3,1)';
-    updateQuizChat();
-    setExpression('q','thinking');
+    const c=document.getElementById('qCard');c.style.animation='none';c.offsetHeight;c.style.animation='slideUp .5s cubic-bezier(.16,1,.3,1)';
+    const ct=["Okay here we go... 🤔","This one's important! 😏","Do you remember THIS one? 👀","Almost there! 😬","Last one! No pressure! 🤭"];
+    document.getElementById('qzChat').textContent=ct[cQ]||ct[0];
 }
 
-function updateQuizChat(){
-    const t=["Okay here we go... 🤔","Ooh this one's important! 😏","Hmm, let's see if you remember THIS one... 👀","Almost there! Don't mess up now! 😬","Last one! No pressure... okay maybe a little! 🤭"];
-    document.getElementById('quizChatText').textContent=t[currentQuestion]||t[0];
-}
-
-function selectAnswer(btn,selected,correct){
-    if(answered)return;answered=true;
-    document.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
-    if(selected===correct){
-        btn.classList.add('correct');score++;createStarBurst(btn);
-        setExpression('q','happy');
-        const qs=document.getElementById('quizStage');qs.className='character-stage happy';setTimeout(()=>qs.className='character-stage idle',1500);
-        setTimeout(()=>{currentQuestion++;updateHearts();loadQ()},1200);
+function pick(btn,sel,cor){
+    if(ans)return;ans=true;
+    document.querySelectorAll('.opt').forEach(b=>b.disabled=true);
+    if(sel===cor){
+        btn.classList.add('correct');sc++;starBurst(btn);
+        setTimeout(()=>{cQ++;updH();loadQ()},1200);
     }else{
         btn.classList.add('wrong');
-        document.querySelectorAll('.option-btn').forEach(b=>{if(b.textContent===correct)b.classList.add('correct')});
-        setExpression('q','sad');
-        const qs=document.getElementById('quizStage');qs.className='character-stage sad';setTimeout(()=>qs.className='character-stage idle',1500);
-        showWrongPopup();
-        setTimeout(()=>{currentQuestion++;updateHearts();loadQ()},3500);
+        document.querySelectorAll('.opt').forEach(b=>{if(b.textContent===cor)b.classList.add('correct')});
+        wrongPopup();
+        setTimeout(()=>{cQ++;updH();loadQ()},3500);
     }
 }
 
-function createStarBurst(el){
-    const r=el.getBoundingClientRect();const b=document.createElement('div');b.className='star-burst';
+function starBurst(el){
+    const r=el.getBoundingClientRect(),b=document.createElement('div');b.className='star-burst';
     b.style.left=r.left+r.width/2+'px';b.style.top=r.top+r.height/2+'px';
     ['⭐','✨','💖','🌟','💫','🎉','💕','✨'].forEach((e,i)=>{
         const s=document.createElement('span');s.textContent=e;
-        const a=(i/8)*Math.PI*2;
-        s.style.setProperty('--tx',Math.cos(a)*65+'px');s.style.setProperty('--ty',Math.sin(a)*65+'px');
+        const a=(i/8)*Math.PI*2;s.style.setProperty('--tx',Math.cos(a)*60+'px');s.style.setProperty('--ty',Math.sin(a)*60+'px');
         b.appendChild(s);
     });
     document.body.appendChild(b);setTimeout(()=>b.remove(),1000);
 }
 
-function buildMiniChar(expr){
-    let eyesHtml,mouthHtml,browsHtml;
-    switch(expr){
-        case 'surprised':
-            browsHtml='<line x1="93" y1="76" x2="103" y2="74" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="74" x2="127" y2="76" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';
-            eyesHtml='<ellipse cx="98" cy="89" rx="7" ry="8" fill="#1a1a2e"/><circle cx="100" cy="87" r="2.5" fill="#fff"/><ellipse cx="122" cy="89" rx="7" ry="8" fill="#1a1a2e"/><circle cx="124" cy="87" r="2.5" fill="#fff"/>';
-            mouthHtml='<ellipse cx="110" cy="108" rx="6" ry="8" fill="#c0392b" opacity=".8"/>';break;
-        case 'sad':
-            browsHtml='<line x1="93" y1="78" x2="103" y2="82" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="82" x2="127" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';
-            eyesHtml='<ellipse cx="98" cy="91" rx="5" ry="6" fill="#1a1a2e"/><circle cx="99" cy="89" r="1.8" fill="#fff"/><ellipse cx="122" cy="91" rx="5" ry="6" fill="#1a1a2e"/><circle cx="123" cy="89" r="1.8" fill="#fff"/>';
-            mouthHtml='<path d="M104 110 Q110 102 116 110" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';break;
-        default:
-            browsHtml='<line x1="93" y1="80" x2="103" y2="78" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/><line x1="117" y1="74" x2="127" y2="76" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>';
-            eyesHtml='<ellipse cx="98" cy="90" rx="5" ry="5.5" fill="#1a1a2e"/><circle cx="99.5" cy="88.5" r="1.8" fill="#fff"/><path d="M117 90 Q122 87 127 90" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>';
-            mouthHtml='<path d="M104 106 Q112 112 118 104" stroke="#c0392b" stroke-width="2" fill="none" stroke-linecap="round"/>';
-    }
-    return `<svg viewBox="0 0 220 300" fill="none" style="width:120px;height:160px;margin:0 auto;display:block">
-        <rect x="78" y="130" width="64" height="85" rx="12" fill="url(#spg)"/>
-        <polygon points="108,140 112,140 113,170 110,175 107,170" fill="url(#stg)"/>
-        <rect x="60" y="132" width="22" height="55" rx="11" fill="url(#spg)"/><rect x="138" y="132" width="22" height="55" rx="11" fill="url(#spg)"/>
-        <rect x="102" y="118" width="16" height="18" rx="4" fill="#e8b89d"/>
-        <ellipse cx="110" cy="95" rx="32" ry="35" fill="#e8b89d"/>
-        <path d="M78 85 Q78 55 110 52 Q142 55 142 85 Q140 65 110 62 Q80 65 78 85Z" fill="#1a1a2e"/>
-        <rect x="78" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/><rect x="134" y="70" width="8" height="25" rx="4" fill="#1a1a2e"/>
-        ${browsHtml}${eyesHtml}${mouthHtml}
-        <ellipse cx="88" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".4"/><ellipse cx="132" cy="100" rx="7" ry="4" fill="#f9a8d4" opacity=".4"/>
-        <defs><linearGradient id="spg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#312e81"/><stop offset="100%" stop-color="#1e1b4b"/></linearGradient><linearGradient id="stg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
-    </svg>`;
-}
-
-function showWrongPopup(){
-    const r=wrongReactions[currentQuestion];
+function wrongPopup(){
+    const r=wrongR[cQ];
     const ov=document.createElement('div');ov.className='overlay';document.body.appendChild(ov);
-    const p=document.createElement('div');p.className='wrong-popup';
-    p.innerHTML=`<div class="popup-char-wrap">${buildMiniChar(r.expr)}</div><h3>${r.title}</h3><p>${r.msg}</p>`;
+    const p=document.createElement('div');p.className='popup';
+    p.innerHTML=`<h3>${r.t}</h3><p>${r.m}</p>`;
     document.body.appendChild(p);
     setTimeout(()=>{ov.remove();p.remove()},3200);
 }
 
 function finish(){
-    document.getElementById('progressFill').style.width='100%';
-    if(score===questions.length)setTimeout(()=>{showScreen('screen-gift');launchConfetti()},500);
-    else setTimeout(()=>{showScreen('screen-fail');updateFail()},500);
+    document.getElementById('pFill').style.width='100%';
+    if(sc===questions.length)setTimeout(()=>{showAppView('app-gift');launchConfetti()},500);
+    else setTimeout(()=>{showAppView('app-fail');updFail()},500);
 }
 
-function updateFail(){
-    const c=document.getElementById('failHearts');c.innerHTML='';
+function updFail(){
+    const c=document.getElementById('fHearts');c.innerHTML='';
     for(let i=0;i<questions.length;i++){
-        const h=document.createElement('span');h.className='heart-icon';
-        h.textContent=i<score?'💖':'💔';h.classList.add(i<score?'filled':'empty');c.appendChild(h);
+        const h=document.createElement('span');h.className='h-icon';
+        h.textContent=i<sc?'💖':'💔';h.classList.add(i<sc?'filled':'empty');c.appendChild(h);
     }
     const m=[
-        {t:"Zero?! ZERO?!",s:"You got NONE right?! Do you even know me?! 😭 Try again and THINK this time!"},
-        {t:"Just one?! Seriously?!",s:"One out of five... I've seen goldfish with better memory! 🐠"},
-        {t:"Not bad, not great!",s:"You remember SOME things but clearly need a calendar reminder! 📅"},
-        {t:"Sooo close!",s:"3 out of 5! Almost there but 'almost' doesn't get you a gift! 🎁"},
-        {t:"Just ONE more!",s:"4 out of 5! You were THIS close! 🤏 One more round!"}
+        {t:"Zero?! ZERO?!",s:"You got NONE right?! Do you even know me?! 😭"},
+        {t:"Just one?!",s:"I've seen goldfish with better memory! 🐠"},
+        {t:"Not bad, not great!",s:"You need a calendar reminder! 📅"},
+        {t:"Sooo close!",s:"3 out of 5! 'Almost' doesn't get you a gift! 🎁"},
+        {t:"Just ONE more!",s:"4 out of 5! You were THIS close! 🤏"}
     ];
-    const d=m[score]||m[2];
-    document.getElementById('failTitle').textContent=d.t;
-    document.getElementById('failSubtitle').innerHTML=d.s;
+    const d=m[sc]||m[2];
+    document.getElementById('fTitle').textContent=d.t;
+    document.getElementById('fSub').innerHTML=d.s;
 }
 
-function restartQuiz(){currentQuestion=0;score=0;showScreen('screen-quiz');updateHearts();loadQ()}
+function restartQuiz(){cQ=0;sc=0;showAppView('app-quiz');updH();loadQ()}
 
 function openGift(){
-    const box=document.getElementById('giftBox'),content=document.getElementById('giftContent');
-    if(!content.classList.contains('hidden'))return;
+    const box=document.getElementById('gBox'),ct=document.getElementById('gContent');
+    if(!ct.classList.contains('hidden'))return;
     box.style.animation='shake .5s ease';
-    setTimeout(()=>{box.textContent='🎊';setTimeout(()=>{box.classList.add('hidden');content.classList.remove('hidden');launchConfetti();launchConfetti()},600)},500);
+    setTimeout(()=>{box.textContent='🎊';setTimeout(()=>{box.classList.add('hidden');ct.classList.remove('hidden');launchConfetti();launchConfetti()},600)},500);
 }
 
 function launchConfetti(){
-    const colors=['#ec4899','#a855f7','#f43f5e','#f59e0b','#f9a8d4','#10b981','#fbbf24','#c084fc'];
-    const shapes=['■','●','▲','★','💕','✨'];
-    for(let i=0;i<60;i++){
+    const cols=['#ec4899','#a855f7','#f43f5e','#f59e0b','#f9a8d4','#10b981','#fbbf24','#c084fc'];
+    const sh=['■','●','▲','★','💕','✨'];
+    for(let i=0;i<50;i++){
         setTimeout(()=>{
-            const c=document.createElement('div');c.className='confetti-piece';
-            c.textContent=shapes[Math.floor(Math.random()*shapes.length)];
-            c.style.left=Math.random()*100+'vw';c.style.color=colors[Math.floor(Math.random()*colors.length)];
+            const c=document.createElement('div');c.className='confetti';
+            c.textContent=sh[Math.floor(Math.random()*sh.length)];
+            c.style.left=Math.random()*100+'vw';c.style.color=cols[Math.floor(Math.random()*cols.length)];
             c.style.fontSize=(Math.random()*12+8)+'px';c.style.animationDuration=(Math.random()*2+2)+'s';
-            c.style.animationDelay=Math.random()*.5+'s';document.body.appendChild(c);
-            setTimeout(()=>c.remove(),4000);
+            document.body.appendChild(c);setTimeout(()=>c.remove(),4000);
         },i*30);
     }
 }
-
-// ===== INIT =====
-startChat();
 </script>
 </body>
 </html>
