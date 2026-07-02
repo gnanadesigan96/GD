@@ -44,6 +44,9 @@ ACCOUNT_BAND: dict[str, str] = {
     "it1":                "Gold",
     "gevernova":          "Gold",
     "ge vernova":         "Gold",
+    "okta":               "Gold",
+    "clickup":            "Gold",
+    "flatiron":           "Gold",
     # Silver
     "getronics":          "Silver",
     "cloud-kinetics":     "Silver",
@@ -98,6 +101,9 @@ DISPLAY_NAMES: dict[str, str] = {
     "ltts":               "LTTS",
     "core42":             "Core42",
     "blackstone":         "Blackstone",
+    "okta":               "Okta",
+    "clickup":            "Clickup",
+    "flatiron":           "Flatiron",
 }
 
 BLACKSTONE_KEYWORDS = []  # now handled via ACCOUNT_BAND as Platinum
