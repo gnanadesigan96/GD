@@ -6,11 +6,7 @@
     <title>A Special Surprise For You</title>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
             --pink-light: #fce4ec;
@@ -21,626 +17,644 @@
             --lavender-dark: #ab47bc;
             --peach: #ffe0b2;
             --coral: #ff8a80;
-            --mint: #b2dfdb;
             --gold: #ffd54f;
-            --cream: #fff8f0;
             --text-dark: #4a2040;
             --text-light: #7c5270;
         }
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, var(--pink-light), var(--lavender), var(--peach));
+            background: linear-gradient(135deg, #fce4ec, #f3e5f5, #ffe0b2);
             min-height: 100vh;
             overflow-x: hidden;
             color: var(--text-dark);
         }
 
-        /* Floating Hearts Background */
+        /* ===== FLOATING HEARTS BG ===== */
         .hearts-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0; overflow: hidden;
         }
-
         .floating-heart {
-            position: absolute;
-            opacity: 0.15;
+            position: absolute; opacity: 0.15;
             animation: floatHeart linear infinite;
         }
-
         @keyframes floatHeart {
             0% { transform: translateY(100vh) rotate(0deg) scale(0.5); opacity: 0; }
             10% { opacity: 0.15; }
             90% { opacity: 0.15; }
             100% { transform: translateY(-10vh) rotate(360deg) scale(1.2); opacity: 0; }
         }
-
-        /* Sparkle particles */
         .sparkle {
-            position: fixed;
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-            background: var(--gold);
-            pointer-events: none;
-            z-index: 1;
-            animation: sparkle 1.5s ease-in-out infinite;
+            position: fixed; width: 4px; height: 4px; border-radius: 50%;
+            background: var(--gold); pointer-events: none; z-index: 1;
+            animation: sparkleAnim 1.5s ease-in-out infinite;
         }
-
-        @keyframes sparkle {
+        @keyframes sparkleAnim {
             0%, 100% { opacity: 0; transform: scale(0); }
             50% { opacity: 1; transform: scale(1); }
         }
 
-        /* Main Container */
+        /* ===== LAYOUT ===== */
         .container {
+            position: relative; z-index: 2; max-width: 600px;
+            margin: 0 auto; padding: 20px; min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .screen { display: none; width: 100%; animation: fadeInUp 0.8s ease-out; }
+        .screen.active { display: flex; flex-direction: column; align-items: center; }
+        .hidden { display: none !important; }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes bounceIn { 0% { transform: scale(0); } 50% { transform: scale(1.15); } 70% { transform: scale(0.95); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 10%,30%,50%,70%,90%{transform:translateX(-5px)} 20%,40%,60%,80%{transform:translateX(5px)} }
+        @keyframes confettiFall { 0%{transform:translateY(-100vh) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+        @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+        @keyframes wiggle { 0%,100%{transform:rotate(0deg)} 25%{transform:rotate(-5deg)} 75%{transform:rotate(5deg)} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+        @keyframes glow { 0%,100%{box-shadow:0 0 20px rgba(233,30,99,0.3)} 50%{box-shadow:0 0 40px rgba(233,30,99,0.6)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+        /* ============================================
+           ANIMATED CHARACTER - CSS GIRL
+           ============================================ */
+        .character-wrapper {
             position: relative;
-            z-index: 2;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            width: 160px;
+            height: 240px;
+            margin: 0 auto 10px;
         }
 
-        /* Screen transitions */
-        .screen {
-            display: none;
-            width: 100%;
-            animation: fadeInUp 0.8s ease-out;
+        /* Walk-in animation */
+        .character-wrapper.walk-in {
+            animation: characterWalkIn 1.5s ease-out forwards;
+        }
+        @keyframes characterWalkIn {
+            0% { transform: translateX(-200px) scale(0.8); opacity: 0; }
+            60% { transform: translateX(15px) scale(1.02); opacity: 1; }
+            80% { transform: translateX(-5px) scale(1); }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
         }
 
-        .screen.active {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        /* Idle floating */
+        .character-wrapper.idle {
+            animation: characterIdle 3s ease-in-out infinite;
         }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes fadeInScale {
-            from { opacity: 0; transform: scale(0.8); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        @keyframes bounceIn {
-            0% { transform: scale(0); }
-            50% { transform: scale(1.15); }
-            70% { transform: scale(0.95); }
-            100% { transform: scale(1); }
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-            20%, 40%, 60%, 80% { transform: translateX(5px); }
-        }
-
-        @keyframes confettiFall {
-            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        @keyframes wiggle {
-            0%, 100% { transform: rotate(0deg); }
-            25% { transform: rotate(-5deg); }
-            75% { transform: rotate(5deg); }
-        }
-
-        @keyframes typewriter {
-            from { width: 0; }
-            to { width: 100%; }
-        }
-
-        @keyframes blink {
-            50% { border-color: transparent; }
-        }
-
-        @keyframes float {
+        @keyframes characterIdle {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            50% { transform: translateY(-8px); }
         }
 
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(233, 30, 99, 0.3); }
-            50% { box-shadow: 0 0 40px rgba(233, 30, 99, 0.6); }
+        /* Wave animation */
+        .character-wrapper.waving .char-right-arm {
+            animation: armWave 0.6s ease-in-out 4;
+        }
+        @keyframes armWave {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-45deg); }
         }
 
-        /* Character Avatar */
-        .avatar-container {
-            position: relative;
-            margin-bottom: 20px;
+        /* Happy bounce */
+        .character-wrapper.happy {
+            animation: happyBounce 0.6s ease-in-out 3;
+        }
+        @keyframes happyBounce {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-15px) rotate(-3deg); }
+            75% { transform: translateY(-15px) rotate(3deg); }
         }
 
-        .avatar {
-            width: 120px;
-            height: 120px;
+        /* Sad/disappointed shake */
+        .character-wrapper.sad {
+            animation: sadShake 0.5s ease-in-out 2;
+        }
+        @keyframes sadShake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-8deg); }
+            75% { transform: rotate(8deg); }
+        }
+
+        /* Thinking */
+        .character-wrapper.thinking .char-right-arm {
+            transform: rotate(-30deg) translateY(-15px);
+            transition: transform 0.5s ease;
+        }
+
+        /* ===== CHARACTER BODY PARTS ===== */
+        .char-body {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Hair */
+        .char-hair {
+            position: absolute;
+            top: 2px; left: 50%; transform: translateX(-50%);
+            width: 82px; height: 75px;
+            background: #2c1810;
+            border-radius: 50% 50% 30% 30%;
+            z-index: 3;
+        }
+        .char-hair::before {
+            content: '';
+            position: absolute;
+            top: 30px; left: -12px;
+            width: 30px; height: 70px;
+            background: #2c1810;
+            border-radius: 0 0 50% 50%;
+            z-index: 1;
+        }
+        .char-hair::after {
+            content: '';
+            position: absolute;
+            top: 30px; right: -12px;
+            width: 30px; height: 70px;
+            background: #2c1810;
+            border-radius: 0 0 50% 50%;
+            z-index: 1;
+        }
+
+        /* Hair accessory - flower */
+        .char-hair-flower {
+            position: absolute;
+            top: 8px; right: 18px;
+            width: 22px; height: 22px;
+            z-index: 10;
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        /* Face */
+        .char-face {
+            position: absolute;
+            top: 12px; left: 50%; transform: translateX(-50%);
+            width: 70px; height: 70px;
+            background: #fdd9b5;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--pink), var(--lavender-dark));
+            z-index: 4;
+            overflow: visible;
+        }
+
+        /* Eyes */
+        .char-eyes {
+            position: absolute;
+            top: 24px; left: 50%; transform: translateX(-50%);
+            width: 44px;
             display: flex;
+            justify-content: space-between;
+        }
+        .char-eye {
+            width: 10px; height: 12px;
+            background: #2c1810;
+            border-radius: 50%;
+            position: relative;
+            animation: eyeBlink 3.5s ease-in-out infinite;
+        }
+        .char-eye::after {
+            content: '';
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 4px; height: 4px;
+            background: white;
+            border-radius: 50%;
+        }
+        @keyframes eyeBlink {
+            0%, 45%, 55%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.1); }
+        }
+
+        /* Eye expressions */
+        .char-eye.happy-eye {
+            height: 6px;
+            border-radius: 6px 6px 0 0;
+            animation: none;
+        }
+        .char-eye.sad-eye {
+            border-radius: 50%;
+            animation: none;
+        }
+        .char-eye.sad-eye::before {
+            content: '';
+            position: absolute;
+            top: -4px; left: -2px;
+            width: 14px; height: 4px;
+            border-bottom: 2px solid #2c1810;
+            border-radius: 0 0 50% 50%;
+            transform: rotate(-10deg);
+        }
+        .char-eye.surprised-eye {
+            width: 14px; height: 14px;
+            animation: none;
+        }
+        .char-eye.wink-eye-left {
+            animation: none;
+        }
+        .char-eye.wink-eye-right {
+            height: 3px;
+            border-radius: 3px;
+            animation: none;
+        }
+
+        /* Mouth */
+        .char-mouth {
+            position: absolute;
+            top: 42px; left: 50%; transform: translateX(-50%);
+            width: 14px; height: 8px;
+            border-radius: 0 0 10px 10px;
+            background: #e57373;
+            z-index: 5;
+        }
+        .char-mouth.smile {
+            width: 18px; height: 10px;
+            border-radius: 0 0 12px 12px;
+            background: #e57373;
+        }
+        .char-mouth.big-smile {
+            width: 22px; height: 14px;
+            border-radius: 0 0 14px 14px;
+            background: #e57373;
+        }
+        .char-mouth.sad-mouth {
+            width: 14px; height: 8px;
+            border-radius: 10px 10px 0 0;
+            background: #e57373;
+        }
+        .char-mouth.open-mouth {
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: #e57373;
+        }
+        .char-mouth.smirk {
+            width: 16px; height: 6px;
+            border-radius: 0 0 12px 0;
+            background: #e57373;
+        }
+
+        /* Blush */
+        .char-blush {
+            position: absolute;
+            top: 36px;
+            width: 14px; height: 8px;
+            background: rgba(255, 135, 135, 0.45);
+            border-radius: 50%;
+            z-index: 5;
+        }
+        .char-blush.left { left: 6px; }
+        .char-blush.right { right: 6px; }
+
+        /* Neck */
+        .char-neck {
+            position: absolute;
+            top: 74px; left: 50%; transform: translateX(-50%);
+            width: 20px; height: 14px;
+            background: #fdd9b5;
+            z-index: 2;
+        }
+
+        /* Dress / Body */
+        .char-dress {
+            position: absolute;
+            top: 84px; left: 50%; transform: translateX(-50%);
+            width: 70px; height: 80px;
+            background: linear-gradient(180deg, var(--pink-dark), var(--rose));
+            border-radius: 10px 10px 35px 35px;
+            z-index: 2;
+        }
+        .char-dress::before {
+            content: '';
+            position: absolute;
+            bottom: 0; left: -8px;
+            width: 86px; height: 25px;
+            background: linear-gradient(180deg, transparent, rgba(255,255,255,0.15));
+            border-radius: 0 0 40px 40px;
+        }
+        /* Dress decoration */
+        .char-dress-belt {
+            position: absolute;
+            top: 94px; left: 50%; transform: translateX(-50%);
+            width: 72px; height: 6px;
+            background: var(--gold);
+            border-radius: 3px;
+            z-index: 3;
+        }
+        .char-dress-bow {
+            position: absolute;
+            top: 89px; left: 50%; transform: translateX(-50%);
+            z-index: 4;
+            font-size: 16px;
+        }
+
+        /* Arms */
+        .char-left-arm, .char-right-arm {
+            position: absolute;
+            top: 90px;
+            width: 14px; height: 50px;
+            background: #fdd9b5;
+            border-radius: 7px;
+            z-index: 1;
+            transform-origin: top center;
+            transition: transform 0.4s ease;
+        }
+        .char-left-arm {
+            left: 16px;
+            transform: rotate(8deg);
+        }
+        .char-right-arm {
+            right: 16px;
+            transform: rotate(-8deg);
+        }
+
+        /* Hands */
+        .char-left-arm::after, .char-right-arm::after {
+            content: '';
+            position: absolute;
+            bottom: -6px; left: 50%; transform: translateX(-50%);
+            width: 14px; height: 14px;
+            background: #fdd9b5;
+            border-radius: 50%;
+        }
+
+        /* Legs */
+        .char-left-leg, .char-right-leg {
+            position: absolute;
+            top: 158px;
+            width: 14px; height: 45px;
+            background: #fdd9b5;
+            border-radius: 7px;
+            z-index: 1;
+        }
+        .char-left-leg { left: 38px; }
+        .char-right-leg { right: 38px; }
+
+        /* Shoes */
+        .char-left-leg::after, .char-right-leg::after {
+            content: '';
+            position: absolute;
+            bottom: -4px; left: -3px;
+            width: 20px; height: 10px;
+            background: var(--rose);
+            border-radius: 10px 10px 5px 5px;
+        }
+
+        /* Walking legs */
+        .character-wrapper.walk-in .char-left-leg {
+            animation: legWalkLeft 0.4s ease-in-out 3;
+        }
+        .character-wrapper.walk-in .char-right-leg {
+            animation: legWalkRight 0.4s ease-in-out 3;
+        }
+        @keyframes legWalkLeft {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(15deg); }
+        }
+        @keyframes legWalkRight {
+            0%, 100% { transform: rotate(0deg); }
+            50% { transform: rotate(-15deg); }
+        }
+
+        /* Speech bubble pointer from character */
+        .char-speech-area {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            font-size: 50px;
-            box-shadow: 0 8px 32px rgba(233, 30, 99, 0.3);
-            animation: float 3s ease-in-out infinite;
-            border: 4px solid white;
+            margin-top: 0;
         }
 
-        .avatar.wave {
-            animation: float 3s ease-in-out infinite, wiggle 0.5s ease-in-out;
-        }
-
-        /* Chat Bubble */
+        /* ===== CHAT BUBBLE ===== */
         .chat-bubble {
             background: white;
             border-radius: 20px;
             border-bottom-left-radius: 5px;
-            padding: 18px 24px;
-            margin: 10px 0;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 16px 22px;
+            margin: 8px 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             max-width: 90%;
             position: relative;
             animation: fadeInScale 0.5s ease-out;
         }
-
         .chat-bubble::before {
             content: '';
             position: absolute;
-            bottom: 0;
-            left: -8px;
-            width: 20px;
-            height: 20px;
-            background: white;
-            border-radius: 0 0 20px 0;
-            clip-path: polygon(100% 0, 0 100%, 100% 100%);
+            top: -8px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 8px solid white;
         }
-
         .chat-bubble p {
-            font-size: 15px;
-            line-height: 1.6;
-            color: var(--text-dark);
+            font-size: 15px; line-height: 1.6; color: var(--text-dark);
         }
-
-        .chat-bubble .typing-dots {
-            display: inline-flex;
-            gap: 4px;
-            padding: 5px 0;
+        .typing-dots {
+            display: inline-flex; gap: 4px; padding: 5px 0;
         }
-
         .typing-dots span {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+            width: 8px; height: 8px; border-radius: 50%;
             background: var(--pink);
             animation: typingBounce 1.4s ease-in-out infinite;
         }
-
         .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
         .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-
         @keyframes typingBounce {
-            0%, 60%, 100% { transform: translateY(0); }
+            0%,60%,100% { transform: translateY(0); }
             30% { transform: translateY(-8px); }
         }
 
-        /* Buttons */
+        /* ===== BUTTONS ===== */
         .btn {
             background: linear-gradient(135deg, var(--pink-dark), var(--rose));
-            color: white;
-            border: none;
-            padding: 14px 36px;
-            border-radius: 50px;
+            color: white; border: none;
+            padding: 14px 36px; border-radius: 50px;
             font-family: 'Poppins', sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(233, 30, 99, 0.35);
-            margin-top: 15px;
-            letter-spacing: 0.5px;
+            font-size: 16px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(233,30,99,0.35);
+            margin-top: 15px; letter-spacing: 0.5px;
         }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(233,30,99,0.5); }
+        .btn:active { transform: translateY(0); }
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(233, 30, 99, 0.5);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, var(--lavender-dark), #8e24aa);
-        }
-
-        /* Question Card */
+        /* ===== QUESTION CARD ===== */
         .question-card {
-            background: white;
-            border-radius: 24px;
-            padding: 30px;
-            width: 100%;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1);
+            background: white; border-radius: 24px; padding: 28px;
+            width: 100%; box-shadow: 0 8px 40px rgba(0,0,0,0.1);
             animation: fadeInUp 0.6s ease-out;
         }
-
-        .question-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
+        .question-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
         .question-number {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+            width: 40px; height: 40px; border-radius: 50%;
             background: linear-gradient(135deg, var(--pink-dark), var(--rose));
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 18px;
-            flex-shrink: 0;
+            color: white; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 18px; flex-shrink: 0;
         }
-
         .question-text {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-dark);
+            font-size: 17px; font-weight: 600; color: var(--text-dark);
             font-family: 'Quicksand', sans-serif;
         }
-
         .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: var(--pink-light);
-            border-radius: 3px;
-            margin-bottom: 25px;
-            overflow: hidden;
+            width: 100%; height: 6px; background: var(--pink-light);
+            border-radius: 3px; margin-bottom: 22px; overflow: hidden;
         }
-
         .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--pink-dark), var(--rose));
-            border-radius: 3px;
-            transition: width 0.5s ease;
+            height: 100%; background: linear-gradient(90deg, var(--pink-dark), var(--rose));
+            border-radius: 3px; transition: width 0.5s ease;
         }
-
-        /* Answer Options */
         .options-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 10px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;
         }
-
         .option-btn {
             background: linear-gradient(135deg, #fce4ec, #f3e5f5);
-            border: 2px solid transparent;
-            border-radius: 16px;
-            padding: 16px 12px;
-            font-family: 'Poppins', sans-serif;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-dark);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
+            border: 2px solid transparent; border-radius: 16px;
+            padding: 16px 12px; font-family: 'Poppins', sans-serif;
+            font-size: 14px; font-weight: 500; color: var(--text-dark);
+            cursor: pointer; transition: all 0.3s ease; text-align: center;
         }
+        .option-btn:hover { border-color: var(--pink-dark); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(233,30,99,0.2); }
+        .option-btn.correct { background: linear-gradient(135deg, #c8e6c9, #a5d6a7); border-color: #66bb6a; animation: bounceIn 0.5s ease; }
+        .option-btn.wrong { background: linear-gradient(135deg, #ffcdd2, #ef9a9a); border-color: #ef5350; animation: shake 0.5s ease; }
+        .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
 
-        .option-btn:hover {
-            border-color: var(--pink-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(233, 30, 99, 0.2);
-        }
+        .score-display { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-light); margin-bottom: 12px; }
+        .hearts-counter { display: flex; gap: 8px; justify-content: center; margin: 12px 0; }
+        .heart-icon { font-size: 24px; transition: all 0.3s ease; }
+        .heart-icon.filled { animation: bounceIn 0.4s ease; }
+        .heart-icon.empty { filter: grayscale(1); opacity: 0.3; }
 
-        .option-btn.correct {
-            background: linear-gradient(135deg, #c8e6c9, #a5d6a7);
-            border-color: #66bb6a;
-            animation: bounceIn 0.5s ease;
-        }
-
-        .option-btn.wrong {
-            background: linear-gradient(135deg, #ffcdd2, #ef9a9a);
-            border-color: #ef5350;
-            animation: shake 0.5s ease;
-        }
-
-        .option-btn:disabled {
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-
-        /* Score display */
-        .score-display {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 14px;
-            color: var(--text-light);
-            margin-bottom: 15px;
-        }
-
-        /* Wrong answer popup */
+        /* ===== WRONG POPUP ===== */
         .wrong-popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
+            position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%) scale(0);
-            background: white;
-            border-radius: 24px;
-            padding: 30px;
-            z-index: 100;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            text-align: center;
-            max-width: 380px;
-            width: 90%;
+            background: white; border-radius: 24px; padding: 30px;
+            z-index: 100; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center; max-width: 400px; width: 90%;
             animation: bounceIn 0.5s ease forwards;
         }
+        .wrong-popup .popup-char { margin-bottom: 10px; }
+        .wrong-popup h3 { font-family: 'Quicksand', sans-serif; color: var(--text-dark); margin-bottom: 8px; font-size: 20px; }
+        .wrong-popup p { color: var(--text-light); font-size: 14px; line-height: 1.6; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 99; animation: fadeIn 0.3s ease; }
 
-        .wrong-popup .emoji {
-            font-size: 60px;
-            margin-bottom: 15px;
-        }
-
-        .wrong-popup h3 {
-            font-family: 'Quicksand', sans-serif;
-            color: var(--text-dark);
-            margin-bottom: 10px;
-            font-size: 20px;
-        }
-
-        .wrong-popup p {
-            color: var(--text-light);
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 99;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        /* Gift Reveal */
-        .gift-reveal {
-            text-align: center;
-            padding: 20px;
-        }
-
+        /* ===== GIFT REVEAL ===== */
+        .gift-reveal { text-align: center; padding: 20px; }
         .gift-box {
-            width: 180px;
-            height: 180px;
-            margin: 20px auto;
-            cursor: pointer;
-            animation: float 2s ease-in-out infinite, glow 2s ease-in-out infinite;
-            font-size: 120px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 180px; height: 180px; margin: 20px auto;
+            cursor: pointer; animation: float 2s ease-in-out infinite, glow 2s ease-in-out infinite;
+            font-size: 120px; display: flex; align-items: center; justify-content: center;
             transition: transform 0.5s ease;
-            filter: drop-shadow(0 10px 30px rgba(233, 30, 99, 0.4));
+            filter: drop-shadow(0 10px 30px rgba(233,30,99,0.4));
         }
-
-        .gift-box:hover {
-            transform: scale(1.1);
-        }
-
-        .gift-box.opened {
-            animation: bounceIn 0.8s ease;
-        }
-
-        .gift-title {
-            font-family: 'Dancing Script', cursive;
-            font-size: 36px;
-            color: var(--rose);
-            margin: 15px 0;
-            animation: fadeInUp 1s ease;
-        }
-
-        .teddy-reveal {
-            font-size: 150px;
-            animation: bounceIn 1s ease;
-            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.2));
-        }
-
-        .gift-message {
-            font-family: 'Dancing Script', cursive;
-            font-size: 24px;
-            color: var(--text-dark);
-            margin: 20px 0;
-            line-height: 1.8;
-        }
-
-        /* Confetti */
-        .confetti-piece {
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            top: -10px;
-            z-index: 200;
-            animation: confettiFall 3s linear forwards;
-        }
-
-        /* Birthday text */
+        .gift-box:hover { transform: scale(1.1); }
+        .gift-box.opened { animation: bounceIn 0.8s ease; }
+        .gift-title { font-family: 'Dancing Script', cursive; font-size: 36px; color: var(--rose); margin: 15px 0; animation: fadeInUp 1s ease; }
+        .teddy-reveal { font-size: 150px; animation: bounceIn 1s ease; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.2)); }
+        .gift-message { font-family: 'Dancing Script', cursive; font-size: 24px; color: var(--text-dark); margin: 20px 0; line-height: 1.8; }
         .birthday-text {
-            font-family: 'Dancing Script', cursive;
-            font-size: 42px;
+            font-family: 'Dancing Script', cursive; font-size: 42px;
             background: linear-gradient(135deg, var(--rose), var(--lavender-dark), var(--pink-dark));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin: 10px 0;
-            animation: pulse 2s ease-in-out infinite;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            margin: 10px 0; animation: pulse 2s ease-in-out infinite;
+        }
+        .intro-flowers { display: flex; gap: 10px; font-size: 28px; margin: 10px 0; animation: float 3s ease-in-out infinite; justify-content: center; }
+        .confetti-piece { position: fixed; width: 10px; height: 10px; top: -10px; z-index: 200; animation: confettiFall 3s linear forwards; }
+
+        /* Star burst */
+        .star-burst { position: fixed; pointer-events: none; z-index: 50; }
+        .star-burst span { position: absolute; font-size: 24px; animation: starBurst 0.8s ease-out forwards; }
+        @keyframes starBurst { 0%{transform:translate(0,0) scale(0);opacity:1} 100%{transform:translate(var(--tx),var(--ty)) scale(1);opacity:0} }
+
+        /* Fail */
+        .fail-text { font-family: 'Quicksand', sans-serif; font-size: 22px; font-weight: 700; color: var(--text-dark); margin: 10px 0; }
+        .fail-subtitle { font-size: 15px; color: var(--text-light); line-height: 1.6; margin-bottom: 20px; }
+
+        /* ===== MINI CHARACTER (for popups / quiz) ===== */
+        .mini-character {
+            width: 80px; height: 120px; margin: 0 auto; position: relative;
+            transform: scale(0.65); transform-origin: center center;
         }
 
-        /* Retry section */
-        .retry-section {
-            margin-top: 20px;
-            text-align: center;
-        }
-
-        .retry-message {
-            font-size: 16px;
-            color: var(--text-light);
-            margin-bottom: 15px;
-        }
-
-        /* Hearts counter */
-        .hearts-counter {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin: 15px 0;
-        }
-
-        .heart-icon {
-            font-size: 24px;
-            transition: all 0.3s ease;
-        }
-
-        .heart-icon.filled {
-            animation: bounceIn 0.4s ease;
-        }
-
-        .heart-icon.empty {
-            filter: grayscale(1);
-            opacity: 0.3;
-        }
-
-        /* Responsive */
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 480px) {
             .container { padding: 15px; }
-            .question-card { padding: 20px; }
+            .question-card { padding: 18px; }
             .birthday-text { font-size: 32px; }
             .gift-title { font-size: 28px; }
-            .avatar { width: 100px; height: 100px; font-size: 42px; }
+            .character-wrapper { transform: scale(0.85); margin-bottom: 0; }
             .options-grid { gap: 8px; }
             .option-btn { padding: 14px 10px; font-size: 13px; }
         }
 
-        /* Intro screen special */
-        .intro-flowers {
-            display: flex;
-            gap: 10px;
-            font-size: 28px;
-            margin: 10px 0;
-            animation: float 3s ease-in-out infinite;
-        }
-
         .chat-sequence {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .hidden { display: none !important; }
-
-        /* Stars for correct answers */
-        .star-burst {
-            position: fixed;
-            pointer-events: none;
-            z-index: 50;
-        }
-
-        .star-burst span {
-            position: absolute;
-            font-size: 24px;
-            animation: starBurst 0.8s ease-out forwards;
-        }
-
-        @keyframes starBurst {
-            0% { transform: translate(0, 0) scale(0); opacity: 1; }
-            100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 0; }
-        }
-
-        /* Fail screen */
-        .fail-emoji {
-            font-size: 80px;
-            margin: 15px 0;
-            animation: wiggle 1s ease-in-out infinite;
-        }
-
-        .fail-text {
-            font-family: 'Quicksand', sans-serif;
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--text-dark);
-            margin: 10px 0;
-        }
-
-        .fail-subtitle {
-            font-size: 15px;
-            color: var(--text-light);
-            line-height: 1.6;
-            margin-bottom: 20px;
+            width: 100%; display: flex; flex-direction: column; align-items: center;
         }
     </style>
 </head>
 <body>
-    <!-- Floating Hearts Background -->
     <div class="hearts-bg" id="heartsBg"></div>
 
     <div class="container">
-
-        <!-- SCREEN 1: Welcome / Chat Intro -->
+        <!-- SCREEN 1: Welcome -->
         <div class="screen active" id="screen-welcome">
-            <div class="avatar-container">
-                <div class="avatar" id="mainAvatar">🧚‍♀️</div>
+            <div class="character-wrapper" id="mainCharacter">
+                <div class="char-body">
+                    <div class="char-hair">
+                        <div class="char-hair-flower">🌸</div>
+                    </div>
+                    <div class="char-face" id="mainFace">
+                        <div class="char-eyes" id="mainEyes">
+                            <div class="char-eye" id="eyeLeft"></div>
+                            <div class="char-eye" id="eyeRight"></div>
+                        </div>
+                        <div class="char-mouth smile" id="mainMouth"></div>
+                        <div class="char-blush left"></div>
+                        <div class="char-blush right"></div>
+                    </div>
+                    <div class="char-neck"></div>
+                    <div class="char-dress"></div>
+                    <div class="char-dress-bow">🎀</div>
+                    <div class="char-dress-belt"></div>
+                    <div class="char-left-arm"></div>
+                    <div class="char-right-arm" id="mainRightArm"></div>
+                    <div class="char-left-leg"></div>
+                    <div class="char-right-leg"></div>
+                </div>
             </div>
-            <div class="chat-sequence" id="chatSequence">
-                <!-- Chat bubbles will be added dynamically -->
-            </div>
+            <div class="chat-sequence" id="chatSequence"></div>
         </div>
 
         <!-- SCREEN 2: Quiz -->
         <div class="screen" id="screen-quiz">
-            <div class="avatar-container">
-                <div class="avatar">🧚‍♀️</div>
+            <div class="character-wrapper idle" id="quizCharacter" style="transform: scale(0.7); margin-bottom: 5px;">
+                <div class="char-body">
+                    <div class="char-hair"><div class="char-hair-flower">🌸</div></div>
+                    <div class="char-face">
+                        <div class="char-eyes" id="quizEyes">
+                            <div class="char-eye"></div>
+                            <div class="char-eye"></div>
+                        </div>
+                        <div class="char-mouth smirk" id="quizMouth"></div>
+                        <div class="char-blush left"></div>
+                        <div class="char-blush right"></div>
+                    </div>
+                    <div class="char-neck"></div>
+                    <div class="char-dress"></div>
+                    <div class="char-dress-bow">🎀</div>
+                    <div class="char-dress-belt"></div>
+                    <div class="char-left-arm"></div>
+                    <div class="char-right-arm"></div>
+                    <div class="char-left-leg"></div>
+                    <div class="char-right-leg"></div>
+                </div>
             </div>
-            <div class="chat-bubble" style="margin-bottom: 20px;">
+            <div class="chat-bubble" style="margin-bottom: 15px;">
                 <p id="quizChatText">Alright! Let's see how well you remember... 🤔</p>
             </div>
-
             <div class="hearts-counter" id="heartsCounter"></div>
-
             <div class="question-card" id="questionCard">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-                </div>
-                <div class="score-display" id="scoreDisplay">
-                    <span>✨</span>
-                    <span id="scoreText">Score: 0 / 5</span>
-                </div>
+                <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%"></div></div>
+                <div class="score-display" id="scoreDisplay"><span>✨</span><span id="scoreText">Score: 0 / 5</span></div>
                 <div class="question-header">
                     <div class="question-number" id="questionNum">1</div>
                     <div class="question-text" id="questionText"></div>
@@ -649,13 +663,32 @@
             </div>
         </div>
 
-        <!-- SCREEN 3: All Correct - Gift Reveal -->
+        <!-- SCREEN 3: Gift -->
         <div class="screen" id="screen-gift">
             <div class="gift-reveal">
+                <div class="character-wrapper happy" style="transform: scale(0.65); margin-bottom: 0;">
+                    <div class="char-body">
+                        <div class="char-hair"><div class="char-hair-flower">🌸</div></div>
+                        <div class="char-face">
+                            <div class="char-eyes"><div class="char-eye happy-eye"></div><div class="char-eye happy-eye"></div></div>
+                            <div class="char-mouth big-smile"></div>
+                            <div class="char-blush left"></div>
+                            <div class="char-blush right"></div>
+                        </div>
+                        <div class="char-neck"></div>
+                        <div class="char-dress"></div>
+                        <div class="char-dress-bow">🎀</div>
+                        <div class="char-dress-belt"></div>
+                        <div class="char-left-arm" style="transform: rotate(-20deg);"></div>
+                        <div class="char-right-arm" style="transform: rotate(20deg);"></div>
+                        <div class="char-left-leg"></div>
+                        <div class="char-right-leg"></div>
+                    </div>
+                </div>
                 <div class="birthday-text">Happy Birthday!</div>
                 <div class="intro-flowers">🌸 🌺 🌷 🌹 🌸</div>
-                <p style="color: var(--text-light); margin: 10px 0;">You got all answers right! You really remember everything about us!</p>
-                <p style="color: var(--text-dark); font-weight: 600; margin: 20px 0;">Tap the gift to reveal your surprise...</p>
+                <p style="color: var(--text-light); margin: 8px 0;">You got all answers right! You really remember everything about us!</p>
+                <p style="color: var(--text-dark); font-weight: 600; margin: 15px 0;">Tap the gift to reveal your surprise...</p>
                 <div class="gift-box" id="giftBox" onclick="openGift()">🎁</div>
                 <div id="giftContent" class="hidden">
                     <div class="teddy-reveal">🧸</div>
@@ -663,21 +696,38 @@
                     <div class="gift-message">
                         Because you deserve the biggest, softest, most huggable teddy in the world...
                         <br>just like how you make my world the warmest place!
-                        <br><br>
-                        I love you more than words can say 💕
+                        <br><br>I love you more than words can say 💕
                     </div>
                     <div class="intro-flowers">💝 🧸 💝 🧸 💝</div>
                 </div>
             </div>
         </div>
 
-        <!-- SCREEN 4: Not all correct -->
+        <!-- SCREEN 4: Fail -->
         <div class="screen" id="screen-fail">
-            <div class="avatar-container">
-                <div class="avatar">🧚‍♀️</div>
+            <div class="character-wrapper sad" style="transform: scale(0.65); margin-bottom: 5px;">
+                <div class="char-body">
+                    <div class="char-hair"><div class="char-hair-flower">🌸</div></div>
+                    <div class="char-face">
+                        <div class="char-eyes">
+                            <div class="char-eye sad-eye"></div>
+                            <div class="char-eye sad-eye"></div>
+                        </div>
+                        <div class="char-mouth sad-mouth"></div>
+                        <div class="char-blush left"></div>
+                        <div class="char-blush right"></div>
+                    </div>
+                    <div class="char-neck"></div>
+                    <div class="char-dress"></div>
+                    <div class="char-dress-bow">🎀</div>
+                    <div class="char-dress-belt"></div>
+                    <div class="char-left-arm" style="transform: rotate(5deg);"></div>
+                    <div class="char-right-arm" style="transform: rotate(-5deg);"></div>
+                    <div class="char-left-leg"></div>
+                    <div class="char-right-leg"></div>
+                </div>
             </div>
             <div style="text-align: center;">
-                <div class="fail-emoji" id="failEmoji">😤</div>
                 <div class="fail-text" id="failTitle">Hmmm... Really?!</div>
                 <div class="fail-subtitle" id="failSubtitle">
                     You forgot some of our special moments?!
@@ -692,52 +742,31 @@
     <script>
         // ========== DATA ==========
         const questions = [
-            {
-                question: "When did he first approach you? 😏",
-                correct: "Apr 2, 2025",
-                options: ["Mar 31, 2025", "Apr 2, 2025", "Apr 4, 2025", "Apr 1, 2025"]
-            },
-            {
-                question: "When was your first kiss? 💋",
-                correct: "Aug 15, 2025",
-                options: ["Aug 13, 2025", "Aug 16, 2025", "Aug 15, 2025", "Aug 14, 2025"]
-            },
-            {
-                question: "When was your first fight? 😡💕",
-                correct: "Aug 26, 2025",
-                options: ["Aug 25, 2025", "Aug 26, 2025", "Aug 28, 2025", "Aug 24, 2025"]
-            },
-            {
-                question: "When did the home engagement happen? 💍",
-                correct: "Aug 27, 2025",
-                options: ["Aug 29, 2025", "Aug 26, 2025", "Aug 27, 2025", "Aug 28, 2025"]
-            },
-            {
-                question: "When was your first movie together? 🎬🍿",
-                correct: "Sep 21, 2025",
-                options: ["Sep 20, 2025", "Sep 22, 2025", "Sep 19, 2025", "Sep 21, 2025"]
-            }
+            { question: "When did he first approach you? 😏", correct: "Apr 2, 2025", options: ["Mar 31, 2025", "Apr 2, 2025", "Apr 4, 2025", "Apr 1, 2025"] },
+            { question: "When was your first kiss? 💋", correct: "Aug 15, 2025", options: ["Aug 13, 2025", "Aug 16, 2025", "Aug 15, 2025", "Aug 14, 2025"] },
+            { question: "When was your first fight? 😡💕", correct: "Aug 26, 2025", options: ["Aug 25, 2025", "Aug 26, 2025", "Aug 28, 2025", "Aug 24, 2025"] },
+            { question: "When did the home engagement happen? 💍", correct: "Aug 27, 2025", options: ["Aug 29, 2025", "Aug 26, 2025", "Aug 27, 2025", "Aug 28, 2025"] },
+            { question: "When was your first movie together? 🎬🍿", correct: "Sep 21, 2025", options: ["Sep 20, 2025", "Sep 22, 2025", "Sep 19, 2025", "Sep 21, 2025"] }
         ];
 
         const wrongAnswerReactions = [
-            { emoji: "😱", title: "Excuse me?!", msg: "You forgot when he approached you?! That man gathered all his courage and you don't even remember the date! The audacity! 😤" },
-            { emoji: "💀", title: "Girl... NO!", msg: "You forgot your FIRST KISS?! That man's lips are crying right now. Somewhere a romantic movie just stopped playing out of respect. 😭" },
-            { emoji: "🤡", title: "Oh wow!", msg: "You forgot your first FIGHT?! That's the day you both learned love isn't just butterflies — it's also dramatic WhatsApp statuses! 📱😂" },
-            { emoji: "💔", title: "This is painful!", msg: "The ENGAGEMENT date?! You know... that tiny little moment where you both said 'yes' to FOREVER?! Ring any bells? 💍🔔" },
-            { emoji: "🎬", title: "Are you serious?!", msg: "You forgot your first movie date?! The popcorn remembers. The seats remember. Even the interval samosa remembers. But you don't! 🍿😩" }
+            { title: "Excuse me?!", msg: "You forgot when he approached you?! That man gathered all his courage and you don't even remember the date! The audacity! 😤", expression: "surprised" },
+            { title: "Girl... NO!", msg: "You forgot your FIRST KISS?! That man's lips are crying right now. Somewhere a romantic movie just stopped playing out of respect. 😭", expression: "sad" },
+            { title: "Oh wow!", msg: "You forgot your first FIGHT?! That's the day you both learned love isn't just butterflies — it's also dramatic WhatsApp statuses! 📱😂", expression: "smirk" },
+            { title: "This is painful!", msg: "The ENGAGEMENT date?! You know... that tiny little moment where you both said 'yes' to FOREVER?! Ring any bells? 💍🔔", expression: "sad" },
+            { title: "Are you serious?!", msg: "You forgot your first movie date?! The popcorn remembers. The seats remember. Even the interval samosa remembers. But you don't! 🍿😩", expression: "surprised" }
         ];
 
         const chatMessages = [
-            { text: "Hiii! 👋✨", delay: 800 },
-            { text: "Wait... is that really you? OMG! 😍", delay: 1800 },
-            { text: "I've been waiting to talk to you! I'm your Birthday Fairy! 🧚‍♀️💫", delay: 2000 },
-            { text: "So someone very special asked me to arrange a surprise for you today... 🎁", delay: 2200 },
-            { text: "But first... HAPPY BIRTHDAY! 🎂🎉🥳", delay: 1500, special: true },
-            { text: "Now, here's the deal... I have a GIFT for you! 🎁✨ But you have to earn it! 😏", delay: 2200 },
-            { text: "I'll ask you 5 questions about your love story... Answer ALL correctly and the gift is yours! Ready? 💕", delay: 2500, showButton: true }
+            { text: "Hiii! 👋✨", delay: 800, charAction: "wave" },
+            { text: "Wait... is that really you? OMG!", delay: 1800, charAction: "surprised" },
+            { text: "I've been waiting to talk to you! I'm your Birthday Fairy! 💫", delay: 2000, charAction: "happy" },
+            { text: "Someone very special asked me to arrange a surprise for you today... 🎁", delay: 2200, charAction: "wink" },
+            { text: "But first... HAPPY BIRTHDAY! 🎂🎉🥳", delay: 1500, special: true, charAction: "celebrate" },
+            { text: "Now, here's the deal... I have a GIFT for you! 🎁✨ But you have to earn it! 😏", delay: 2200, charAction: "smirk" },
+            { text: "I'll ask you 5 questions about your love story... Answer ALL correctly and the gift is yours! Ready? 💕", delay: 2500, showButton: true, charAction: "happy" }
         ];
 
-        // ========== STATE ==========
         let currentQuestion = 0;
         let score = 0;
         let answered = false;
@@ -767,60 +796,171 @@
                 sparkle.style.animationDelay = Math.random() + 's';
                 document.body.appendChild(sparkle);
                 setTimeout(() => sparkle.remove(), 2000);
-            }, 300);
+            }, 400);
+        }
+
+        // ========== CHARACTER EXPRESSIONS ==========
+        function setCharacterExpression(action) {
+            const char = document.getElementById('mainCharacter');
+            const eyeL = document.getElementById('eyeLeft');
+            const eyeR = document.getElementById('eyeRight');
+            const mouth = document.getElementById('mainMouth');
+
+            // Reset
+            eyeL.className = 'char-eye';
+            eyeR.className = 'char-eye';
+            mouth.className = 'char-mouth smile';
+            char.className = 'character-wrapper idle';
+
+            switch (action) {
+                case 'wave':
+                    char.className = 'character-wrapper idle waving';
+                    mouth.className = 'char-mouth big-smile';
+                    break;
+                case 'surprised':
+                    eyeL.classList.add('surprised-eye');
+                    eyeR.classList.add('surprised-eye');
+                    mouth.className = 'char-mouth open-mouth';
+                    break;
+                case 'happy':
+                    eyeL.classList.add('happy-eye');
+                    eyeR.classList.add('happy-eye');
+                    mouth.className = 'char-mouth big-smile';
+                    char.className = 'character-wrapper happy';
+                    break;
+                case 'wink':
+                    eyeL.classList.add('wink-eye-left');
+                    eyeR.classList.add('wink-eye-right');
+                    mouth.className = 'char-mouth smirk';
+                    break;
+                case 'celebrate':
+                    eyeL.classList.add('happy-eye');
+                    eyeR.classList.add('happy-eye');
+                    mouth.className = 'char-mouth big-smile';
+                    char.className = 'character-wrapper happy';
+                    break;
+                case 'smirk':
+                    eyeL.classList.add('wink-eye-left');
+                    eyeR.classList.add('wink-eye-right');
+                    mouth.className = 'char-mouth smirk';
+                    break;
+                case 'sad':
+                    eyeL.classList.add('sad-eye');
+                    eyeR.classList.add('sad-eye');
+                    mouth.className = 'char-mouth sad-mouth';
+                    char.className = 'character-wrapper sad';
+                    break;
+                case 'thinking':
+                    mouth.className = 'char-mouth smirk';
+                    char.className = 'character-wrapper idle thinking';
+                    break;
+            }
+        }
+
+        // ========== BUILD MINI CHARACTER HTML ==========
+        function getMiniCharHTML(expression) {
+            let eyeClassL = 'char-eye', eyeClassR = 'char-eye', mouthClass = 'char-mouth smile';
+            let armStyleL = '', armStyleR = '';
+
+            if (expression === 'surprised') {
+                eyeClassL = 'char-eye surprised-eye';
+                eyeClassR = 'char-eye surprised-eye';
+                mouthClass = 'char-mouth open-mouth';
+            } else if (expression === 'sad') {
+                eyeClassL = 'char-eye sad-eye';
+                eyeClassR = 'char-eye sad-eye';
+                mouthClass = 'char-mouth sad-mouth';
+                armStyleL = 'style="transform: rotate(5deg);"';
+                armStyleR = 'style="transform: rotate(-5deg);"';
+            } else if (expression === 'smirk') {
+                eyeClassL = 'char-eye wink-eye-left';
+                eyeClassR = 'char-eye wink-eye-right';
+                mouthClass = 'char-mouth smirk';
+            }
+
+            return `
+                <div class="mini-character">
+                    <div class="char-body">
+                        <div class="char-hair"><div class="char-hair-flower">🌸</div></div>
+                        <div class="char-face">
+                            <div class="char-eyes"><div class="${eyeClassL}"></div><div class="${eyeClassR}"></div></div>
+                            <div class="${mouthClass}"></div>
+                            <div class="char-blush left"></div>
+                            <div class="char-blush right"></div>
+                        </div>
+                        <div class="char-neck"></div>
+                        <div class="char-dress"></div>
+                        <div class="char-dress-bow">🎀</div>
+                        <div class="char-dress-belt"></div>
+                        <div class="char-left-arm" ${armStyleL}></div>
+                        <div class="char-right-arm" ${armStyleR}></div>
+                        <div class="char-left-leg"></div>
+                        <div class="char-right-leg"></div>
+                    </div>
+                </div>
+            `;
         }
 
         // ========== CHAT SEQUENCE ==========
         function startChatSequence() {
             const container = document.getElementById('chatSequence');
+            const char = document.getElementById('mainCharacter');
             let index = 0;
 
-            function showNextMessage() {
-                if (index >= chatMessages.length) return;
+            // Character walks in first
+            char.classList.add('walk-in');
 
-                const msg = chatMessages[index];
-
-                // Show typing indicator first
-                const typingBubble = document.createElement('div');
-                typingBubble.className = 'chat-bubble';
-                typingBubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
-                container.appendChild(typingBubble);
-                container.scrollIntoView({ behavior: 'smooth', block: 'end' });
-
-                setTimeout(() => {
-                    // Replace typing with actual message
-                    typingBubble.innerHTML = `<p>${msg.special ? '<span class="birthday-text" style="font-size: 24px;">' + msg.text + '</span>' : msg.text}</p>`;
-                    typingBubble.style.animation = 'none';
-                    typingBubble.offsetHeight; // trigger reflow
-                    typingBubble.style.animation = 'fadeInScale 0.4s ease-out';
-
-                    if (msg.showButton) {
-                        const btnDiv = document.createElement('div');
-                        btnDiv.style.animation = 'fadeInUp 0.5s ease-out';
-                        btnDiv.innerHTML = '<button class="btn" onclick="startQuiz()">I\'m Ready! Let\'s Go! 💪</button>';
-                        container.appendChild(btnDiv);
-                    }
-
-                    index++;
-                    if (index < chatMessages.length) {
-                        setTimeout(showNextMessage, msg.delay || 1500);
-                    }
-
-                    container.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }, 1200);
-            }
-
-            // Start with avatar wave
             setTimeout(() => {
-                document.getElementById('mainAvatar').classList.add('wave');
+                char.classList.remove('walk-in');
+                char.classList.add('idle');
+
+                function showNextMessage() {
+                    if (index >= chatMessages.length) return;
+
+                    const msg = chatMessages[index];
+
+                    // Set character expression
+                    if (msg.charAction) setCharacterExpression(msg.charAction);
+
+                    const typingBubble = document.createElement('div');
+                    typingBubble.className = 'chat-bubble';
+                    typingBubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+                    container.appendChild(typingBubble);
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+                    setTimeout(() => {
+                        typingBubble.innerHTML = `<p>${msg.special ? '<span class="birthday-text" style="font-size: 24px;">' + msg.text + '</span>' : msg.text}</p>`;
+                        typingBubble.style.animation = 'none';
+                        typingBubble.offsetHeight;
+                        typingBubble.style.animation = 'fadeInScale 0.4s ease-out';
+
+                        if (msg.special) launchConfetti();
+
+                        if (msg.showButton) {
+                            const btnDiv = document.createElement('div');
+                            btnDiv.style.animation = 'fadeInUp 0.5s ease-out';
+                            btnDiv.innerHTML = '<button class="btn" onclick="startQuiz()">I\'m Ready! Let\'s Go! 💪</button>';
+                            container.appendChild(btnDiv);
+                        }
+
+                        index++;
+                        if (index < chatMessages.length) {
+                            setTimeout(showNextMessage, msg.delay || 1500);
+                        }
+
+                        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    }, 1200);
+                }
+
                 setTimeout(showNextMessage, 500);
-            }, 600);
+            }, 1600);
         }
 
         // ========== QUIZ ==========
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function startQuiz() {
@@ -837,25 +977,15 @@
             for (let i = 0; i < questions.length; i++) {
                 const heart = document.createElement('span');
                 heart.className = 'heart-icon';
-                if (i < score) {
-                    heart.textContent = '💖';
-                    heart.classList.add('filled');
-                } else if (i < currentQuestion) {
-                    heart.textContent = '💔';
-                    heart.classList.add('empty');
-                } else {
-                    heart.textContent = '🤍';
-                }
+                if (i < score) { heart.textContent = '💖'; heart.classList.add('filled'); }
+                else if (i < currentQuestion) { heart.textContent = '💔'; heart.classList.add('empty'); }
+                else heart.textContent = '🤍';
                 counter.appendChild(heart);
             }
         }
 
         function loadQuestion() {
-            if (currentQuestion >= questions.length) {
-                finishQuiz();
-                return;
-            }
-
+            if (currentQuestion >= questions.length) { finishQuiz(); return; }
             answered = false;
             const q = questions[currentQuestion];
 
@@ -866,10 +996,7 @@
 
             const grid = document.getElementById('optionsGrid');
             grid.innerHTML = '';
-
-            // Shuffle options for each attempt
             const shuffled = [...q.options].sort(() => Math.random() - 0.5);
-
             shuffled.forEach(opt => {
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
@@ -878,13 +1005,44 @@
                 grid.appendChild(btn);
             });
 
-            // Animate card
             const card = document.getElementById('questionCard');
             card.style.animation = 'none';
             card.offsetHeight;
             card.style.animation = 'fadeInUp 0.5s ease-out';
-
             updateQuizChat();
+            setQuizCharExpression('thinking');
+        }
+
+        function setQuizCharExpression(type) {
+            const eyes = document.getElementById('quizEyes');
+            const mouth = document.getElementById('quizMouth');
+            const char = document.getElementById('quizCharacter');
+
+            const e = eyes.querySelectorAll('.char-eye');
+            e.forEach(el => el.className = 'char-eye');
+            mouth.className = 'char-mouth smile';
+            char.className = 'character-wrapper idle';
+
+            switch (type) {
+                case 'thinking':
+                    mouth.className = 'char-mouth smirk';
+                    char.className = 'character-wrapper idle thinking';
+                    break;
+                case 'happy':
+                    e.forEach(el => el.classList.add('happy-eye'));
+                    mouth.className = 'char-mouth big-smile';
+                    char.className = 'character-wrapper happy';
+                    break;
+                case 'sad':
+                    e.forEach(el => el.classList.add('sad-eye'));
+                    mouth.className = 'char-mouth sad-mouth';
+                    char.className = 'character-wrapper sad';
+                    break;
+                case 'surprised':
+                    e.forEach(el => el.classList.add('surprised-eye'));
+                    mouth.className = 'char-mouth open-mouth';
+                    break;
+            }
         }
 
         function updateQuizChat() {
@@ -901,7 +1059,6 @@
         function selectAnswer(btn, selected, correct) {
             if (answered) return;
             answered = true;
-
             const buttons = document.querySelectorAll('.option-btn');
             buttons.forEach(b => b.disabled = true);
 
@@ -909,6 +1066,7 @@
                 btn.classList.add('correct');
                 score++;
                 createStarBurst(btn);
+                setQuizCharExpression('happy');
 
                 setTimeout(() => {
                     currentQuestion++;
@@ -917,19 +1075,15 @@
                 }, 1200);
             } else {
                 btn.classList.add('wrong');
-
-                // Highlight correct answer
-                buttons.forEach(b => {
-                    if (b.textContent === correct) b.classList.add('correct');
-                });
-
+                buttons.forEach(b => { if (b.textContent === correct) b.classList.add('correct'); });
+                setQuizCharExpression('sad');
                 showWrongPopup();
 
                 setTimeout(() => {
                     currentQuestion++;
                     updateHeartsCounter();
                     loadQuestion();
-                }, 3000);
+                }, 3500);
             }
         }
 
@@ -939,7 +1093,6 @@
             burst.className = 'star-burst';
             burst.style.left = rect.left + rect.width / 2 + 'px';
             burst.style.top = rect.top + rect.height / 2 + 'px';
-
             const emojis = ['⭐', '✨', '💖', '🌟', '💫', '🎉'];
             for (let i = 0; i < 8; i++) {
                 const star = document.createElement('span');
@@ -949,7 +1102,6 @@
                 star.style.setProperty('--ty', Math.sin(angle) * 60 + 'px');
                 burst.appendChild(star);
             }
-
             document.body.appendChild(burst);
             setTimeout(() => burst.remove(), 1000);
         }
@@ -964,31 +1116,21 @@
             const popup = document.createElement('div');
             popup.className = 'wrong-popup';
             popup.innerHTML = `
-                <div class="emoji">${reaction.emoji}</div>
+                <div class="popup-char">${getMiniCharHTML(reaction.expression)}</div>
                 <h3>${reaction.title}</h3>
                 <p>${reaction.msg}</p>
             `;
             document.body.appendChild(popup);
 
-            setTimeout(() => {
-                overlay.remove();
-                popup.remove();
-            }, 2800);
+            setTimeout(() => { overlay.remove(); popup.remove(); }, 3200);
         }
 
         function finishQuiz() {
             document.getElementById('progressFill').style.width = '100%';
-
             if (score === questions.length) {
-                setTimeout(() => {
-                    showScreen('screen-gift');
-                    launchConfetti();
-                }, 500);
+                setTimeout(() => { showScreen('screen-gift'); launchConfetti(); }, 500);
             } else {
-                setTimeout(() => {
-                    showScreen('screen-fail');
-                    updateFailScreen();
-                }, 500);
+                setTimeout(() => { showScreen('screen-fail'); updateFailScreen(); }, 500);
             }
         }
 
@@ -1002,34 +1144,29 @@
                 heart.classList.add(i < score ? 'filled' : 'empty');
                 failHearts.appendChild(heart);
             }
-
             const failMsgs = [
-                { emoji: "😤", title: "Zero?! ZERO?!", subtitle: "You got NONE right?! Do you even know this person?! 😭 Okay deep breaths... try again and THINK this time!" },
-                { emoji: "😒", title: "Just one?! Seriously?!", subtitle: "One out of five... I've seen goldfish with better memory! 🐠 Come on, you can do better!" },
-                { emoji: "🙄", title: "Hmm... Not bad, not great!", subtitle: "You remember SOME things but clearly the important dates need a calendar reminder! 📅 Try again!" },
-                { emoji: "😏", title: "Sooo close!", subtitle: "3 out of 5! You're almost there but 'almost' doesn't get you a gift! One more try? 🎁" },
-                { emoji: "🥺", title: "Just ONE more!", subtitle: "4 out of 5! You were THIS close! 🤏 Come on, you got this! One more round!" }
+                { title: "Zero?! ZERO?!", subtitle: "You got NONE right?! Do you even know this person?! 😭 Okay deep breaths... try again and THINK this time!" },
+                { title: "Just one?! Seriously?!", subtitle: "One out of five... I've seen goldfish with better memory! 🐠 Come on, you can do better!" },
+                { title: "Hmm... Not bad, not great!", subtitle: "You remember SOME things but clearly the important dates need a calendar reminder! 📅 Try again!" },
+                { title: "Sooo close!", subtitle: "3 out of 5! You're almost there but 'almost' doesn't get you a gift! One more try? 🎁" },
+                { title: "Just ONE more!", subtitle: "4 out of 5! You were THIS close! 🤏 Come on, you got this! One more round!" }
             ];
-
             const msgData = failMsgs[score] || failMsgs[2];
-            document.getElementById('failEmoji').textContent = msgData.emoji;
             document.getElementById('failTitle').textContent = msgData.title;
             document.getElementById('failSubtitle').innerHTML = msgData.subtitle;
         }
 
         function restartQuiz() {
-            currentQuestion = 0;
-            score = 0;
+            currentQuestion = 0; score = 0;
             showScreen('screen-quiz');
             updateHeartsCounter();
             loadQuestion();
         }
 
-        // ========== GIFT REVEAL ==========
+        // ========== GIFT ==========
         function openGift() {
             const box = document.getElementById('giftBox');
             const content = document.getElementById('giftContent');
-
             if (!content.classList.contains('hidden')) return;
 
             box.style.animation = 'shake 0.5s ease';
@@ -1048,7 +1185,6 @@
         function launchConfetti() {
             const colors = ['#e91e63', '#ab47bc', '#ff8a80', '#ffd54f', '#f48fb1', '#b2dfdb', '#ffe0b2', '#ce93d8'];
             const shapes = ['■', '●', '▲', '★', '💕', '✨'];
-
             for (let i = 0; i < 60; i++) {
                 setTimeout(() => {
                     const confetti = document.createElement('div');
