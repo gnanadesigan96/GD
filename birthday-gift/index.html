@@ -57,59 +57,83 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
   transition:opacity .8s ease}
 .fullOverlay.fadeOut{opacity:0}
 
-/* "You Lost" screen */
-.lostScreen{background:radial-gradient(ellipse at center,#1a0000,#000)}
-.lostScreen h2{font-size:clamp(32px,8vw,56px);color:#ef4444;font-weight:800;letter-spacing:3px;
-  text-shadow:0 0 40px rgba(239,68,68,.5);margin-bottom:20px}
-.lostScreen p{color:#fca5a5;font-size:18px;max-width:350px;text-align:center;line-height:1.6}
+/* "You Lost" screen — cinematic dark with animated glitch */
+.lostScreen{background:#000;overflow:hidden}
+.lostScreen::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;
+  background:radial-gradient(circle at 50% 50%,rgba(239,68,68,.06) 0%,transparent 70%);
+  animation:lostPulse 1.5s ease-in-out infinite}
+@keyframes lostPulse{0%,100%{opacity:.3}50%{opacity:1}}
+.lostScreen h2{font-size:clamp(40px,10vw,72px);font-weight:900;letter-spacing:8px;
+  color:transparent;background:linear-gradient(180deg,#ef4444,#7f1d1d);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-shadow:0 0 80px rgba(239,68,68,.4);margin-bottom:24px;position:relative;
+  animation:glitchIn .6s ease forwards}
+@keyframes glitchIn{0%{transform:scale(3);opacity:0;filter:blur(20px)}
+  60%{transform:scale(.95);opacity:1;filter:blur(0)}100%{transform:scale(1)}}
+.lostScreen p{color:rgba(255,255,255,.3);font-size:16px;max-width:300px;text-align:center;
+  line-height:1.6;font-weight:300;letter-spacing:2px;animation:fadeIn 1.5s ease .5s forwards;opacity:0}
 
-/* "Eternal Lives" bright light reveal */
-.lightReveal{background:#fff;transition:background 3s ease}
-.lightReveal.dim{background:radial-gradient(ellipse at center,#fdf2f8,#fce7f3,#f5d0fe)}
-.lightReveal h2{font-size:clamp(20px,5vw,32px);color:#7c3aed;font-weight:600;text-align:center;
-  line-height:1.5;max-width:420px;opacity:0;transition:opacity 1.5s ease .8s}
-.lightReveal.dim h2{opacity:1}
-.lightReveal p{color:#a855f7;font-size:16px;margin-top:15px;opacity:0;transition:opacity 1s ease 2s}
-.lightReveal.dim p{opacity:1}
-.lightReveal button{margin-top:25px;background:linear-gradient(135deg,#a855f7,#ec4899);border:none;
-  color:#fff;padding:12px 30px;border-radius:25px;font-size:15px;cursor:pointer;font-weight:600;
-  opacity:0;transition:opacity 1s ease 2.5s}
-.lightReveal.dim button{opacity:1}
+/* "Eternal Lives" — premium light reveal with glass */
+.lightReveal{background:#fff;transition:background 2.5s ease}
+.lightReveal.dim{background:linear-gradient(135deg,#fdf2f8,#f5d0fe,#fce7f3,#ede9fe)}
+.lightReveal .revealCard{background:rgba(255,255,255,.5);backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,.6);border-radius:28px;padding:40px 32px;max-width:400px;
+  width:90%;text-align:center;box-shadow:0 20px 60px rgba(168,85,247,.1);
+  opacity:0;transform:translateY(30px);transition:all 1.2s cubic-bezier(.22,1,.36,1) .6s}
+.lightReveal.dim .revealCard{opacity:1;transform:translateY(0)}
+.lightReveal .revealCard h2{font-size:clamp(18px,4.5vw,26px);color:#6d28d9;font-weight:600;
+  line-height:1.6;margin-bottom:16px}
+.lightReveal .revealCard .inf{font-size:64px;margin:16px 0;
+  animation:infPulse 2s ease-in-out infinite}
+@keyframes infPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.lightReveal .revealCard p{color:#7c3aed;font-size:15px;line-height:1.7;margin-bottom:20px}
+.lightReveal .revealCard button{background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;
+  color:#fff;padding:14px 36px;border-radius:50px;font-size:15px;cursor:pointer;font-weight:600;
+  letter-spacing:.5px;box-shadow:0 4px 20px rgba(124,58,237,.25);transition:transform .2s}
+.lightReveal .revealCard button:hover{transform:scale(1.04)}
 
-/* Popup */
-.popup{position:fixed;top:0;left:0;width:100%;height:100%;z-index:35;display:flex;align-items:center;justify-content:center;
-  background:rgba(0,0,0,.7);backdrop-filter:blur(8px)}
-.popBox{background:rgba(20,10,40,.95);border:1px solid rgba(255,255,255,.1);border-radius:20px;
-  padding:36px;text-align:center;max-width:380px;width:90%}
-.popBox h3{font-size:22px;color:#f9a8d4;margin-bottom:12px;font-weight:600}
-.popBox p{color:#c4b5fd;margin-bottom:24px;line-height:1.6;font-size:15px}
-.popBox button{background:linear-gradient(135deg,#a855f7,#ec4899);border:none;color:#fff;
-  padding:12px 28px;border-radius:25px;font-size:15px;cursor:pointer;font-weight:600;letter-spacing:.5px}
-.popBox button:hover{filter:brightness(1.1);transform:scale(1.03)}
-
-/* GIFT */
+/* GIFT — premium layout, score on top */
 #giftUI{position:fixed;top:0;left:0;width:100%;height:100%;z-index:26;display:none;
-  flex-direction:column;align-items:center;justify-content:center;overflow:hidden;
-  background:radial-gradient(ellipse at 50% 30%,#2d0a30,#1a0520,#080612)}
-#giftUI h2{font-size:clamp(24px,6vw,38px);font-weight:300;letter-spacing:2px;
-  background:linear-gradient(135deg,#f9a8d4,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  margin-bottom:10px;text-align:center}
-.teddyWrap{cursor:pointer;position:relative}
-.teddyWrap canvas{animation:float 3s ease-in-out infinite}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-.tapHint{color:#a78bfa;font-size:14px;text-align:center;margin-top:8px;animation:pulse 2s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
-.gMsg{color:#c4b5fd;font-size:16px;margin-top:15px;text-align:center;line-height:1.7;max-width:360px}
-.scoreCard{background:linear-gradient(135deg,rgba(168,85,247,.15),rgba(236,72,153,.15));
-  border:2px solid rgba(249,168,212,.3);
-  border-radius:20px;padding:28px;margin-top:20px;text-align:center;max-width:340px;width:90%;
-  animation:scoreIn .8s ease forwards;opacity:0;transform:scale(.8);
-  box-shadow:0 0 30px rgba(236,72,153,.15),inset 0 0 20px rgba(168,85,247,.05)}
-@keyframes scoreIn{to{opacity:1;transform:scale(1)}}
-.scoreCard h3{font-size:22px;color:#f9a8d4;margin-bottom:10px;font-weight:700;
-  text-shadow:0 0 10px rgba(249,168,212,.3)}
-.scoreCard .stars{font-size:32px;margin:10px 0}
-.scoreCard .detail{color:#d4c4f0;font-size:15px;line-height:1.8;font-weight:500}
+  flex-direction:column;align-items:center;overflow-y:auto;overflow-x:hidden;
+  background:linear-gradient(180deg,#0a0012 0%,#1a0a2e 30%,#2d0a30 60%,#1a0520 100%)}
+#giftUI::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;
+  background:radial-gradient(circle at 30% 20%,rgba(236,72,153,.06),transparent 50%),
+  radial-gradient(circle at 70% 80%,rgba(168,85,247,.06),transparent 50%)}
+.giftInner{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;
+  padding:30px 20px 50px;width:100%;max-width:440px}
+
+/* Score card at top */
+.scoreTop{width:100%;margin-bottom:24px;animation:slideDown .8s cubic-bezier(.22,1,.36,1) forwards;
+  opacity:0;transform:translateY(-20px)}
+@keyframes slideDown{to{opacity:1;transform:translateY(0)}}
+.scoreTop .gradeLabel{text-align:center;font-size:clamp(20px,5vw,28px);font-weight:700;
+  margin-bottom:12px;letter-spacing:1px}
+.scoreTop .starsRow{text-align:center;font-size:36px;margin-bottom:16px;letter-spacing:4px}
+.scoreGlass{background:rgba(255,255,255,.04);backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:20px 24px;
+  display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.statBox{text-align:center;padding:12px 8px;background:rgba(255,255,255,.03);border-radius:14px;
+  border:1px solid rgba(255,255,255,.05)}
+.statBox .val{font-size:24px;font-weight:700;color:#f9a8d4;display:block}
+.statBox .lbl{font-size:11px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:1.5px;
+  margin-top:4px;display:block}
+.scoreFunny{text-align:center;margin-top:14px;color:rgba(255,255,255,.4);font-size:14px;
+  font-style:italic;letter-spacing:.5px}
+
+/* Teddy section */
+.teddySection{display:flex;flex-direction:column;align-items:center;
+  animation:fadeScaleIn 1s cubic-bezier(.22,1,.36,1) .3s forwards;opacity:0;transform:scale(.9)}
+@keyframes fadeScaleIn{to{opacity:1;transform:scale(1)}}
+.teddySection canvas{animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.giftTitle{font-size:clamp(22px,5.5vw,34px);font-weight:300;letter-spacing:2px;text-align:center;
+  margin-bottom:6px;background:linear-gradient(135deg,#f9a8d4,#c084fc);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.giftSub{color:rgba(255,255,255,.35);font-size:13px;text-align:center;letter-spacing:3px;
+  text-transform:uppercase;margin-bottom:16px}
+.giftMsg{text-align:center;margin-top:12px;max-width:320px}
+.giftMsg p{color:#c4b5fd;font-size:15px;line-height:1.7}
+.giftMsg .small{color:rgba(255,255,255,.3);font-size:12px;margin-top:8px;font-style:italic}
 </style>
 </head>
 <body>
@@ -1344,30 +1368,24 @@ window.pick=function(i){
 };
 
 function showLostSequence(){
-  const el=document.getElementById('quizUI');
-
-  // Step 1: "YOU LOST" screen
   const lost=document.createElement('div');
   lost.className='fullOverlay lostScreen';
-  lost.innerHTML=`<h2>YOU LOST</h2>
-    <p>Game Over... or is it? 🤔</p>`;
+  lost.innerHTML=`<h2>YOU LOST</h2><p>Game Over... or is it?</p>`;
   document.body.appendChild(lost);
 
-  // Step 2: After 2.5s, bright white light takes over
   setTimeout(()=>{
     lost.classList.add('fadeOut');
     const light=document.createElement('div');
     light.className='fullOverlay lightReveal';
-    light.innerHTML=`
+    light.innerHTML=`<div class="revealCard">
       <h2>Wait... why would I give you just one life?</h2>
-      <p>You have my ENTIRE life 💕<br>So why restrict to one?<br>
-      <strong style="color:#7c3aed;font-size:18px">You have ETERNAL lives! ♾️</strong></p>
-      <button onclick="continueAfterReveal()">Continue with ♾️ Lives →</button>`;
+      <div class="inf">♾️</div>
+      <p>You have my <strong>ENTIRE</strong> life.<br>So why restrict to one?<br>
+      You have <strong style="color:#6d28d9">ETERNAL lives!</strong></p>
+      <button onclick="continueAfterReveal()">Continue with Infinite Lives</button>
+    </div>`;
     document.body.appendChild(light);
-
     setTimeout(()=>light.classList.add('dim'),100);
-
-    // Remove lost screen
     setTimeout(()=>lost.remove(),1000);
   },2500);
 }
@@ -1385,181 +1403,207 @@ window.continueAfterReveal=function(){
 };
 
 function endQuiz(){
-  // All questions answered - show gift
   const el=document.getElementById('quizUI');
-  const allPerfect=wrongCounts.every(c=>c===0);
-  const popMsg=allPerfect
-    ?"You got EVERYTHING right! 🥹💕 Perfect memory, perfect love!"
-    :"You made it through! Even with some... memory issues 😏💕";
   el.innerHTML=`<div class="quizBg"></div><div class="qWrap" style="text-align:center">
-    <div style="font-size:50px;margin-bottom:16px">${allPerfect?'🏆':'🎉'}</div>
-    <h2 style="color:#f9a8d4;font-size:24px;margin-bottom:12px">Quiz Complete!</h2>
-    <p style="color:#c4b5fd;font-size:15px;line-height:1.6;margin-bottom:24px">${popMsg}</p>
+    <div style="font-size:50px;margin-bottom:16px">🎉</div>
+    <h2 style="color:#f9a8d4;font-size:clamp(22px,5vw,28px);margin-bottom:12px;font-weight:300;letter-spacing:1px">Quiz Complete!</h2>
+    <p style="color:rgba(255,255,255,.4);font-size:14px;line-height:1.6;margin-bottom:28px;letter-spacing:.5px">
+      Let's see how you did...</p>
     <button onclick="showGift()" style="background:linear-gradient(135deg,#a855f7,#ec4899);border:none;
-      color:#fff;padding:14px 32px;border-radius:25px;font-size:16px;cursor:pointer;font-weight:600">
-      Claim Your Gift! 🎁</button>
+      color:#fff;padding:16px 40px;border-radius:50px;font-size:16px;cursor:pointer;font-weight:600;
+      letter-spacing:.5px;box-shadow:0 4px 24px rgba(168,85,247,.3);transition:transform .2s">
+      Reveal Your Gift</button>
   </div>`;
 }
-
-// ═══════════════════════════════════════════
-//  GIFT - Tap teddy to reveal score
-// ═══════════════════════════════════════════
-
-let scoreRevealed=false;
 
 window.showGift=function(){
   document.getElementById('quizUI').style.display='none';
   const el=document.getElementById('giftUI');
   el.style.display='flex';
-  scoreRevealed=false;
-
-  el.innerHTML=`<h2>Your Gift Is Here! 🎁</h2>
-    <div class="teddyWrap" onclick="revealScore()">
-      <canvas id="tc" width="280" height="300" style="width:280px;height:300px"></canvas>
-      <div class="tapHint">Tap the teddy to see your score! 🐻</div>
-    </div>
-    <div class="gMsg">A Big Teddy Bear! 🧸<br>
-    <span style="font-size:14px;color:#a78bfa">Because you deserve all the cuddles in the world 💕</span></div>
-    <div id="scoreArea"></div>`;
-  drawTeddy();
-  confettiBurst(el);
-};
-
-window.revealScore=function(){
-  if(scoreRevealed)return;
-  scoreRevealed=true;
 
   const totalRight=wrongCounts.filter(c=>c===0).length;
   const totalWrong=wrongCounts.reduce((a,b)=>a+b,0);
   const perfect=totalWrong===0;
 
   let stars='';
-  if(perfect)stars='⭐⭐⭐⭐⭐';
-  else if(totalRight>=4)stars='⭐⭐⭐⭐';
-  else if(totalRight>=3)stars='⭐⭐⭐';
-  else if(totalRight>=2)stars='⭐⭐';
-  else stars='⭐';
+  for(let i=0;i<5;i++)stars+=i<totalRight?'★':'☆';
 
   let grade='',gradeCol='';
-  if(perfect){grade='PERFECT WIFE 👑';gradeCol='#fbbf24';}
-  else if(totalRight>=4){grade='Almost Perfect! 💕';gradeCol='#34d399';}
-  else if(totalRight>=3){grade='Not Bad... I Guess 😏';gradeCol='#a78bfa';}
-  else if(totalRight>=2){grade='We Need To Talk 😤';gradeCol='#f97316';}
-  else{grade='Couples Therapy ASAP! 💊';gradeCol='#ef4444';}
+  if(perfect){grade='PERFECT WIFE';gradeCol='#fbbf24';}
+  else if(totalRight>=4){grade='Almost Perfect!';gradeCol='#34d399';}
+  else if(totalRight>=3){grade='Not Bad... I Guess';gradeCol='#a78bfa';}
+  else if(totalRight>=2){grade='We Need To Talk';gradeCol='#f97316';}
+  else{grade='Couples Therapy ASAP';gradeCol='#ef4444';}
 
-  const area=document.getElementById('scoreArea');
-  area.innerHTML=`<div class="scoreCard">
-    <h3 style="color:${gradeCol}">${grade}</h3>
-    <div class="stars">${stars}</div>
-    <div class="detail">
-      First try correct: <strong>${totalRight}/${QS.length}</strong><br>
-      Total wrong guesses: <strong>${totalWrong}</strong><br>
-      ${perfect?'<span style="color:#fbbf24">Flawless Victory! 🏆</span>':
-        totalWrong===1?'So close to perfection! 😅':
-        'Well... at least you got there eventually 😂'}
+  const funnyLine=perfect?'Flawless. You actually pay attention. Respect.':
+    totalWrong===1?'So close to perfection... just one slip':
+    totalWrong<=3?'A few memory gaps... we\'ll work on that':
+    'Were you even in this relationship? Asking for a friend';
+
+  el.innerHTML=`<div class="giftInner">
+    <!-- SCORE AT TOP -->
+    <div class="scoreTop">
+      <div class="gradeLabel" style="color:${gradeCol}">${grade} ${perfect?'👑':''}</div>
+      <div class="starsRow" style="color:${gradeCol}">${stars}</div>
+      <div class="scoreGlass">
+        <div class="statBox">
+          <span class="val">${totalRight}/${QS.length}</span>
+          <span class="lbl">First Try</span>
+        </div>
+        <div class="statBox">
+          <span class="val">${totalWrong}</span>
+          <span class="lbl">Wrong Guesses</span>
+        </div>
+      </div>
+      <div class="scoreFunny">"${funnyLine}"</div>
+    </div>
+
+    <!-- GIFT -->
+    <div class="teddySection">
+      <div class="giftTitle">Your Gift</div>
+      <div class="giftSub">a big teddy bear</div>
+      <canvas id="tc" width="320" height="360" style="width:320px;height:360px"></canvas>
+      <div class="giftMsg">
+        <p>Because you deserve all the cuddles in the world</p>
+        <div class="small">Happy Birthday, my love</div>
+      </div>
     </div>
   </div>`;
-
-  // Hide tap hint
-  document.querySelector('.tapHint').style.display='none';
+  drawTeddy();
+  confettiBurst(el);
 };
 
 function drawTeddy(){
   const c2=document.getElementById('tc');if(!c2)return;
   const t=c2.getContext('2d');
-  c2.width=280;c2.height=300;
-  const cx2=140,cy2=140;
+  const cw=320,ch=360;c2.width=cw;c2.height=ch;
+  const cx2=cw/2,cy2=ch/2-10;
 
-  // Soft fur texture effect
-  const furMain='#a0714a',furLight='#c49a6c',furDark='#7a5230',belly='#d4b896';
+  // Colors matching the actual teddy: tan/cream
+  const fur='#dbb88a',furL='#e8cda5',furD='#c4a070';
 
-  // Shadow
-  t.fillStyle='rgba(0,0,0,.15)';t.beginPath();t.ellipse(cx2,cy2+120,55,12,0,0,Math.PI*2);t.fill();
+  // Soft shadow
+  t.fillStyle='rgba(0,0,0,.1)';t.beginPath();t.ellipse(cx2,cy2+148,65,14,0,0,Math.PI*2);t.fill();
 
-  // Feet
+  // LEGS (thick plush legs)
   [-1,1].forEach(side=>{
-    t.fillStyle=furMain;t.beginPath();t.ellipse(cx2+side*28,cy2+105,20,14,side*.2,0,Math.PI*2);t.fill();
-    t.fillStyle=belly;t.beginPath();t.ellipse(cx2+side*28,cy2+108,12,8,side*.2,0,Math.PI*2);t.fill();
-    // Toe beans!
-    t.fillStyle=furDark;
-    for(let i=0;i<3;i++){
-      t.beginPath();t.arc(cx2+side*22+side*i*7,cy2+104,2.5,0,Math.PI*2);t.fill();
-    }
+    const lx=cx2+side*30;
+    // Upper leg
+    const lg=t.createLinearGradient(lx-20,cy2+80,lx+20,cy2+80);
+    lg.addColorStop(0,furD);lg.addColorStop(.5,fur);lg.addColorStop(1,furD);
+    t.fillStyle=lg;
+    t.beginPath();t.ellipse(lx,cy2+105,24,40,side*.1,0,Math.PI*2);t.fill();
+    // Foot pad
+    t.fillStyle=furL;t.beginPath();t.ellipse(lx+side*4,cy2+138,16,10,side*.2,0,Math.PI*2);t.fill();
   });
 
-  // Body (big round belly)
-  t.fillStyle=furMain;t.beginPath();t.ellipse(cx2,cy2+35,55,60,0,0,Math.PI*2);t.fill();
-  // Belly patch
-  t.fillStyle=belly;t.beginPath();t.ellipse(cx2,cy2+42,35,42,0,0,Math.PI*2);t.fill();
-  // Belly fur line
-  t.strokeStyle=furLight;t.lineWidth=1;t.globalAlpha=.3;
-  t.beginPath();t.arc(cx2,cy2+50,20,.5,Math.PI-.5);t.stroke();
-  t.globalAlpha=1;
+  // BODY (big round plush belly)
+  let bg=t.createRadialGradient(cx2-10,cy2+15,10,cx2,cy2+30,70);
+  bg.addColorStop(0,furL);bg.addColorStop(.6,fur);bg.addColorStop(1,furD);
+  t.fillStyle=bg;t.beginPath();t.ellipse(cx2,cy2+35,62,68,0,0,Math.PI*2);t.fill();
+  // Belly seam line
+  t.strokeStyle='rgba(160,120,70,.15)';t.lineWidth=1;
+  t.beginPath();t.moveTo(cx2,cy2-20);t.lineTo(cx2,cy2+95);t.stroke();
 
-  // Arms (hugging outward, cute pose)
+  // ARMS (curved plush arms)
   [-1,1].forEach(side=>{
-    t.fillStyle=furMain;
-    t.beginPath();t.ellipse(cx2+side*52,cy2+20,16,32,side*.4,0,Math.PI*2);t.fill();
-    // Paw pad
-    t.fillStyle=belly;t.beginPath();t.ellipse(cx2+side*58,cy2+38,9,11,side*.3,0,Math.PI*2);t.fill();
+    const ax=cx2+side*58;
+    const ag=t.createLinearGradient(ax-18,cy2,ax+18,cy2);
+    ag.addColorStop(0,side<0?furD:fur);ag.addColorStop(1,side<0?fur:furD);
+    t.fillStyle=ag;
+    t.beginPath();t.ellipse(ax,cy2+20,18,38,side*.35,0,Math.PI*2);t.fill();
+    // Paw end
+    t.fillStyle=furL;t.beginPath();t.ellipse(ax+side*6,cy2+48,12,10,side*.3,0,Math.PI*2);t.fill();
   });
 
-  // Head
-  t.fillStyle=furMain;t.beginPath();t.ellipse(cx2,cy2-38,42,40,0,0,Math.PI*2);t.fill();
+  // HEAD
+  bg=t.createRadialGradient(cx2-8,cy2-55,10,cx2,cy2-42,52);
+  bg.addColorStop(0,furL);bg.addColorStop(.7,fur);bg.addColorStop(1,furD);
+  t.fillStyle=bg;t.beginPath();t.ellipse(cx2,cy2-42,48,46,0,0,Math.PI*2);t.fill();
 
-  // Ears
+  // EARS
   [-1,1].forEach(side=>{
-    t.fillStyle=furMain;t.beginPath();t.arc(cx2+side*32,cy2-72,16,0,Math.PI*2);t.fill();
-    t.fillStyle='#e8a0b0';t.beginPath();t.arc(cx2+side*32,cy2-72,9,0,Math.PI*2);t.fill();
+    t.fillStyle=fur;t.beginPath();t.arc(cx2+side*38,cy2-82,18,0,Math.PI*2);t.fill();
+    t.fillStyle=furL;t.beginPath();t.arc(cx2+side*38,cy2-82,10,0,Math.PI*2);t.fill();
   });
 
-  // Face patch (muzzle area)
-  t.fillStyle=belly;t.beginPath();t.ellipse(cx2,cy2-28,26,22,0,0,Math.PI*2);t.fill();
+  // WHITE MUZZLE (big white area around nose/mouth - matches photo)
+  t.fillStyle='#f5f0ea';
+  t.beginPath();t.ellipse(cx2,cy2-30,30,26,0,0,Math.PI*2);t.fill();
 
-  // Eyes - big cute eyes
+  // EYES - green/hazel eyes matching photo
   [-1,1].forEach(side=>{
-    const ex=cx2+side*14,ey=cy2-45;
-    // White
-    t.fillStyle='#fff';t.beginPath();t.ellipse(ex,ey,8,9,0,0,Math.PI*2);t.fill();
-    // Iris
-    t.fillStyle='#2a1530';t.beginPath();t.arc(ex+side*1,ey+1,5,0,Math.PI*2);t.fill();
+    const ex=cx2+side*16,ey=cy2-52;
+    // Eye socket shadow
+    t.fillStyle='rgba(0,0,0,.06)';t.beginPath();t.ellipse(ex,ey,10,11,0,0,Math.PI*2);t.fill();
+    // Eyeball
+    t.fillStyle='#f8f8f0';t.beginPath();t.ellipse(ex,ey,8,9,0,0,Math.PI*2);t.fill();
+    // Iris (green/olive like the actual teddy)
+    t.fillStyle='#6b8e23';t.beginPath();t.arc(ex+side,ey+1,5.5,0,Math.PI*2);t.fill();
+    // Inner iris detail
+    t.fillStyle='#556b2f';t.beginPath();t.arc(ex+side,ey+1,3.5,0,Math.PI*2);t.fill();
     // Pupil
-    t.fillStyle='#000';t.beginPath();t.arc(ex+side*1,ey+1,3,0,Math.PI*2);t.fill();
-    // Shine
-    t.fillStyle='#fff';t.beginPath();t.arc(ex+side*3,ey-2,2,0,Math.PI*2);t.fill();
-    // Eyelashes (top)
-    t.strokeStyle='#5a3520';t.lineWidth=1.5;
-    t.beginPath();t.arc(ex,ey,9,-Math.PI*.8,-Math.PI*.2);t.stroke();
+    t.fillStyle='#111';t.beginPath();t.arc(ex+side,ey+1,2.5,0,Math.PI*2);t.fill();
+    // Catchlight
+    t.fillStyle='#fff';t.beginPath();t.arc(ex+side*2+1,ey-2,2,0,Math.PI*2);t.fill();
+    t.fillStyle='rgba(255,255,255,.4)';t.beginPath();t.arc(ex-side,ey+3,1,0,Math.PI*2);t.fill();
   });
 
-  // Nose - cute triangle
-  t.fillStyle='#3a2020';
-  t.beginPath();t.moveTo(cx2,cy2-32);t.lineTo(cx2-6,cy2-38);t.lineTo(cx2+6,cy2-38);t.fill();
-  t.beginPath();t.ellipse(cx2,cy2-35,7,4,0,0,Math.PI*2);t.fill();
+  // NOSE (big round brown nose)
+  t.fillStyle='#a07850';
+  t.beginPath();t.ellipse(cx2,cy2-36,9,6,0,0,Math.PI*2);t.fill();
   // Nose shine
-  t.fillStyle='rgba(255,255,255,.3)';t.beginPath();t.ellipse(cx2-2,cy2-37,3,2,0,0,Math.PI*2);t.fill();
+  t.fillStyle='rgba(255,255,255,.2)';t.beginPath();t.ellipse(cx2-3,cy2-38,4,2.5,-.3,0,Math.PI*2);t.fill();
 
-  // Mouth - cute smile
-  t.strokeStyle='#5a3520';t.lineWidth=2;t.lineCap='round';
-  t.beginPath();t.arc(cx2-5,cy2-30,5,.1,Math.PI-.1);t.stroke();
-  t.beginPath();t.arc(cx2+5,cy2-30,5,.1,Math.PI-.1);t.stroke();
+  // MOUTH - big smile (stitched look like the actual teddy)
+  t.strokeStyle='#5a4030';t.lineWidth=2;t.lineCap='round';
+  // Center line down from nose
+  t.beginPath();t.moveTo(cx2,cy2-30);t.lineTo(cx2,cy2-24);t.stroke();
+  // Wide smile curves
+  t.lineWidth=1.8;
+  t.beginPath();t.arc(cx2-8,cy2-22,8,.15,Math.PI-.3);t.stroke();
+  t.beginPath();t.arc(cx2+8,cy2-22,8,.3,Math.PI-.15);t.stroke();
 
-  // Blush cheeks
-  t.fillStyle='rgba(236,72,153,.2)';
-  t.beginPath();t.ellipse(cx2-22,cy2-30,8,5,0,0,Math.PI*2);t.fill();
-  t.beginPath();t.ellipse(cx2+22,cy2-30,8,5,0,0,Math.PI*2);t.fill();
+  // SCARF (brown + white striped with red fringe — matches photo)
+  // Scarf knot at center
+  t.fillStyle='#a07040';
+  t.beginPath();t.ellipse(cx2,cy2-2,12,8,0,0,Math.PI*2);t.fill();
+  // Left scarf tail
+  t.fillStyle='#f5f0ea';
+  t.beginPath();t.moveTo(cx2-8,cy2-2);t.quadraticCurveTo(cx2-20,cy2+15,cx2-14,cy2+40);
+  t.lineTo(cx2-4,cy2+38);t.quadraticCurveTo(cx2-12,cy2+15,cx2-2,cy2);t.fill();
+  // Brown stripe on left tail
+  t.fillStyle='#a07040';
+  t.beginPath();t.moveTo(cx2-7,cy2+15);t.quadraticCurveTo(cx2-14,cy2+28,cx2-12,cy2+40);
+  t.lineTo(cx2-6,cy2+38);t.quadraticCurveTo(cx2-8,cy2+28,cx2-3,cy2+17);t.fill();
+  // Right scarf tail
+  t.fillStyle='#f5f0ea';
+  t.beginPath();t.moveTo(cx2+8,cy2-2);t.quadraticCurveTo(cx2+18,cy2+12,cx2+12,cy2+35);
+  t.lineTo(cx2+3,cy2+33);t.quadraticCurveTo(cx2+10,cy2+12,cx2+2,cy2);t.fill();
+  // Brown stripe on right tail
+  t.fillStyle='#a07040';
+  t.beginPath();t.moveTo(cx2+6,cy2+12);t.quadraticCurveTo(cx2+14,cy2+22,cx2+11,cy2+35);
+  t.lineTo(cx2+5,cy2+33);t.quadraticCurveTo(cx2+8,cy2+22,cx2+3,cy2+14);t.fill();
+  // Red fringe at bottom of each tail
+  t.strokeStyle='#8b2020';t.lineWidth=1.2;
+  for(let i=0;i<5;i++){
+    // Left fringe
+    t.beginPath();t.moveTo(cx2-13+i*3,cy2+38);t.lineTo(cx2-14+i*3+Math.sin(i)*.5,cy2+46);t.stroke();
+    // Right fringe
+    t.beginPath();t.moveTo(cx2+4+i*3,cy2+33);t.lineTo(cx2+3+i*3+Math.sin(i)*.5,cy2+41);t.stroke();
+  }
+  // Scarf wrap around neck
+  t.fillStyle='#a07040';
+  t.beginPath();t.ellipse(cx2,cy2-8,35,8,.05,Math.PI,Math.PI*2);t.fill();
+  t.fillStyle='#f5f0ea';
+  t.beginPath();t.ellipse(cx2,cy2-6,32,6,.05,Math.PI,Math.PI*2);t.fill();
 
-  // Red heart on belly
-  t.fillStyle='#ec4899';t.save();t.translate(cx2,cy2+35);
-  t.beginPath();t.moveTo(0,-4);
-  t.bezierCurveTo(-8,-14,-16,0,0,12);t.bezierCurveTo(16,0,8,-14,0,-4);t.fill();
-  t.restore();
-
-  // Bow tie
-  t.fillStyle='#ec4899';
-  t.beginPath();t.moveTo(cx2,cy2-4);t.lineTo(cx2-12,cy2-12);t.lineTo(cx2-12,cy2+4);t.fill();
-  t.beginPath();t.moveTo(cx2,cy2-4);t.lineTo(cx2+12,cy2-12);t.lineTo(cx2+12,cy2+4);t.fill();
-  t.fillStyle='#f43f5e';t.beginPath();t.arc(cx2,cy2-4,4,0,Math.PI*2);t.fill();
+  // Fur texture hints (subtle lines)
+  t.strokeStyle='rgba(160,120,70,.06)';t.lineWidth=.5;
+  for(let i=0;i<20;i++){
+    const fx=cx2-50+Math.random()*100,fy=cy2+Math.random()*100-10;
+    t.beginPath();t.moveTo(fx,fy);t.lineTo(fx+Math.random()*6-3,fy+6);t.stroke();
+  }
 }
 
 function confettiBurst(parent){
