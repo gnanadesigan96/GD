@@ -1,1078 +1,2277 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A Special Surprise For You</title>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Inter',sans-serif;background:#0a0a1a;min-height:100vh;overflow-x:hidden;color:#fff;overflow-y:hidden}
-        :root{
-            --pink:#ec4899;--rose:#f43f5e;--purple:#a855f7;--indigo:#6366f1;
-            --gold:#f59e0b;--emerald:#10b981;
-            --glass:rgba(255,255,255,0.6);--glass-border:rgba(255,255,255,0.3);
-            --text:#1e1b4b;--text2:#6b21a8;--text-muted:#a78bfa;
-            --skin:#e8b89d;--hair:#1a1a2e;--suit:#312e81;--suit2:#1e1b4b;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Love Story</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;600;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Inter',sans-serif}
+canvas{display:block;width:100%;height:100%}
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
 
-        /* ===== CINEMA ===== */
-        .cinema{position:relative;width:100vw;height:100vh;overflow:hidden}
-        .scene{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;transition:opacity 1.2s ease;pointer-events:none;overflow:hidden}
-        .scene.active{opacity:1;pointer-events:auto}
+/* Title overlay */
+#titleOverlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:20;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center,#1a1035,#080818);cursor:pointer;pointer-events:auto;
+  transition:opacity 1.5s ease}
+#titleOverlay.hide{opacity:0;pointer-events:none}
+.t1{font-family:'Dancing Script',cursive;font-size:clamp(32px,8vw,56px);
+  background:linear-gradient(135deg,#f9a8d4,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  opacity:0;animation:fadeUp 2s ease .3s forwards}
+.t2{font-family:'Caveat',cursive;font-size:clamp(20px,5vw,30px);color:#f9a8d4;
+  margin-top:16px;opacity:0;animation:fadeUp 2s ease 1.2s forwards}
+.t3{font-size:13px;color:rgba(255,255,255,.3);position:absolute;bottom:50px;
+  opacity:0;animation:fadeUp 2s ease 2.5s forwards}
+@keyframes fadeUp{to{opacity:1}}
 
-        /* ===== TITLE ===== */
-        #titleScene{display:flex;flex-direction:column;align-items:center;justify-content:center;
-            background:radial-gradient(ellipse at center,#1a1035,#0a0a1a);cursor:pointer}
-        .t-main{font-family:'Dancing Script',cursive;font-size:clamp(36px,9vw,54px);
-            background:linear-gradient(135deg,#f9a8d4,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
-            opacity:0;animation:tFade 2s ease .5s forwards}
-        .t-sub{font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(14px,3.5vw,18px);
-            color:#a78bfa;margin-top:12px;opacity:0;animation:tFade 2s ease 1.5s forwards}
-        .t-names{font-family:'Caveat',cursive;font-size:clamp(24px,6vw,32px);color:#f9a8d4;
-            margin-top:20px;opacity:0;animation:tFade 2s ease 2.5s forwards}
-        .t-hint{position:absolute;bottom:50px;font-size:13px;color:rgba(255,255,255,.35);
-            opacity:0;animation:tFade 2s ease 3.5s forwards,pulse 2s ease-in-out infinite}
-        @keyframes tFade{to{opacity:1;transform:translateY(0)}}
-        @keyframes pulse{0%,100%{opacity:.35}50%{opacity:.7}}
+/* Letterbox */
+.lbox{position:fixed;left:0;width:100%;height:0;background:#000;z-index:15;transition:height .8s ease}
+.lbox.top{top:0}.lbox.bot{bottom:0}
+.lbox.on{height:8vh}
 
-        /* Music bar */
-        .music-bar{position:fixed;bottom:16px;left:16px;z-index:50;display:flex;align-items:flex-end;gap:2px;height:16px;opacity:.5}
-        .music-bar span{width:3px;background:var(--pink);border-radius:2px;animation:mBar .7s ease-in-out infinite alternate}
-        .music-bar span:nth-child(1){height:5px;animation-delay:0s}
-        .music-bar span:nth-child(2){height:10px;animation-delay:.12s}
-        .music-bar span:nth-child(3){height:4px;animation-delay:.24s}
-        .music-bar span:nth-child(4){height:12px;animation-delay:.08s}
-        .music-bar span:nth-child(5){height:7px;animation-delay:.2s}
-        @keyframes mBar{to{height:16px}}
+/* Skip button */
+#skipBtn{position:fixed;top:20px;right:20px;z-index:30;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.2);color:#fff;padding:8px 20px;border-radius:20px;
+  font-size:13px;cursor:pointer;pointer-events:auto;opacity:0;transition:opacity .5s}
+#skipBtn.show{opacity:1}
+#skipBtn:hover{background:rgba(255,255,255,.2)}
 
-        /* Skip */
-        .skip-btn{position:fixed;top:20px;right:20px;z-index:60;background:rgba(255,255,255,.1);
-            border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);padding:6px 18px;
-            border-radius:30px;font-size:12px;cursor:pointer;font-family:'Inter',sans-serif;
-            backdrop-filter:blur(10px);transition:all .3s;display:none}
-        .skip-btn:hover{background:rgba(255,255,255,.2);color:#fff}
-        .skip-btn.show{display:block}
+/* Quiz */
+#quizOverlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:25;
+  display:none;pointer-events:auto;
+  background:linear-gradient(135deg,#0f0a1e,#1a0a2e)}
+.quiz-wrap{max-width:500px;margin:0 auto;padding:30px 20px;height:100%;display:flex;flex-direction:column;justify-content:center}
+.quiz-q{font-size:clamp(18px,4.5vw,24px);color:#f0e6ff;text-align:center;margin-bottom:30px;
+  font-weight:600;line-height:1.4}
+.quiz-opts{display:flex;flex-direction:column;gap:12px}
+.quiz-opt{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  color:#e0d0ff;padding:14px 20px;border-radius:14px;font-size:16px;cursor:pointer;
+  transition:all .3s;text-align:center}
+.quiz-opt:hover{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.4);transform:scale(1.02)}
+.quiz-opt.correct{background:rgba(16,185,129,.25);border-color:#10b981;color:#6ee7b7}
+.quiz-opt.wrong{background:rgba(239,68,68,.2);border-color:#ef4444;color:#fca5a5;animation:shake .5s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.quiz-score{text-align:center;color:#a78bfa;font-size:14px;margin-bottom:20px}
+.quiz-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(15,10,30,.95);border:1px solid rgba(255,255,255,.15);border-radius:20px;
+  padding:40px;text-align:center;max-width:400px;width:90%;z-index:30;backdrop-filter:blur(20px)}
+.quiz-popup h2{font-family:'Dancing Script',cursive;font-size:28px;margin-bottom:15px}
+.quiz-popup p{color:#c4b5fd;margin-bottom:20px;line-height:1.5}
+.quiz-popup button{background:linear-gradient(135deg,#a855f7,#ec4899);border:none;color:#fff;
+  padding:12px 30px;border-radius:25px;font-size:16px;cursor:pointer;font-weight:600}
+.quiz-popup button:hover{transform:scale(1.05)}
 
-        /* ===== COMMON ANIM ===== */
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes slideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes bounceIn{0%{transform:scale(0)}50%{transform:scale(1.12)}70%{transform:scale(.96)}100%{transform:scale(1)}}
-        @keyframes shake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-6px)}30%,60%,90%{transform:translateX(6px)}}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-
-        /* ===== SCENE 1: SOFA ===== */
-        #s1{background:linear-gradient(180deg,#1a1520,#2d1f3d 60%,#1a1520)}
-        .s1-room{position:absolute;bottom:0;left:0;width:100%;height:55%;background:linear-gradient(0deg,#1a1028,#231535)}
-        .s1-wall{position:absolute;top:0;left:0;width:100%;height:45%;background:linear-gradient(180deg,#2a1f3d,#231535)}
-        .s1-floor{position:absolute;bottom:0;left:0;width:100%;height:12%;background:linear-gradient(0deg,#130e1a,#1a1028)}
-        /* Sofa */
-        .sofa{position:absolute;bottom:12%;left:50%;transform:translateX(-50%);width:280px;height:100px}
-        .sofa-back{position:absolute;bottom:40px;left:0;width:280px;height:65px;background:linear-gradient(180deg,#5b2d8e,#4a2272);border-radius:20px 20px 0 0}
-        .sofa-seat{position:absolute;bottom:0;left:-5px;width:290px;height:45px;background:linear-gradient(180deg,#6b3fa0,#5b2d8e);border-radius:12px}
-        .sofa-arm-l{position:absolute;bottom:0;left:-15px;width:30px;height:70px;background:#5b2d8e;border-radius:12px 12px 8px 8px}
-        .sofa-arm-r{position:absolute;bottom:0;right:-15px;width:30px;height:70px;background:#5b2d8e;border-radius:12px 12px 8px 8px}
-        .sofa-cushion1{position:absolute;bottom:45px;left:30px;width:60px;height:50px;background:#7c4dba;border-radius:10px;transform:rotate(-5deg)}
-        .sofa-cushion2{position:absolute;bottom:45px;right:30px;width:60px;height:50px;background:#7c4dba;border-radius:10px;transform:rotate(5deg)}
-        /* Lamp */
-        .lamp{position:absolute;bottom:12%;right:12%;width:30px;height:120px}
-        .lamp-shade{width:50px;height:35px;background:radial-gradient(ellipse,#ffd23f,#f7931e);border-radius:50%;position:absolute;top:0;left:-10px;
-            box-shadow:0 0 40px rgba(255,210,63,.3),0 0 80px rgba(255,210,63,.15);animation:lampGlow 3s ease-in-out infinite}
-        .lamp-stand{width:6px;height:90px;background:#8b7355;position:absolute;bottom:0;left:12px;border-radius:3px}
-        @keyframes lampGlow{0%,100%{opacity:.7}50%{opacity:1}}
-        /* TV on wall */
-        .wall-tv{position:absolute;top:15%;left:50%;transform:translateX(-50%);width:160px;height:95px;
-            background:#111;border:3px solid #333;border-radius:6px;overflow:hidden;
-            box-shadow:0 0 30px rgba(100,100,255,.15)}
-        .wall-tv-glow{width:100%;height:100%;background:linear-gradient(135deg,#1a1035,#2d1f5e);
-            animation:tvFlick 4s ease-in-out infinite;display:flex;align-items:center;justify-content:center}
-        .wall-tv-glow span{font-size:14px;color:rgba(255,255,255,.3);font-family:'Dancing Script',cursive}
-        @keyframes tvFlick{0%,100%{opacity:.6}50%{opacity:1}}
-
-        /* Person sitting on sofa */
-        .s1-person-sit{position:absolute;bottom:calc(12% + 30px);left:50%;transform:translateX(-20px);opacity:0}
-        .s1-person-sit.show{opacity:1;transition:opacity .8s ease}
-        /* Person walking in */
-        .s1-friend{position:absolute;bottom:12%;right:-80px;opacity:0}
-        .s1-friend.walk{animation:friendWalkIn 2.5s ease forwards}
-        @keyframes friendWalkIn{
-            0%{right:-80px;opacity:0}
-            20%{opacity:1}
-            100%{right:calc(50% + 40px);opacity:1}
-        }
-        .s1-friend .walk-leg-l{animation:legL .4s ease-in-out 5}
-        .s1-friend .walk-leg-r{animation:legR .4s ease-in-out 5}
-        @keyframes legL{0%,100%{transform:rotate(0)}50%{transform:rotate(20deg)}}
-        @keyframes legR{0%,100%{transform:rotate(0)}50%{transform:rotate(-20deg)}}
-
-        /* Photo being shown */
-        .s1-photo{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0) rotate(-10deg);
-            width:100px;height:120px;background:linear-gradient(135deg,#fce4ec,#f3e5f5);border-radius:8px;
-            box-shadow:0 8px 30px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;
-            font-size:50px;z-index:10}
-        .s1-photo.show{animation:photoShow 1s cubic-bezier(.16,1,.3,1) forwards}
-        @keyframes photoShow{to{transform:translate(-50%,-50%) scale(1) rotate(-5deg)}}
-
-        /* Hearts burst */
-        .hearts-burst{position:absolute;top:40%;left:45%;z-index:15;opacity:0}
-        .hearts-burst.show{opacity:1}
-        .hearts-burst span{position:absolute;font-size:20px;animation:heartFloat 2s ease-out forwards}
-        @keyframes heartFloat{0%{transform:translate(0,0) scale(0);opacity:1}100%{transform:translate(var(--hx),var(--hy)) scale(1.2);opacity:0}}
-
-        /* ===== SCENE 2: CALLING/CHATTING ===== */
-        #s2{background:#0f0a1a}
-        .s2-panels{display:flex;flex-direction:column;width:100%;height:100%}
-        /* Panel: Home */
-        .s2-panel{flex:1;position:relative;overflow:hidden;opacity:0}
-        .s2-panel.show{animation:panelShow 1s ease forwards}
-        @keyframes panelShow{to{opacity:1}}
-        .s2-home{background:linear-gradient(180deg,#1a1520,#231535)}
-        .s2-cafe{background:linear-gradient(180deg,#2d1810,#1a1008)}
-        .s2-drive{background:linear-gradient(180deg,#1a2535,#0f1a28)}
-
-        /* Person on phone */
-        .person-phone{position:absolute;bottom:15%;display:flex;align-items:flex-end}
-        .phone-glow{position:absolute;width:30px;height:50px;background:rgba(168,85,247,.4);border-radius:4px;
-            box-shadow:0 0 20px rgba(168,85,247,.3);animation:phoneGlow 1.5s ease-in-out infinite}
-        @keyframes phoneGlow{0%,100%{opacity:.6}50%{opacity:1}}
-
-        /* Chat bubbles floating */
-        .float-bubble{position:absolute;padding:8px 14px;border-radius:14px;font-size:11px;
-            max-width:140px;animation:bubbleFloat 3s ease forwards;opacity:0;white-space:nowrap}
-        .float-bubble.sent{background:linear-gradient(135deg,var(--purple),var(--indigo));color:#fff}
-        .float-bubble.recv{background:rgba(255,255,255,.12);color:#ddd}
-        @keyframes bubbleFloat{0%{opacity:0;transform:translateY(20px) scale(.8)}20%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
-
-        /* Cafe elements */
-        .cafe-table{position:absolute;bottom:10%;left:50%;transform:translateX(-50%);width:120px;height:8px;
-            background:#5c3a1e;border-radius:4px}
-        .cafe-table::after{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);
-            width:8px;height:40px;background:#4a2e16;border-radius:0 0 4px 4px}
-        .coffee-cup{position:absolute;bottom:calc(10% + 8px);left:calc(50% - 15px);width:20px;height:16px;
-            background:#d4a574;border-radius:0 0 6px 6px;border:2px solid #b8854a}
-        .coffee-cup::after{content:'';position:absolute;top:-4px;right:-10px;width:10px;height:10px;
-            border:2px solid #b8854a;border-radius:50%;border-left:0}
-        .coffee-steam{position:absolute;bottom:calc(10% + 28px);left:calc(50% - 10px);display:flex;gap:4px}
-        .coffee-steam span{width:2px;height:12px;background:rgba(255,255,255,.2);border-radius:2px;
-            animation:steam 1.5s ease-in-out infinite}
-        .coffee-steam span:nth-child(2){animation-delay:.3s;height:16px}
-        .coffee-steam span:nth-child(3){animation-delay:.6s}
-        @keyframes steam{0%,100%{transform:translateY(0) scaleY(1);opacity:.3}50%{transform:translateY(-8px) scaleY(1.3);opacity:.1}}
-
-        /* Driving */
-        .drive-road{position:absolute;bottom:0;left:0;width:100%;height:40%;
-            background:linear-gradient(0deg,#1a1a2a,#2a2a3a);perspective:300px}
-        .drive-lines{position:absolute;bottom:0;left:0;width:100%;height:100%;
-            background:repeating-linear-gradient(0deg,transparent,transparent 30px,rgba(255,210,63,.3) 30px,rgba(255,210,63,.3) 32px);
-            animation:driveScroll 1s linear infinite}
-        @keyframes driveScroll{to{transform:translateY(32px)}}
-        .drive-wheel{position:absolute;bottom:5%;left:50%;transform:translateX(-50%);
-            width:180px;height:90px;border:8px solid #333;border-top:0;border-radius:0 0 90px 90px}
-        .drive-wheel::after{content:'';position:absolute;top:-15px;left:50%;transform:translateX(-50%);
-            width:10px;height:30px;background:#555;border-radius:5px}
-        .drive-mirror-l{position:absolute;top:30%;left:10%;width:40px;height:20px;background:#1a1a2a;
-            border-radius:4px;border:2px solid #333;transform:rotate(-5deg)}
-        .drive-mirror-r{position:absolute;top:30%;right:10%;width:40px;height:20px;background:#1a1a2a;
-            border-radius:4px;border:2px solid #333;transform:rotate(5deg)}
-
-        /* ===== SCENE 3: CHAT MEET ===== */
-        #s3{background:linear-gradient(180deg,#0f0a1a,#1a1035);display:flex;align-items:center;justify-content:center}
-        .phone-frame{width:260px;background:#0a0a0a;border-radius:30px;padding:8px;
-            box-shadow:0 10px 50px rgba(0,0,0,.5)}
-        .phone-inner{background:#111;border-radius:24px;padding:16px;min-height:360px;
-            display:flex;flex-direction:column}
-        .phone-top{text-align:center;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:12px}
-        .phone-top .pname{font-size:14px;color:#f9a8d4;font-weight:600}
-        .phone-top .pstatus{font-size:10px;color:rgba(255,255,255,.3)}
-        .phone-msgs{flex:1;display:flex;flex-direction:column;gap:8px}
-        .pmsg{max-width:78%;padding:10px 14px;border-radius:16px;font-size:12px;line-height:1.5;
-            opacity:0;animation:pmsgIn .6s cubic-bezier(.16,1,.3,1) forwards}
-        .pmsg.s{align-self:flex-end;background:linear-gradient(135deg,var(--purple),var(--indigo));color:#fff;border-bottom-right-radius:4px}
-        .pmsg.r{align-self:flex-start;background:rgba(255,255,255,.08);color:#d4c6e8;border-bottom-left-radius:4px}
-        .pmsg.sp{align-self:flex-end;background:linear-gradient(135deg,var(--pink),var(--rose));color:#fff;
-            border-bottom-right-radius:4px;font-size:15px;font-weight:600;padding:14px 18px}
-        .pmsg.heart{align-self:flex-start;font-size:28px;background:none;padding:4px}
-        @keyframes pmsgIn{from{opacity:0;transform:translateY(10px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
-
-        /* ===== SCENE 4: BIKE MEET ===== */
-        #s4{background:linear-gradient(180deg,#87ceeb 0%,#b8d4e8 35%,#d4e4d0 50%,#8fbc8f 70%,#555 85%,#444 100%)}
-        .s4-road{position:absolute;bottom:0;left:0;width:100%;height:28%;background:#555}
-        .s4-road-line{position:absolute;top:50%;left:0;width:100%;height:3px;
-            background:repeating-linear-gradient(90deg,#ffd23f,#ffd23f 30px,transparent 30px,transparent 60px)}
-        .s4-road-side{position:absolute;bottom:28%;left:0;width:100%;height:4px;background:#6b7280}
-        .s4-divider{position:absolute;bottom:28%;left:50%;width:2px;height:0%;background:rgba(255,255,255,.1)}
-        /* Trees */
-        .tree{position:absolute;bottom:28%}
-        .tree-trunk{width:8px;height:40px;background:#5c3a1e;border-radius:2px;margin:0 auto}
-        .tree-top{width:35px;height:35px;background:#2d6b3f;border-radius:50%;margin-bottom:-5px}
-
-        /* Bike with rider */
-        .s4-bike{position:absolute;bottom:calc(28% + 8px);opacity:0}
-        .s4-bike.ride{animation:bikeRideIn 3s cubic-bezier(.16,1,.3,1) forwards}
-        @keyframes bikeRideIn{0%{left:-120px;opacity:0}20%{opacity:1}100%{left:30%;opacity:1}}
-        .s4-bike .bike-bounce{animation:bikeBounce .3s ease-in-out infinite}
-        @keyframes bikeBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-
-        /* Girl waiting */
-        .s4-girl{position:absolute;bottom:calc(28% + 8px);right:20%;opacity:0}
-        .s4-girl.show{animation:girlAppear 1s ease forwards}
-        @keyframes girlAppear{to{opacity:1}}
-        .s4-girl.walk{animation:girlWalkTo 2.5s ease forwards}
-        @keyframes girlWalkTo{0%{right:20%}100%{right:42%}}
-        .s4-girl .walk-leg-l,.s4-girl.walk .walk-leg-l{transform-origin:top center}
-        .s4-girl.walk .walk-leg-l{animation:legL .35s ease-in-out 6}
-        .s4-girl.walk .walk-leg-r{animation:legR .35s ease-in-out 6}
-
-        /* Wave hand */
-        .wave-arm{animation:waveHand .4s ease-in-out 6 alternate!important}
-        @keyframes waveHand{0%{transform:rotate(-10deg)}100%{transform:rotate(-60deg)}}
-
-        /* Handshake hearts */
-        .meet-hearts{position:absolute;top:35%;left:50%;transform:translateX(-50%);z-index:10;opacity:0}
-        .meet-hearts.show{opacity:1}
-
-        /* ===== SCENE 5: MONTAGE ===== */
-        #s5{background:#0a0a1a}
-        .montage-strip{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column}
-        .m-moment{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
-            opacity:0;transform:scale(.95)}
-        .m-moment.show{animation:momentShow 1s cubic-bezier(.16,1,.3,1) forwards}
-        @keyframes momentShow{to{opacity:1;transform:scale(1)}}
-        .m-moment .m-icon{font-size:clamp(40px,10vw,60px);filter:drop-shadow(0 4px 12px rgba(0,0,0,.3));
-            animation:float 3s ease-in-out infinite}
-        .m-moment:nth-child(1){background:linear-gradient(135deg,#1a2535,#2d3a4d)}
-        .m-moment:nth-child(2){background:linear-gradient(135deg,#2d1810,#3d2820)}
-        .m-moment:nth-child(3){background:linear-gradient(135deg,#1a3520,#2d4d3a)}
-        .m-moment:nth-child(4){background:linear-gradient(135deg,#35251a,#4d3a2d)}
-
-        /* Bike silhouette for montage */
-        .m-bike-couple{position:absolute;bottom:20%;left:50%;transform:translateX(-50%)}
-
-        /* ===== SCENE 6: SUNSET ===== */
-        #s6{background:linear-gradient(180deg,#0d0221 0%,#1a0533 15%,#4a1570 28%,#ff6b35 48%,#f7931e 56%,#ffd23f 64%,#ff6b35 72%,#1a0533 88%,#0d0221 100%)}
-        .sun{position:absolute;top:32%;left:50%;transform:translateX(-50%);width:100px;height:100px;border-radius:50%;
-            background:radial-gradient(circle,#ffd23f,#f7931e 50%,#ff6b35 80%,transparent);
-            box-shadow:0 0 60px rgba(255,210,63,.5),0 0 120px rgba(247,147,30,.25);
-            animation:sunPulse 4s ease-in-out infinite}
-        @keyframes sunPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.06)}}
-        .sun-rays{position:absolute;top:28%;left:50%;transform:translateX(-50%);width:200px;height:200px;
-            background:radial-gradient(circle,rgba(255,210,63,.15),transparent 60%);animation:sunPulse 4s ease-in-out infinite}
-        .water{position:absolute;bottom:0;left:0;width:100%;height:22%;
-            background:linear-gradient(180deg,rgba(255,107,53,.25),rgba(26,5,51,.7))}
-        .water-shimmer{position:absolute;top:0;left:0;width:200%;height:100%;
-            background:repeating-linear-gradient(90deg,transparent,rgba(255,255,255,.04) 40px,transparent 80px);
-            animation:shimmer 5s linear infinite}
-        @keyframes shimmer{to{transform:translateX(-50%)}}
-
-        .silhouette{position:absolute;bottom:22%;left:50%;transform:translateX(-50%);opacity:0}
-        .silhouette.show{animation:silShow 2.5s ease forwards}
-        @keyframes silShow{to{opacity:1}}
-
-        /* ===== SCENE 7: MARRIAGE ===== */
-        #s7{background:linear-gradient(180deg,#1a0a2e 0%,#2d1040 20%,#4a1570 50%,#2d1040 80%,#1a0a2e 100%);
-            display:flex;flex-direction:column;align-items:center;justify-content:center}
-        .mandap{position:relative;width:280px;height:220px;margin:0 auto}
-        .mandap-top{position:absolute;top:0;left:-20px;width:320px;height:50px;
-            background:linear-gradient(180deg,#ffd700,#daa520);border-radius:8px 8px 0 0;
-            box-shadow:0 4px 20px rgba(255,215,0,.3)}
-        .mandap-top::after{content:'';position:absolute;bottom:-15px;left:10%;width:80%;height:15px;
-            background:repeating-linear-gradient(90deg,#ff6b35,#ff6b35 8px,#ffd700 8px,#ffd700 16px);border-radius:0 0 4px 4px}
-        .mandap-pillar{position:absolute;bottom:0;width:12px;height:180px;
-            background:linear-gradient(180deg,#daa520,#b8860b);border-radius:3px}
-        .mandap-pillar.l{left:10px}
-        .mandap-pillar.r{right:10px}
-        .mandap-fire{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);font-size:40px;
-            animation:fireFlicker .5s ease-in-out infinite alternate}
-        @keyframes fireFlicker{0%{transform:translateX(-50%) scale(1) rotate(-3deg)}100%{transform:translateX(-50%) scale(1.1) rotate(3deg)}}
-        .mandap-couple{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:15px}
-        /* Garlands */
-        .garland{position:absolute;top:50px;width:100%;display:flex;justify-content:center}
-        .garland-str{width:200px;height:30px;border:3px solid transparent;border-top:0;
-            border-image:repeating-linear-gradient(90deg,#ff6b35,#ffd700,#ff6b35) 1;
-            border-radius:0 0 50% 50%}
-        /* Floating flowers */
-        .m-flower{position:absolute;font-size:18px;animation:flowerDrift 4s ease-in-out infinite}
-        @keyframes flowerDrift{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-15px) rotate(10deg)}}
-        .marry-text{font-family:'Dancing Script',cursive;font-size:clamp(28px,7vw,38px);
-            background:linear-gradient(135deg,#ffd700,#ff6b35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
-            margin-top:20px;opacity:0}
-        .marry-text.show{animation:tFade 1.5s ease forwards}
-
-        /* ===== SCENE 8: BIRTHDAY ===== */
-        #s8{background:linear-gradient(160deg,#fdf2f8,#fce7f3,#f5e6ff,#ede9fe);
-            display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text)}
-        .bday-text{font-family:'Dancing Script',cursive;font-size:clamp(32px,8vw,46px);
-            background:linear-gradient(135deg,var(--pink),var(--purple),var(--rose));
-            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-            animation:pulse 2.5s ease-in-out infinite;margin-bottom:10px}
-        .cake-emoji{font-size:80px;animation:float 3s ease-in-out infinite;margin:15px 0}
-        .bday-sub{font-size:14px;color:var(--text2);margin-bottom:20px;text-align:center;padding:0 30px;line-height:1.7}
-
-        /* ===== QUIZ APP (after scenes) ===== */
-        .app-wrap{position:fixed;top:0;left:0;width:100%;height:100%;z-index:100;
-            background:linear-gradient(160deg,#fdf2f8,#fce7f3,#f5e6ff,#ede9fe);
-            display:none;overflow-y:auto;color:var(--text)}
-        .app-wrap.active{display:block}
-        .app-inner{max-width:480px;margin:0 auto;padding:20px;min-height:100vh;
-            display:flex;flex-direction:column;align-items:center;justify-content:center}
-        .app-view{display:none;width:100%;animation:slideUp .6s cubic-bezier(.16,1,.3,1)}
-        .app-view.active{display:flex;flex-direction:column;align-items:center}
-
-        /* Character */
-        .chr{width:140px;height:190px;margin:0 auto 6px}
-        .chr svg{width:100%;height:100%}
-        .chr.idle{animation:chrIdle 4s ease-in-out infinite}
-        @keyframes chrIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-
-        /* Glass card */
-        .gc{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--glass-border);
-            border-radius:20px;padding:14px 20px;margin:8px 0;max-width:92%;
-            box-shadow:0 8px 32px rgba(168,85,247,.12);animation:scaleIn .5s cubic-bezier(.16,1,.3,1)}
-        @keyframes scaleIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
-        .gc p{font-size:14px;line-height:1.6;color:var(--text)}
-        .gc::after{content:'';position:absolute;top:-6px;left:50%;width:12px;height:12px;background:var(--glass);
-            border:1px solid var(--glass-border);border-bottom:0;border-right:0;
-            transform:translateX(-50%) rotate(45deg);backdrop-filter:blur(20px)}
-        .tdots{display:inline-flex;gap:4px;padding:5px 0}
-        .tdots span{width:7px;height:7px;border-radius:50%;background:var(--purple);animation:dotB 1.4s ease-in-out infinite}
-        .tdots span:nth-child(2){animation-delay:.15s}
-        .tdots span:nth-child(3){animation-delay:.3s}
-        @keyframes dotB{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-8px);opacity:1}}
-
-        .btn{background:linear-gradient(135deg,var(--pink),var(--purple));color:#fff;border:none;
-            padding:13px 34px;border-radius:60px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;
-            cursor:pointer;transition:all .3s;box-shadow:0 6px 24px rgba(168,85,247,.35);margin-top:14px}
-        .btn:hover{transform:translateY(-3px) scale(1.03)}
-
-        .qc{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--glass-border);
-            border-radius:24px;padding:24px;width:100%;box-shadow:0 8px 40px rgba(168,85,247,.1)}
-        .qh{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-        .qn{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--purple));
-            color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0}
-        .qt{font-size:15px;font-weight:600;color:var(--text);font-family:'Playfair Display',serif}
-        .pb{width:100%;height:5px;background:rgba(168,85,247,.12);border-radius:3px;margin-bottom:16px;overflow:hidden}
-        .pf{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple));border-radius:3px;transition:width .5s}
-        .og{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
-        .ob{background:rgba(255,255,255,.7);backdrop-filter:blur(10px);border:2px solid rgba(168,85,247,.12);
-            border-radius:16px;padding:14px 10px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;
-            color:var(--text);cursor:pointer;transition:all .3s;text-align:center}
-        .ob:hover{border-color:var(--purple);transform:translateY(-2px);box-shadow:0 6px 20px rgba(168,85,247,.15)}
-        .ob.c{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:var(--emerald);animation:bounceIn .5s}
-        .ob.w{background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:var(--rose);animation:shake .5s}
-        .ob:disabled{cursor:not-allowed;opacity:.6}
-        .hr{display:flex;gap:8px;justify-content:center;margin:10px 0}
-        .hi{font-size:22px;transition:all .3s}
-        .hi.f{animation:bounceIn .4s}
-        .hi.e{filter:grayscale(1);opacity:.25}
-        .sr{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);margin-bottom:10px}
-
-        .ov{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(30,27,75,.45);backdrop-filter:blur(4px);z-index:199;animation:fadeIn .3s}
-        .pp{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
-            background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--glass-border);
-            border-radius:28px;padding:30px;z-index:200;box-shadow:0 24px 64px rgba(30,27,75,.25);
-            text-align:center;max-width:380px;width:90%;animation:bounceIn .5s cubic-bezier(.16,1,.3,1) forwards}
-        .pp h3{font-family:'Playfair Display',serif;color:var(--text);margin-bottom:8px;font-size:20px}
-        .pp p{color:var(--text2);font-size:14px;line-height:1.6}
-
-        .gr{text-align:center;padding:15px}
-        .gb{width:150px;height:150px;margin:16px auto;cursor:pointer;animation:float 2.5s ease-in-out infinite;
-            font-size:100px;display:flex;align-items:center;justify-content:center;transition:transform .4s;
-            filter:drop-shadow(0 12px 30px rgba(236,72,153,.35))}
-        .gb:hover{transform:scale(1.12)}
-        .gt{font-family:'Dancing Script',cursive;font-size:36px;color:var(--pink);margin:10px 0}
-        .tr{font-size:130px;animation:bounceIn 1s cubic-bezier(.16,1,.3,1);filter:drop-shadow(0 10px 30px rgba(0,0,0,.15))}
-        .gm{font-family:'Dancing Script',cursive;font-size:22px;color:var(--text);margin:16px 0;line-height:1.8}
-        .fl{display:flex;gap:10px;font-size:24px;margin:8px 0;justify-content:center;animation:float 3s ease-in-out infinite}
-        .cf{position:fixed;top:-10px;z-index:300;animation:confettiFall 3s linear forwards}
-        @keyframes confettiFall{0%{transform:translateY(-100vh) rotate(0);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
-        .sb{position:fixed;pointer-events:none;z-index:250}
-        .sb span{position:absolute;font-size:20px;animation:sB .8s ease-out forwards}
-        @keyframes sB{0%{transform:translate(0,0) scale(0);opacity:1}100%{transform:translate(var(--tx),var(--ty)) scale(1);opacity:0}}
-
-        .ft{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);margin:10px 0}
-        .fs{font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:16px}
-        .hidden{display:none!important}
-
-        @media(max-width:480px){
-            .phone-frame{width:230px}
-            .mandap{width:240px;height:190px}
-            .mandap-top{width:280px;left:-20px}
-            .sofa{width:230px}
-        }
-    </style>
+/* Gift */
+#giftOverlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:26;
+  display:none;pointer-events:auto;
+  background:radial-gradient(ellipse at center,#1a0a2e,#080818);
+  flex-direction:column;align-items:center;justify-content:center}
+.gift-title{font-family:'Dancing Script',cursive;font-size:clamp(28px,7vw,48px);
+  background:linear-gradient(135deg,#f9a8d4,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:30px;text-align:center}
+.teddy-container{width:200px;height:200px;animation:teddyBounce 2s ease-in-out infinite}
+@keyframes teddyBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}
+.gift-msg{color:#c4b5fd;font-size:18px;margin-top:25px;text-align:center;max-width:400px;line-height:1.6}
+</style>
 </head>
 <body>
 
-<div class="music-bar"><span></span><span></span><span></span><span></span><span></span></div>
-<button class="skip-btn" id="skipBtn" onclick="skipToApp()">Skip to Gift →</button>
-
-<div class="cinema" id="cinema">
-    <!-- TITLE -->
-    <div class="scene active" id="titleScene" onclick="beginFilm()">
-        <div class="t-main" style="transform:translateY(15px)">A Love Story</div>
-        <div class="t-sub" style="transform:translateY(15px)">told through moments</div>
-        <div class="t-names" style="transform:translateY(15px)">Vishal & Athishree</div>
-        <div class="t-hint">tap to begin</div>
-    </div>
-
-    <!-- SCENE 1: Sofa, friend shows photo -->
-    <div class="scene" id="s1">
-        <div class="s1-wall">
-            <div class="wall-tv"><div class="wall-tv-glow"><span>♪ Minnale ♪</span></div></div>
-        </div>
-        <div class="s1-room">
-            <div class="lamp"><div class="lamp-shade"></div><div class="lamp-stand"></div></div>
-            <div class="sofa">
-                <div class="sofa-back"></div>
-                <div class="sofa-seat"></div>
-                <div class="sofa-arm-l"></div>
-                <div class="sofa-arm-r"></div>
-                <div class="sofa-cushion1"></div>
-                <div class="sofa-cushion2"></div>
-            </div>
-            <!-- Person sitting -->
-            <div class="s1-person-sit" id="s1Sit">
-                <svg width="60" height="100" viewBox="0 0 60 100">
-                    <ellipse cx="30" cy="18" rx="14" ry="16" fill="var(--skin)"/>
-                    <path d="M16 12 Q16 2 30 0 Q44 2 44 12 Q42 5 30 4 Q18 5 16 12Z" fill="var(--hair)"/>
-                    <rect x="16" y="8" width="4" height="12" rx="2" fill="var(--hair)"/>
-                    <rect x="40" y="8" width="4" height="12" rx="2" fill="var(--hair)"/>
-                    <ellipse cx="24" cy="18" rx="2.5" ry="2.5" fill="var(--hair)"/>
-                    <ellipse cx="36" cy="18" rx="2.5" ry="2.5" fill="var(--hair)"/>
-                    <path d="M25 26 Q30 30 35 26" stroke="#c0392b" stroke-width="1.5" fill="none"/>
-                    <rect x="14" y="32" width="32" height="40" rx="6" fill="var(--suit)"/>
-                    <polygon points="28,36 32,36 33,52 30,55 27,52" fill="var(--pink)"/>
-                    <rect x="4" y="34" width="12" height="30" rx="6" fill="var(--suit)"/>
-                    <rect x="44" y="34" width="12" height="30" rx="6" fill="var(--suit)"/>
-                    <rect x="18" y="70" width="10" height="28" rx="5" fill="#2d2d3f"/>
-                    <rect x="32" y="70" width="10" height="28" rx="5" fill="#2d2d3f"/>
-                </svg>
-            </div>
-            <!-- Friend walking in -->
-            <div class="s1-friend" id="s1Friend">
-                <svg width="50" height="110" viewBox="0 0 50 110">
-                    <ellipse cx="25" cy="16" rx="12" ry="14" fill="var(--skin)"/>
-                    <path d="M13 10 Q13 1 25 0 Q37 1 37 10 Q35 4 25 3 Q15 4 13 10Z" fill="#3d2d1e"/>
-                    <rect x="11" y="28" width="28" height="38" rx="5" fill="#1a5276"/>
-                    <rect x="2" y="30" width="11" height="28" rx="5" fill="#1a5276"/>
-                    <rect x="37" y="30" width="11" height="28" rx="5" fill="#1a5276"/>
-                    <rect x="14" y="64" width="9" height="30" rx="4" fill="#2c3e50" class="walk-leg-l" style="transform-origin:top center"/>
-                    <rect x="27" y="64" width="9" height="30" rx="4" fill="#2c3e50" class="walk-leg-r" style="transform-origin:top center"/>
-                    <rect x="14" y="90" width="14" height="8" rx="4" fill="#1a1a2e"/>
-                    <rect x="28" y="90" width="14" height="8" rx="4" fill="#1a1a2e"/>
-                </svg>
-            </div>
-        </div>
-        <div class="s1-floor"></div>
-        <!-- Photo -->
-        <div class="s1-photo" id="s1Photo">👩</div>
-        <!-- Hearts -->
-        <div class="hearts-burst" id="s1Hearts"></div>
-    </div>
-
-    <!-- SCENE 2: Calling & chatting -->
-    <div class="scene" id="s2">
-        <div class="s2-panels">
-            <!-- Home panel -->
-            <div class="s2-panel s2-home" id="s2p1">
-                <div style="position:absolute;top:8%;left:50%;transform:translateX(-50%);font-family:'Caveat',cursive;font-size:16px;color:rgba(255,255,255,.3)">at home</div>
-                <div class="person-phone" style="left:35%;bottom:20%">
-                    <svg width="60" height="90" viewBox="0 0 60 90">
-                        <ellipse cx="30" cy="16" rx="13" ry="15" fill="var(--skin)"/>
-                        <path d="M17 10 Q17 1 30 0 Q43 1 43 10 Q41 4 30 3 Q19 4 17 10Z" fill="var(--hair)"/>
-                        <ellipse cx="24" cy="16" rx="2.5" ry="2.5" fill="var(--hair)"/>
-                        <ellipse cx="36" cy="16" rx="2.5" ry="2.5" fill="var(--hair)"/>
-                        <path d="M25 24 Q30 28 35 24" stroke="#c0392b" stroke-width="1.5" fill="none"/>
-                        <rect x="14" y="30" width="32" height="38" rx="6" fill="#374151"/>
-                        <rect x="2" y="32" width="14" height="28" rx="6" fill="#374151"/>
-                        <g style="transform:rotate(-30deg);transform-origin:52px 32px">
-                            <rect x="44" y="32" width="14" height="28" rx="6" fill="#374151"/>
-                            <rect x="52" y="28" width="10" height="16" rx="3" fill="#333" stroke="var(--purple)" stroke-width="1"/>
-                        </g>
-                    </svg>
-                </div>
-                <div class="float-bubble sent" style="top:30%;right:15%;animation-delay:.5s">Hey! What's up? 😊</div>
-                <div class="float-bubble recv" style="top:45%;left:10%;animation-delay:1.5s">Hii! Nothing much 😄</div>
-                <div class="float-bubble sent" style="top:58%;right:12%;animation-delay:2.5s">Thinking about you 😏</div>
-            </div>
-            <!-- Cafe panel -->
-            <div class="s2-panel s2-cafe" id="s2p2">
-                <div style="position:absolute;top:8%;left:50%;transform:translateX(-50%);font-family:'Caveat',cursive;font-size:16px;color:rgba(255,255,255,.3)">at the cafe</div>
-                <div class="cafe-table"></div>
-                <div class="coffee-cup"></div>
-                <div class="coffee-steam"><span></span><span></span><span></span></div>
-                <div class="person-phone" style="left:25%;bottom:22%">
-                    <svg width="50" height="75" viewBox="0 0 50 75">
-                        <ellipse cx="25" cy="14" rx="11" ry="13" fill="var(--skin)"/>
-                        <path d="M14 9 Q14 1 25 0 Q36 1 36 9 Q34 3 25 3 Q16 3 14 9Z" fill="var(--hair)"/>
-                        <path d="M21 20 Q25 24 29 20" stroke="#c0392b" stroke-width="1.5" fill="none"/>
-                        <rect x="12" y="26" width="26" height="32" rx="5" fill="var(--suit)"/>
-                        <polygon points="23,30 27,30 28,42 25,44 22,42" fill="var(--pink)"/>
-                        <rect x="3" y="28" width="11" height="24" rx="5" fill="var(--suit)"/>
-                        <g style="transform:rotate(-25deg);transform-origin:42px 28px">
-                            <rect x="36" y="28" width="11" height="24" rx="5" fill="var(--suit)"/>
-                            <rect x="42" y="24" width="9" height="14" rx="3" fill="#333" stroke="var(--purple)" stroke-width="1"/>
-                        </g>
-                    </svg>
-                </div>
-                <div class="float-bubble recv" style="top:25%;left:8%;animation-delay:.5s">Miss you 🙈</div>
-                <div class="float-bubble sent" style="top:40%;right:8%;animation-delay:1.5s">Same here! ❤️</div>
-            </div>
-            <!-- Drive panel -->
-            <div class="s2-panel s2-drive" id="s2p3">
-                <div style="position:absolute;top:8%;left:50%;transform:translateX(-50%);font-family:'Caveat',cursive;font-size:16px;color:rgba(255,255,255,.3)">driving</div>
-                <div class="drive-road"><div class="drive-lines"></div></div>
-                <div class="drive-wheel"></div>
-                <div class="drive-mirror-l"></div>
-                <div class="drive-mirror-r"></div>
-                <div class="float-bubble sent" style="top:15%;right:10%;animation-delay:.5s">On my way! 🏍️</div>
-                <div class="float-bubble recv" style="top:30%;left:8%;animation-delay:1.8s">Drive safe! 💕</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SCENE 3: Meet pannalama chat -->
-    <div class="scene" id="s3" style="display:flex;align-items:center;justify-content:center">
-        <div class="phone-frame">
-            <div class="phone-inner">
-                <div class="phone-top"><div class="pname">Athishree ❤️</div><div class="pstatus">online</div></div>
-                <div class="phone-msgs" id="s3Msgs"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SCENE 4: Bike meet -->
-    <div class="scene" id="s4">
-        <!-- Trees -->
-        <div class="tree" style="left:8%;bottom:28%"><div class="tree-top"></div><div class="tree-trunk"></div></div>
-        <div class="tree" style="left:85%;bottom:28%"><div class="tree-top"></div><div class="tree-trunk"></div></div>
-        <div class="tree" style="left:60%;bottom:28%"><div class="tree-top" style="width:28px;height:28px;background:#3a7d50"></div><div class="tree-trunk" style="height:30px"></div></div>
-        <div class="s4-road"><div class="s4-road-line"></div></div>
-        <div class="s4-road-side"></div>
-
-        <!-- Bike with rider -->
-        <div class="s4-bike" id="s4Bike">
-            <div class="bike-bounce">
-                <svg width="110" height="100" viewBox="0 0 110 100">
-                    <!-- Wheels -->
-                    <circle cx="25" cy="78" r="16" fill="none" stroke="#444" stroke-width="3"/>
-                    <circle cx="25" cy="78" r="3" fill="#666"/>
-                    <circle cx="85" cy="78" r="16" fill="none" stroke="#444" stroke-width="3"/>
-                    <circle cx="85" cy="78" r="3" fill="#666"/>
-                    <!-- Frame -->
-                    <path d="M25 78 L50 50 L75 50 L85 78 M50 50 L40 78 M50 50 L50 38" stroke="#666" stroke-width="2.5" fill="none"/>
-                    <line x1="44" y1="36" x2="56" y2="36" stroke="#666" stroke-width="2.5"/>
-                    <!-- Rider -->
-                    <circle cx="52" cy="22" r="10" fill="var(--skin)"/>
-                    <path d="M42 17 Q42 10 52 8 Q62 10 62 17 Q60 12 52 11 Q44 12 42 17Z" fill="var(--hair)"/>
-                    <ellipse cx="48" cy="22" rx="2" ry="2" fill="var(--hair)"/>
-                    <ellipse cx="56" cy="22" rx="2" ry="2" fill="var(--hair)"/>
-                    <path d="M48 27 Q52 30 56 27" stroke="#c0392b" stroke-width="1.2" fill="none"/>
-                    <rect x="42" y="31" width="20" height="22" rx="4" fill="#c2915a"/>
-                    <rect x="34" y="33" width="10" height="18" rx="5" fill="#c2915a"/>
-                    <rect x="58" y="33" width="10" height="18" rx="5" fill="#c2915a"/>
-                </svg>
-            </div>
-        </div>
-
-        <!-- Girl waiting -->
-        <div class="s4-girl" id="s4Girl">
-            <svg width="50" height="100" viewBox="0 0 50 100">
-                <ellipse cx="25" cy="16" rx="12" ry="14" fill="var(--skin)"/>
-                <!-- Long hair -->
-                <path d="M13 12 Q13 2 25 0 Q37 2 37 12 Q35 5 25 4 Q15 5 13 12Z" fill="#2c1810"/>
-                <rect x="11" y="10" width="5" height="30" rx="2" fill="#2c1810"/>
-                <rect x="34" y="10" width="5" height="30" rx="2" fill="#2c1810"/>
-                <path d="M13 14 Q8 25 12 40" stroke="#2c1810" stroke-width="4" fill="none"/>
-                <path d="M37 14 Q42 25 38 40" stroke="#2c1810" stroke-width="4" fill="none"/>
-                <!-- Face -->
-                <ellipse cx="20" cy="16" rx="2" ry="2.5" fill="#2c1810"/>
-                <ellipse cx="30" cy="16" rx="2" ry="2.5" fill="#2c1810"/>
-                <path d="M22 24 Q25 27 28 24" stroke="#c0392b" stroke-width="1.2" fill="none"/>
-                <ellipse cx="16" cy="20" rx="4" ry="2.5" fill="#f9a8d4" opacity=".4"/>
-                <ellipse cx="34" cy="20" rx="4" ry="2.5" fill="#f9a8d4" opacity=".4"/>
-                <!-- Kurta -->
-                <path d="M12 28 Q10 30 8 28 L8 65 Q25 72 42 65 L42 28 Q40 30 38 28 Z" fill="#e8548e"/>
-                <!-- Arms -->
-                <rect x="0" y="30" width="10" height="28" rx="5" fill="#e8548e" id="s4GirlArm" style="transform-origin:5px 30px"/>
-                <rect x="40" y="30" width="10" height="28" rx="5" fill="#e8548e"/>
-                <circle cx="5" cy="60" r="5" fill="var(--skin)"/>
-                <circle cx="45" cy="60" r="5" fill="var(--skin)"/>
-                <!-- Jeans -->
-                <rect x="14" y="64" width="9" height="28" rx="4" fill="#4a6fa5" class="walk-leg-l" style="transform-origin:top center"/>
-                <rect x="27" y="64" width="9" height="28" rx="4" fill="#4a6fa5" class="walk-leg-r" style="transform-origin:top center"/>
-                <rect x="12" y="88" width="13" height="7" rx="3" fill="#d4a574"/>
-                <rect x="25" y="88" width="13" height="7" rx="3" fill="#d4a574"/>
-            </svg>
-        </div>
-
-        <!-- Hearts when they meet -->
-        <div class="meet-hearts" id="s4Hearts"></div>
-    </div>
-
-    <!-- SCENE 5: Montage -->
-    <div class="scene" id="s5">
-        <div class="montage-strip">
-            <div class="m-moment" id="m1" style="background:linear-gradient(135deg,#1a2535,#2d3a4d)">
-                <svg width="200" height="80" viewBox="0 0 200 80" style="animation:float 3s ease-in-out infinite">
-                    <!-- Couple on bike silhouette -->
-                    <g fill="#0d1520" opacity=".8">
-                        <circle cx="85" cy="20" r="10"/><rect x="76" y="28" width="18" height="20" rx="4"/>
-                        <circle cx="100" cy="22" r="9"/><rect x="92" y="30" width="16" height="18" rx="4"/>
-                        <circle cx="40" cy="58" r="14" fill="none" stroke="#0d1520" stroke-width="3"/>
-                        <circle cx="130" cy="58" r="14" fill="none" stroke="#0d1520" stroke-width="3"/>
-                        <path d="M40 58 L80 30 L110 30 L130 58" stroke="#0d1520" stroke-width="2.5" fill="none"/>
-                    </g>
-                    <text x="160" y="45" fill="rgba(255,255,255,.15)" font-size="30">🏍️</text>
-                </svg>
-            </div>
-            <div class="m-moment" id="m2" style="background:linear-gradient(135deg,#2d1810,#3d2820)">
-                <div class="m-icon">😂</div>
-            </div>
-            <div class="m-moment" id="m3" style="background:linear-gradient(135deg,#1a3520,#2d4d3a)">
-                <div class="m-icon">🍦</div>
-            </div>
-            <div class="m-moment" id="m4" style="background:linear-gradient(135deg,#35251a,#4d3a2d)">
-                <div class="m-icon">💕</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SCENE 6: Sunset -->
-    <div class="scene" id="s6">
-        <div class="sun-rays"></div>
-        <div class="sun"></div>
-        <div class="silhouette" id="s6Sil">
-            <svg width="180" height="200" viewBox="0 0 180 200">
-                <g fill="#0d0221">
-                    <!-- Him -->
-                    <circle cx="60" cy="30" r="16"/>
-                    <rect x="48" y="44" width="24" height="50" rx="5"/>
-                    <rect x="38" y="48" width="12" height="40" rx="6"/>
-                    <rect x="70" y="48" width="12" height="40" rx="6" transform="rotate(-12,76,48)"/>
-                    <rect x="50" y="90" width="10" height="45" rx="5"/>
-                    <rect x="62" y="90" width="10" height="45" rx="5"/>
-                    <!-- Her -->
-                    <circle cx="120" cy="33" r="15"/>
-                    <path d="M108 46 L105 100 Q120 108 135 100 L132 46 Q126 44 120 44 Q114 44 108 46Z"/>
-                    <rect x="98" y="48" width="12" height="36" rx="6" transform="rotate(8,98,48)"/>
-                    <rect x="130" y="48" width="12" height="36" rx="6" transform="rotate(-5,136,48)"/>
-                    <rect x="110" y="98" width="9" height="42" rx="4"/>
-                    <rect x="121" y="98" width="9" height="42" rx="4"/>
-                    <!-- Hair flowing -->
-                    <path d="M105 30 Q100 45 105 65" stroke="#0d0221" stroke-width="5" fill="none"/>
-                    <path d="M135 30 Q140 45 137 55" stroke="#0d0221" stroke-width="4" fill="none"/>
-                    <!-- Holding hands -->
-                    <ellipse cx="90" cy="88" rx="8" ry="5"/>
-                </g>
-            </svg>
-        </div>
-        <div class="water"><div class="water-shimmer"></div></div>
-    </div>
-
-    <!-- SCENE 7: Marriage -->
-    <div class="scene" id="s7">
-        <!-- Floating flowers -->
-        <div class="m-flower" style="top:10%;left:10%;animation-delay:0s">🌸</div>
-        <div class="m-flower" style="top:15%;right:15%;animation-delay:.5s">🌺</div>
-        <div class="m-flower" style="top:8%;left:40%;animation-delay:1s">🌹</div>
-        <div class="m-flower" style="bottom:15%;left:8%;animation-delay:1.5s">🌷</div>
-        <div class="m-flower" style="bottom:12%;right:10%;animation-delay:.8s">💐</div>
-        <div class="m-flower" style="top:20%;left:70%;animation-delay:.3s">🌸</div>
-        <div class="mandap">
-            <div class="mandap-top"></div>
-            <div class="garland"><div class="garland-str"></div></div>
-            <div class="mandap-pillar l"></div>
-            <div class="mandap-pillar r"></div>
-            <div class="mandap-fire">🔥</div>
-            <div class="mandap-couple" id="s7Couple" style="opacity:0">
-                <!-- Groom -->
-                <svg width="50" height="90" viewBox="0 0 50 90">
-                    <ellipse cx="25" cy="14" rx="11" ry="13" fill="var(--skin)"/>
-                    <path d="M14 8 Q14 0 25 0 Q36 0 36 8" fill="#ffd700" stroke="#daa520" stroke-width="1"/>
-                    <rect x="18" y="0" width="14" height="6" fill="#ffd700" rx="2"/>
-                    <ellipse cx="20" cy="14" rx="2" ry="2.5" fill="var(--hair)"/>
-                    <ellipse cx="30" cy="14" rx="2" ry="2.5" fill="var(--hair)"/>
-                    <path d="M22 22 Q25 25 28 22" stroke="#c0392b" stroke-width="1.2" fill="none"/>
-                    <rect x="10" y="26" width="30" height="42" rx="5" fill="#f5f5dc"/>
-                    <path d="M25 26 L25 68" stroke="rgba(218,165,32,.3)" stroke-width="2"/>
-                    <rect x="2" y="28" width="10" height="30" rx="5" fill="#f5f5dc"/>
-                    <rect x="38" y="28" width="10" height="30" rx="5" fill="#f5f5dc"/>
-                    <rect x="14" y="66" width="9" height="20" rx="4" fill="#f5f5dc"/>
-                    <rect x="27" y="66" width="9" height="20" rx="4" fill="#f5f5dc"/>
-                </svg>
-                <!-- Bride -->
-                <svg width="55" height="90" viewBox="0 0 55 90">
-                    <ellipse cx="28" cy="14" rx="12" ry="13" fill="var(--skin)"/>
-                    <path d="M16 10 Q16 1 28 0 Q40 1 40 10 Q38 4 28 3 Q18 4 16 10Z" fill="#1a1a2e"/>
-                    <rect x="14" y="8" width="4" height="22" rx="2" fill="#1a1a2e"/>
-                    <rect x="38" y="8" width="4" height="22" rx="2" fill="#1a1a2e"/>
-                    <ellipse cx="22" cy="14" rx="2" ry="2.5" fill="#1a1a2e"/>
-                    <ellipse cx="34" cy="14" rx="2" ry="2.5" fill="#1a1a2e"/>
-                    <path d="M24 22 Q28 25 32 22" stroke="#c0392b" stroke-width="1.2" fill="none"/>
-                    <ellipse cx="17" cy="18" rx="4" ry="2.5" fill="#f9a8d4" opacity=".4"/>
-                    <ellipse cx="39" cy="18" rx="4" ry="2.5" fill="#f9a8d4" opacity=".4"/>
-                    <!-- Red saree -->
-                    <path d="M14 26 Q12 28 10 26 L6 76 Q28 84 50 76 L46 26 Q44 28 42 26 Z" fill="#c0392b"/>
-                    <path d="M14 26 Q10 40 14 60" stroke="rgba(255,215,0,.4)" stroke-width="1.5" fill="none"/>
-                    <text x="18" y="40" font-size="6" fill="rgba(255,215,0,.3)">✦</text>
-                    <text x="30" y="50" font-size="6" fill="rgba(255,215,0,.3)">✦</text>
-                    <rect x="0" y="28" width="10" height="28" rx="5" fill="#c0392b"/>
-                    <rect x="46" y="28" width="10" height="28" rx="5" fill="#c0392b"/>
-                    <!-- Pallu/veil -->
-                    <path d="M40 10 Q48 20 44 35 Q50 30 48 15" fill="#c0392b" opacity=".6"/>
-                    <circle cx="25" cy="7" r="2" fill="#ff0000"/>
-                </svg>
-            </div>
-        </div>
-        <div class="marry-text" id="s7Text" style="transform:translateY(15px)">Forever begins... 💕</div>
-    </div>
-
-    <!-- SCENE 8: Birthday transition -->
-    <div class="scene" id="s8">
-        <div class="cake-emoji">🎂</div>
-        <div class="bday-text">Happy Birthday!</div>
-        <div class="bday-sub">And now... for a special gift from your husband.<br>But you'll have to earn it! 😏</div>
-        <button class="btn" onclick="goToApp()" style="opacity:0;animation:tFade 1s ease 2s forwards;transform:translateY(15px)">Show me! 💝</button>
-    </div>
+<div id="titleOverlay">
+  <div class="t1">Our Love Story</div>
+  <div class="t2">A tale written in the stars</div>
+  <div class="t3">Tap anywhere to begin</div>
 </div>
 
-<!-- ===== QUIZ APP ===== -->
-<div class="app-wrap" id="appWrap">
-    <div class="app-inner">
-        <div class="app-view active" id="av-quiz">
-            <div class="chr idle">
-                <svg viewBox="0 0 140 190" fill="none">
-                    <ellipse cx="70" cy="184" rx="26" ry="4" fill="rgba(0,0,0,.06)"/>
-                    <rect x="56" y="132" width="11" height="36" rx="5" fill="#2d2d3f"/><rect x="52" y="163" width="16" height="8" rx="4" fill="var(--hair)"/>
-                    <rect x="73" y="132" width="11" height="36" rx="5" fill="#2d2d3f"/><rect x="69" y="163" width="16" height="8" rx="4" fill="var(--hair)"/>
-                    <rect x="50" y="82" width="40" height="54" rx="8" fill="var(--suit)"/>
-                    <polygon points="67,88 73,88 74,108 70,112 66,108" fill="url(#qtg2)"/>
-                    <path d="M62 82 L70 94 L78 82" stroke="#fff" stroke-width="1.2" fill="none" opacity=".4"/>
-                    <rect x="38" y="84" width="14" height="36" rx="7" fill="var(--suit)"/>
-                    <rect x="88" y="84" width="14" height="36" rx="7" fill="var(--suit)"/>
-                    <rect x="64" y="73" width="12" height="12" rx="3" fill="var(--skin)"/>
-                    <ellipse cx="70" cy="58" rx="20" ry="22" fill="var(--skin)"/>
-                    <path d="M50 52 Q50 35 70 32 Q90 35 90 52 Q88 40 70 38 Q52 40 50 52Z" fill="var(--hair)"/>
-                    <rect x="50" y="43" width="5" height="16" rx="2" fill="var(--hair)"/><rect x="85" y="43" width="5" height="16" rx="2" fill="var(--hair)"/>
-                    <ellipse cx="62" cy="56" rx="3.2" ry="3.5" fill="var(--hair)"/><circle cx="63" cy="54.5" r="1.2" fill="#fff"/>
-                    <ellipse cx="78" cy="56" rx="3.2" ry="3.5" fill="var(--hair)"/><circle cx="79" cy="54.5" r="1.2" fill="#fff"/>
-                    <rect x="57" y="51" width="10" height="9" rx="4" fill="var(--skin)" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
-                    <rect x="73" y="51" width="10" height="9" rx="4" fill="var(--skin)" opacity="0"><animate attributeName="opacity" values="0;0;1;0;0" dur="3.5s" repeatCount="indefinite" keyTimes="0;0.46;0.5;0.54;1"/></rect>
-                    <path d="M65 66 Q70 72 75 66" stroke="#c0392b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-                    <ellipse cx="55" cy="62" rx="5" ry="2.5" fill="#f9a8d4" opacity=".3"/>
-                    <ellipse cx="85" cy="62" rx="5" ry="2.5" fill="#f9a8d4" opacity=".3"/>
-                    <defs><linearGradient id="qtg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--pink)"/><stop offset="100%" stop-color="var(--purple)"/></linearGradient></defs>
-                </svg>
-            </div>
-            <div class="gc" style="margin-bottom:10px;position:relative"><p id="qzC">Let's see how well you remember our story... 🤔</p></div>
-            <div class="hr" id="hR"></div>
-            <div class="qc" id="qC">
-                <div class="pb"><div class="pf" id="pF" style="width:0%"></div></div>
-                <div class="sr"><span>✨</span><span id="sT">Score: 0 / 5</span></div>
-                <div class="qh"><div class="qn" id="qN">1</div><div class="qt" id="qT"></div></div>
-                <div class="og" id="oG"></div>
-            </div>
-        </div>
-        <div class="app-view" id="av-gift">
-            <div class="gr">
-                <div class="bday-text">Happy Birthday!</div>
-                <div class="fl">🌸🌺🌷🌹🌸</div>
-                <p style="color:var(--text2);margin:8px 0;font-size:14px">You got all answers right! You remember every moment 💕</p>
-                <p style="color:var(--text);font-weight:600;margin:12px 0">Tap the gift to reveal your surprise...</p>
-                <div class="gb" id="gB" onclick="openGift()">🎁</div>
-                <div id="gC" class="hidden">
-                    <div class="tr">🧸</div>
-                    <div class="gt">A Big Teddy Bear!</div>
-                    <div class="gm">Because you deserve the biggest, softest, most huggable teddy...<br>just like how you make my world the warmest place!<br><br>I love you more than words can say 💕</div>
-                    <div class="fl">💝🧸💝🧸💝</div>
-                </div>
-            </div>
-        </div>
-        <div class="app-view" id="av-fail">
-            <div style="text-align:center">
-                <div class="ft" id="fT">Hmmm... Really?!</div>
-                <div class="fs" id="fS">You forgot some moments?! Try again! 😏</div>
-                <div class="hr" id="fH"></div>
-                <button class="btn" onclick="restartQ()">Try Again! 🔄</button>
-            </div>
-        </div>
-    </div>
-</div>
+<canvas id="c"></canvas>
+<div class="lbox top" id="lbTop"></div>
+<div class="lbox bot" id="lbBot"></div>
+<button id="skipBtn" onclick="skipToQuiz()">Skip to Quiz →</button>
+
+<div id="quizOverlay"></div>
+<div id="giftOverlay"></div>
 
 <script>
-// ===== SCENE TIMELINE =====
-let sceneTimer;
-function beginFilm(){
-    document.getElementById('skipBtn').classList.add('show');
-    playScene('s1');
+const C = document.getElementById('c');
+const ctx = C.getContext('2d');
+let W, H, dpr;
+let currentScene = -1;
+let sceneTime = 0;
+let animFrame;
+let sceneStartTime = 0;
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  C.width = W * dpr;
+  C.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Easing functions
+const ease = {
+  linear: t => t,
+  inOut: t => t < .5 ? 2*t*t : -1+(4-2*t)*t,
+  out: t => 1-(1-t)*(1-t),
+  in: t => t*t,
+  outBack: t => { const s=1.7; return 1+(--t)*t*((s+1)*t+s); },
+  outElastic: t => t===0?0:t===1?1:Math.pow(2,-10*t)*Math.sin((t-.075)*(2*Math.PI)/.3)+1,
+  inOutCubic: t => t<.5?4*t*t*t:(t-1)*(2*t-2)*(2*t-2)+1
+};
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function tween(start, end, duration, elapsed, easeFn) {
+  const t = clamp(elapsed / duration, 0, 1);
+  return lerp(start, end, (easeFn || ease.inOut)(t));
 }
 
-function playScene(id){
-    document.querySelectorAll('.scene').forEach(s=>s.classList.remove('active'));
-    const s=document.getElementById(id);
-    if(s)s.classList.add('active');
-
-    clearTimeout(sceneTimer);
-
-    switch(id){
-        case 's1': runS1(); sceneTimer=setTimeout(()=>playScene('s2'),9000); break;
-        case 's2': runS2(); sceneTimer=setTimeout(()=>playScene('s3'),9000); break;
-        case 's3': runS3(); sceneTimer=setTimeout(()=>playScene('s4'),8000); break;
-        case 's4': runS4(); sceneTimer=setTimeout(()=>playScene('s5'),10000); break;
-        case 's5': runS5(); sceneTimer=setTimeout(()=>playScene('s6'),7000); break;
-        case 's6': runS6(); sceneTimer=setTimeout(()=>playScene('s7'),7000); break;
-        case 's7': runS7(); sceneTimer=setTimeout(()=>playScene('s8'),7000); break;
+// Particle system
+class Particles {
+  constructor() { this.p = []; }
+  emit(x, y, count, opts = {}) {
+    for (let i = 0; i < count; i++) {
+      this.p.push({
+        x, y, vx: (Math.random()-.5) * (opts.speed||4),
+        vy: (Math.random()-.5) * (opts.speed||4) - (opts.rise||0),
+        life: 1, decay: .008 + Math.random()*.015,
+        size: opts.size || 2+Math.random()*3,
+        color: opts.colors ? opts.colors[Math.floor(Math.random()*opts.colors.length)] : '#f9a8d4',
+        type: opts.type || 'circle'
+      });
     }
+  }
+  update() {
+    for (let i = this.p.length-1; i >= 0; i--) {
+      const p = this.p[i];
+      p.x += p.vx; p.y += p.vy;
+      p.vy += (p.type === 'confetti' ? .15 : .02);
+      p.life -= p.decay;
+      if (p.life <= 0) this.p.splice(i, 1);
+    }
+  }
+  draw() {
+    this.p.forEach(p => {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      if (p.type === 'heart') {
+        drawHeart(p.x, p.y, p.size * 2);
+      } else if (p.type === 'confetti') {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.vx * sceneTime * .1);
+        ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size * 1.5);
+        ctx.restore();
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    });
+  }
+}
+const particles = new Particles();
+
+function drawHeart(x, y, size) {
+  ctx.save();
+  ctx.translate(x, y);
+  const s = size / 15;
+  ctx.beginPath();
+  ctx.moveTo(0, -3*s);
+  ctx.bezierCurveTo(-7.5*s, -12*s, -15*s, 0, 0, 10*s);
+  ctx.bezierCurveTo(15*s, 0, 7.5*s, -12*s, 0, -3*s);
+  ctx.fill();
+  ctx.restore();
 }
 
-// Scene 1: Sitting, friend walks in, shows photo, hearts
-function runS1(){
-    const sit=document.getElementById('s1Sit');
-    const friend=document.getElementById('s1Friend');
-    const photo=document.getElementById('s1Photo');
-    const hearts=document.getElementById('s1Hearts');
+// Character drawing system - detailed cartoon style
+function drawCharacter(x, y, scale, opts = {}) {
+  const s = scale;
+  const facing = opts.facing || 1; // 1=right, -1=left
+  const armAngle = opts.armAngle || 0;
+  const legPhase = opts.legPhase || 0;
+  const headTilt = opts.headTilt || 0;
+  const type = opts.type || 'guy'; // guy, girl, bride, groom
+  const emotion = opts.emotion || 'normal'; // normal, happy, love, surprised
 
-    sit.classList.remove('show');friend.classList.remove('walk');
-    photo.classList.remove('show');hearts.classList.remove('show');
-    hearts.innerHTML='';
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing, 1);
 
-    setTimeout(()=>sit.classList.add('show'),500);
-    setTimeout(()=>friend.classList.add('walk'),2000);
-    setTimeout(()=>photo.classList.add('show'),5000);
-    setTimeout(()=>{
-        hearts.classList.add('show');
-        const emos=['❤️','💕','💖','😍','✨','💗'];
-        for(let i=0;i<8;i++){
-            const sp=document.createElement('span');sp.textContent=emos[i%emos.length];
-            const a=(i/8)*Math.PI*2;
-            sp.style.setProperty('--hx',Math.cos(a)*60+'px');
-            sp.style.setProperty('--hy',Math.sin(a)*60-30+'px');
-            sp.style.animationDelay=(i*.15)+'s';
-            hearts.appendChild(sp);
-        }
-    },6500);
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,.15)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 18*s, 5*s, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  const skinTone = opts.skin || '#e8b89d';
+  const hairColor = opts.hair || '#1a1a2e';
+
+  if (type === 'guy' || type === 'groom') {
+    const suitColor = type === 'groom' ? '#8B0000' : '#2d2b6e';
+    const suitColor2 = type === 'groom' ? '#660000' : '#1e1b4b';
+
+    // Legs with walking animation
+    const legSwing = Math.sin(legPhase) * 15;
+    ctx.save();
+    // Left leg
+    ctx.save();
+    ctx.translate(-6*s, -35*s);
+    ctx.rotate((legSwing) * Math.PI/180);
+    ctx.fillStyle = '#1a1a2e';
+    roundRect(-4*s, 0, 8*s, 35*s, 3*s);
+    // Shoe
+    ctx.fillStyle = '#111';
+    roundRect(-5*s, 30*s, 12*s, 6*s, 3*s);
+    ctx.restore();
+    // Right leg
+    ctx.save();
+    ctx.translate(6*s, -35*s);
+    ctx.rotate((-legSwing) * Math.PI/180);
+    ctx.fillStyle = '#1a1a2e';
+    roundRect(-4*s, 0, 8*s, 35*s, 3*s);
+    ctx.fillStyle = '#111';
+    roundRect(-5*s, 30*s, 12*s, 6*s, 3*s);
+    ctx.restore();
+
+    // Body / Suit jacket
+    ctx.fillStyle = suitColor;
+    roundRect(-16*s, -75*s, 32*s, 42*s, 6*s);
+    // Lapels
+    ctx.fillStyle = suitColor2;
+    ctx.beginPath();
+    ctx.moveTo(-10*s, -75*s);
+    ctx.lineTo(0, -55*s);
+    ctx.lineTo(10*s, -75*s);
+    ctx.fill();
+    // Tie
+    ctx.fillStyle = type === 'groom' ? '#FFD700' : '#ec4899';
+    ctx.beginPath();
+    ctx.moveTo(-3*s, -73*s);
+    ctx.lineTo(3*s, -73*s);
+    ctx.lineTo(2*s, -55*s);
+    ctx.lineTo(-2*s, -55*s);
+    ctx.fill();
+    // Shirt collar
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(-8*s, -75*s);
+    ctx.lineTo(0, -68*s);
+    ctx.lineTo(8*s, -75*s);
+    ctx.lineTo(5*s, -75*s);
+    ctx.lineTo(0, -71*s);
+    ctx.lineTo(-5*s, -75*s);
+    ctx.fill();
+
+    // Arms
+    ctx.save();
+    ctx.translate(-16*s, -70*s);
+    ctx.rotate((armAngle - 10 + Math.sin(legPhase)* 10) * Math.PI/180);
+    ctx.fillStyle = suitColor;
+    roundRect(-4*s, 0, 10*s, 30*s, 4*s);
+    ctx.fillStyle = skinTone;
+    ctx.beginPath();
+    ctx.arc(1*s, 33*s, 5*s, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(16*s, -70*s);
+    ctx.rotate((-armAngle + 10 - Math.sin(legPhase)* 10) * Math.PI/180);
+    ctx.fillStyle = suitColor;
+    roundRect(-6*s, 0, 10*s, 30*s, 4*s);
+    ctx.fillStyle = skinTone;
+    ctx.beginPath();
+    ctx.arc(-1*s, 33*s, 5*s, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Neck
+    ctx.fillStyle = skinTone;
+    roundRect(-5*s, -82*s, 10*s, 10*s, 2*s);
+
+    // Head
+    ctx.save();
+    ctx.translate(0, -98*s);
+    ctx.rotate(headTilt * Math.PI/180);
+
+    // Face
+    ctx.fillStyle = skinTone;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 14*s, 16*s, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Hair
+    ctx.fillStyle = hairColor;
+    ctx.beginPath();
+    ctx.ellipse(0, -8*s, 15*s, 12*s, 0, Math.PI, Math.PI*2);
+    ctx.fill();
+    roundRect(-15*s, -12*s, 6*s, 12*s, 2*s);
+
+    // Eyes
+    drawEyes(0, -2*s, s, emotion, facing);
+
+    // Mouth
+    drawMouth(0, 7*s, s, emotion);
+
+    // Eyebrows
+    drawBrows(0, -7*s, s, emotion);
+
+    ctx.restore();
+
+    // Groom extras
+    if (type === 'groom') {
+      // Turban/pagdi
+      ctx.save();
+      ctx.translate(0, -98*s);
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.ellipse(0, -16*s, 17*s, 10*s, 0, Math.PI, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#FF4500';
+      ctx.beginPath();
+      ctx.arc(0, -22*s, 5*s, 0, Math.PI*2);
+      ctx.fill();
+      // Feather
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.ellipse(3*s, -28*s, 2*s, 8*s, .2, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+  } else if (type === 'girl' || type === 'bride') {
+    const dressColor = type === 'bride' ? '#dc143c' : opts.dressColor || '#c084fc';
+    const dressColor2 = type === 'bride' ? '#8B0000' : opts.dressColor2 || '#7c3aed';
+    const hairCol = type === 'bride' ? '#0a0a0a' : hairColor;
+
+    // Dress / Saree
+    ctx.fillStyle = dressColor;
+    ctx.beginPath();
+    ctx.moveTo(-14*s, -72*s);
+    ctx.lineTo(-22*s, -2*s);
+    ctx.quadraticCurveTo(-22*s, 3*s, -18*s, 3*s);
+    ctx.lineTo(18*s, 3*s);
+    ctx.quadraticCurveTo(22*s, 3*s, 22*s, -2*s);
+    ctx.lineTo(14*s, -72*s);
+    ctx.fill();
+
+    // Dress pattern/folds
+    ctx.strokeStyle = dressColor2;
+    ctx.lineWidth = 1.5*s;
+    ctx.globalAlpha = .3;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-18*s+i*2*s, (-55+i*15)*s);
+      ctx.quadraticCurveTo(0, (-45+i*15)*s, 18*s-i*2*s, (-55+i*15)*s);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    if (type === 'bride') {
+      // Gold border at bottom
+      ctx.fillStyle = '#FFD700';
+      roundRect(-22*s, -8*s, 44*s, 8*s, 2*s);
+      // Saree pallu over shoulder
+      ctx.fillStyle = dressColor;
+      ctx.globalAlpha = .7;
+      ctx.beginPath();
+      ctx.moveTo(-14*s, -72*s);
+      ctx.quadraticCurveTo(-25*s, -50*s, -20*s, -30*s);
+      ctx.lineTo(-12*s, -30*s);
+      ctx.lineTo(-10*s, -72*s);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Feet
+    ctx.fillStyle = type === 'bride' ? '#FFD700' : '#e8a0bf';
+    const footSwing = Math.sin(legPhase) * 3;
+    ctx.beginPath();
+    ctx.ellipse(-7*s + footSwing, 4*s, 6*s, 3*s, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(7*s - footSwing, 4*s, 6*s, 3*s, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Arms
+    ctx.save();
+    ctx.translate(-14*s, -65*s);
+    ctx.rotate((armAngle - 5) * Math.PI/180);
+    ctx.fillStyle = skinTone;
+    roundRect(-3*s, 0, 7*s, 26*s, 3*s);
+    ctx.beginPath();
+    ctx.arc(0.5*s, 28*s, 4.5*s, 0, Math.PI*2);
+    ctx.fill();
+    if (type === 'bride') {
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(0.5*s, 24*s, 5*s, 0, Math.PI*2);
+      ctx.lineWidth = 1.5*s;
+      ctx.strokeStyle = '#FFD700';
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(14*s, -65*s);
+    ctx.rotate((-armAngle + 5) * Math.PI/180);
+    ctx.fillStyle = skinTone;
+    roundRect(-4*s, 0, 7*s, 26*s, 3*s);
+    ctx.beginPath();
+    ctx.arc(-0.5*s, 28*s, 4.5*s, 0, Math.PI*2);
+    ctx.fill();
+    if (type === 'bride') {
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(-0.5*s, 24*s, 5*s, 0, Math.PI*2);
+      ctx.lineWidth = 1.5*s;
+      ctx.strokeStyle = '#FFD700';
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Neck
+    ctx.fillStyle = skinTone;
+    roundRect(-4*s, -80*s, 8*s, 10*s, 2*s);
+    if (type === 'bride') {
+      // Necklace
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(0, -72*s, 8*s, -.3, Math.PI+.3);
+      ctx.lineWidth = 2*s;
+      ctx.strokeStyle = '#FFD700';
+      ctx.stroke();
+    }
+
+    // Head
+    ctx.save();
+    ctx.translate(0, -95*s);
+    ctx.rotate(headTilt * Math.PI/180);
+
+    // Face
+    ctx.fillStyle = skinTone;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 13*s, 15*s, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Hair
+    ctx.fillStyle = hairCol;
+    ctx.beginPath();
+    ctx.ellipse(0, -6*s, 15*s, 13*s, 0, Math.PI, Math.PI*2);
+    ctx.fill();
+    // Side hair
+    roundRect(-15*s, -10*s, 5*s, 20*s, 2*s);
+    roundRect(10*s, -10*s, 5*s, 20*s, 2*s);
+
+    if (type === 'bride') {
+      // Maang tikka
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(0, -14*s, 3*s, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#dc143c';
+      ctx.beginPath();
+      ctx.arc(0, -14*s, 1.5*s, 0, Math.PI*2);
+      ctx.fill();
+      // Bindi
+      ctx.fillStyle = '#dc143c';
+      ctx.beginPath();
+      ctx.arc(0, -5*s, 2*s, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Eyes (slightly larger, with lashes)
+    drawEyes(0, -2*s, s * 1.05, emotion, facing, true);
+
+    // Mouth
+    drawMouth(0, 6*s, s, emotion);
+
+    // Eyebrows
+    drawBrows(0, -7*s, s * .9, emotion);
+
+    // Earrings
+    if (type === 'bride') {
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath(); ctx.arc(-13*s, 5*s, 3*s, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(13*s, 5*s, 3*s, 0, Math.PI*2); ctx.fill();
+    }
+
+    ctx.restore();
+
+    // Long hair at back
+    ctx.fillStyle = hairCol;
+    ctx.beginPath();
+    ctx.moveTo(-12*s, -100*s);
+    ctx.quadraticCurveTo(-16*s, -60*s, -10*s, -35*s);
+    ctx.lineTo(-6*s, -35*s);
+    ctx.quadraticCurveTo(-12*s, -60*s, -8*s, -100*s);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(12*s, -100*s);
+    ctx.quadraticCurveTo(16*s, -60*s, 10*s, -35*s);
+    ctx.lineTo(6*s, -35*s);
+    ctx.quadraticCurveTo(12*s, -60*s, 8*s, -100*s);
+    ctx.fill();
+  }
+
+  ctx.restore();
 }
 
-// Scene 2: Three panels appear
-function runS2(){
-    const p1=document.getElementById('s2p1'),p2=document.getElementById('s2p2'),p3=document.getElementById('s2p3');
-    [p1,p2,p3].forEach(p=>p.classList.remove('show'));
-    setTimeout(()=>p1.classList.add('show'),300);
-    setTimeout(()=>p2.classList.add('show'),3000);
-    setTimeout(()=>p3.classList.add('show'),6000);
+function drawEyes(cx, cy, s, emotion, facing, lashes) {
+  const gap = 7 * s;
+  [-1, 1].forEach(side => {
+    const ex = cx + side * gap;
+    // Eye white
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(ex, cy, 4*s, 3.5*s, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Iris
+    ctx.fillStyle = emotion === 'love' ? '#e11d48' : '#2d1b4e';
+    ctx.beginPath();
+    ctx.arc(ex + (facing||1)*s*.5, cy, 2.2*s, 0, Math.PI*2);
+    ctx.fill();
+    // Pupil
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(ex + (facing||1)*s*.5, cy, 1.2*s, 0, Math.PI*2);
+    ctx.fill();
+    // Highlight
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(ex + (facing||1)*s + s, cy - s, .8*s, 0, Math.PI*2);
+    ctx.fill();
+    // Lashes
+    if (lashes) {
+      ctx.strokeStyle = '#1a1a2e';
+      ctx.lineWidth = 1.2*s;
+      ctx.beginPath();
+      ctx.arc(ex, cy, 4*s, -Math.PI*.85, -Math.PI*.15);
+      ctx.stroke();
+    }
+
+    if (emotion === 'love') {
+      // Heart eyes sparkle
+      ctx.fillStyle = '#ec4899';
+      drawHeart(ex, cy - 6*s, 3*s);
+    }
+  });
 }
 
-// Scene 3: Chat messages
-function runS3(){
-    const c=document.getElementById('s3Msgs');c.innerHTML='';
-    const msgs=[
-        {t:'s',m:'Hey... can I ask you something?',d:600},
-        {t:'r',m:'Sure, what is it? 🤔',d:1800},
-        {t:'s',m:'I\'ve been thinking...',d:3000},
-        {t:'sp',m:'Meet pannalama? 🥺',d:4500},
-        {t:'r',m:'...',d:5800},
-        {t:'heart',m:'Yes! 🥰💕',d:6500},
+function drawMouth(cx, cy, s, emotion) {
+  ctx.strokeStyle = '#8b4513';
+  ctx.fillStyle = '#e8575f';
+  ctx.lineWidth = 1.5*s;
+  ctx.lineCap = 'round';
+  if (emotion === 'happy' || emotion === 'love') {
+    ctx.beginPath();
+    ctx.arc(cx, cy - 2*s, 5*s, .15, Math.PI-.15);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy - 2*s, 5*s, .2, Math.PI-.2);
+    ctx.fill();
+  } else if (emotion === 'surprised') {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 3*s, 4*s, 0, 0, Math.PI*2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4*s, .1, Math.PI-.1);
+    ctx.stroke();
+  }
+}
+
+function drawBrows(cx, cy, s, emotion) {
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth = 1.8*s;
+  ctx.lineCap = 'round';
+  const gap = 7*s;
+  [-1, 1].forEach(side => {
+    const bx = cx + side * gap;
+    ctx.beginPath();
+    if (emotion === 'surprised') {
+      ctx.arc(bx, cy - 2*s, 4*s, Math.PI+.3, -0.3);
+    } else if (emotion === 'love' || emotion === 'happy') {
+      ctx.arc(bx, cy, 4*s, Math.PI+.5, -0.5);
+    } else {
+      ctx.moveTo(bx - 4*s, cy);
+      ctx.lineTo(bx + 4*s, cy - s);
+    }
+    ctx.stroke();
+  });
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.fill();
+}
+
+// ==================== SCENE BACKGROUNDS ====================
+
+function drawLivingRoom(t) {
+  // Wall
+  const wallGrad = ctx.createLinearGradient(0, 0, 0, H);
+  wallGrad.addColorStop(0, '#2d1b4e');
+  wallGrad.addColorStop(1, '#1a0f2e');
+  ctx.fillStyle = wallGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Floor
+  const floorGrad = ctx.createLinearGradient(0, H*.65, 0, H);
+  floorGrad.addColorStop(0, '#3d2b5e');
+  floorGrad.addColorStop(1, '#1a0f2e');
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(0, H*.65, W, H*.35);
+
+  // Window with warm light
+  const wx = W*.7, wy = H*.12, ww = W*.2, wh = H*.3;
+  ctx.fillStyle = '#1a1040';
+  roundRect(wx, wy, ww, wh, 8);
+  ctx.fillStyle = 'rgba(251,191,36,.1)';
+  roundRect(wx+4, wy+4, ww-8, wh-8, 6);
+  // Curtains
+  ctx.fillStyle = '#7c3aed';
+  ctx.globalAlpha = .5;
+  roundRect(wx-10, wy-10, 18, wh+20, 4);
+  roundRect(wx+ww-8, wy-10, 18, wh+20, 4);
+  ctx.globalAlpha = 1;
+
+  // Warm ambient light from window
+  const lightGrad = ctx.createRadialGradient(wx+ww/2, wy+wh/2, 10, wx+ww/2, wy+wh/2, W*.4);
+  lightGrad.addColorStop(0, 'rgba(251,191,36,.08)');
+  lightGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = lightGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Sofa
+  const sx = W*.15, sy = H*.52;
+  // Back
+  ctx.fillStyle = '#6d28d9';
+  roundRect(sx, sy-10, W*.35, 40, 12);
+  // Seat
+  ctx.fillStyle = '#7c3aed';
+  roundRect(sx-5, sy+25, W*.36, 35, 10);
+  // Cushions
+  ctx.fillStyle = '#8b5cf6';
+  roundRect(sx+5, sy+28, W*.1, 28, 8);
+  roundRect(sx+W*.12, sy+28, W*.1, 28, 8);
+  roundRect(sx+W*.24, sy+28, W*.1, 28, 8);
+  // Arm rests
+  ctx.fillStyle = '#5b21b6';
+  roundRect(sx-12, sy-5, 18, 70, 8);
+  roundRect(sx+W*.35-6, sy-5, 18, 70, 8);
+  // Legs
+  ctx.fillStyle = '#3d1f6e';
+  ctx.fillRect(sx+5, sy+58, 8, 16);
+  ctx.fillRect(sx+W*.35-13, sy+58, 8, 16);
+
+  // Side table
+  ctx.fillStyle = '#4a2272';
+  roundRect(W*.55, sy+20, 35, 40, 6);
+  // Lamp
+  ctx.fillStyle = '#a78bfa';
+  ctx.beginPath();
+  ctx.moveTo(W*.565, sy+20);
+  ctx.lineTo(W*.555, sy-10);
+  ctx.lineTo(W*.59, sy-10);
+  ctx.lineTo(W*.58, sy+20);
+  ctx.fill();
+  // Lamp shade
+  ctx.fillStyle = '#f9a8d4';
+  ctx.beginPath();
+  ctx.moveTo(W*.545, sy-10);
+  ctx.lineTo(W*.535, sy-40);
+  ctx.lineTo(W*.61, sy-40);
+  ctx.lineTo(W*.6, sy-10);
+  ctx.fill();
+  // Lamp glow
+  const lampGlow = ctx.createRadialGradient(W*.57, sy-25, 5, W*.57, sy-25, 120);
+  lampGlow.addColorStop(0, 'rgba(249,168,212,.12)');
+  lampGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = lampGlow;
+  ctx.fillRect(0, 0, W, H);
+
+  // Picture frames on wall
+  ctx.strokeStyle = '#a78bfa';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(W*.2, H*.15, 50, 40);
+  ctx.strokeRect(W*.32, H*.12, 35, 50);
+  ctx.fillStyle = 'rgba(167,139,250,.1)';
+  ctx.fillRect(W*.2+2, H*.15+2, 46, 36);
+  ctx.fillRect(W*.32+2, H*.12+2, 31, 46);
+
+  // Floating dust particles
+  ctx.fillStyle = 'rgba(249,168,212,.15)';
+  for (let i = 0; i < 15; i++) {
+    const px = (W*.1 + (i*137)%W*.8);
+    const py = (H*.1 + Math.sin(t*0.5 + i*2.1) * H*.15 + (i*97)%H*.5);
+    ctx.beginPath();
+    ctx.arc(px, py, 1.5 + Math.sin(t+i)*.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function drawPhoto(x, y, w, h, t) {
+  // Polaroid style
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.sin(t*2) * .03);
+
+  ctx.shadowColor = 'rgba(0,0,0,.3)';
+  ctx.shadowBlur = 15;
+  ctx.fillStyle = '#fff';
+  roundRect(-w/2-8, -h/2-8, w+16, h+26, 4);
+  ctx.shadowBlur = 0;
+
+  // Photo content - girl's face
+  ctx.fillStyle = '#fce7f3';
+  ctx.fillRect(-w/2, -h/2, w, h);
+  // Simple portrait
+  ctx.fillStyle = '#e8b89d';
+  ctx.beginPath();
+  ctx.ellipse(0, -5, w*.25, w*.3, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#1a1a2e';
+  ctx.beginPath();
+  ctx.ellipse(0, -15, w*.3, w*.25, 0, Math.PI, Math.PI*2);
+  ctx.fill();
+  // Smile
+  ctx.strokeStyle = '#c06040';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, w*.1, .2, Math.PI-.2);
+  ctx.stroke();
+  // Eyes
+  ctx.fillStyle = '#2d1b4e';
+  ctx.beginPath(); ctx.arc(-w*.08, -6, 2.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(w*.08, -6, 2.5, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawCafeScene(t) {
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#1a0f2e');
+  bg.addColorStop(1, '#2d1b4e');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Floor
+  ctx.fillStyle = '#3d2b5e';
+  ctx.fillRect(0, H*.7, W, H*.3);
+  // Tiles
+  ctx.strokeStyle = 'rgba(255,255,255,.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    ctx.beginPath(); ctx.moveTo(i*W/10, H*.7); ctx.lineTo(i*W/10, H); ctx.stroke();
+  }
+
+  // Window
+  ctx.fillStyle = 'rgba(251,191,36,.05)';
+  roundRect(W*.05, H*.05, W*.25, H*.5, 10);
+  ctx.strokeStyle = '#4a2272';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(W*.05, H*.05, W*.25, H*.5);
+
+  // Cafe counter
+  ctx.fillStyle = '#4a2272';
+  roundRect(W*.6, H*.35, W*.35, 20, 5);
+  ctx.fillStyle = '#3d1f6e';
+  roundRect(W*.6, H*.35+20, W*.35, H*.35, 0);
+
+  // Coffee cups on counter
+  for (let i = 0; i < 3; i++) {
+    const cx = W*.65 + i*40;
+    ctx.fillStyle = '#f5f5f5';
+    roundRect(cx, H*.32, 16, 18, 3);
+    // Steam
+    ctx.strokeStyle = 'rgba(255,255,255,.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx+8, H*.32);
+    ctx.quadraticCurveTo(cx+12, H*.32-10-Math.sin(t*3+i)*5, cx+6, H*.32-20);
+    ctx.stroke();
+  }
+
+  // Table (center)
+  ctx.fillStyle = '#5b2e8a';
+  roundRect(W*.3, H*.55, W*.2, 8, 4);
+  ctx.fillStyle = '#4a2272';
+  ctx.fillRect(W*.39, H*.55+8, 8, H*.15);
+
+  // Coffee on table
+  ctx.fillStyle = '#8B4513';
+  ctx.beginPath();
+  ctx.ellipse(W*.36, H*.54, 12, 4, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#a0522d';
+  roundRect(W*.35, H*.48, 24, 20, 4);
+  // Steam
+  ctx.strokeStyle = 'rgba(255,255,255,.15)';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 2; i++) {
+    ctx.beginPath();
+    ctx.moveTo(W*.36+i*6, H*.48);
+    ctx.quadraticCurveTo(W*.36+i*6+4, H*.44-Math.sin(t*2.5+i)*6, W*.36+i*6-2, H*.38);
+    ctx.stroke();
+  }
+
+  // Hanging lights
+  for (let i = 0; i < 4; i++) {
+    const lx = W*.15 + i * W*.22;
+    ctx.strokeStyle = '#4a2272';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, H*.08); ctx.stroke();
+    const glowR = 25 + Math.sin(t*1.5+i)*5;
+    const glow = ctx.createRadialGradient(lx, H*.08, 2, lx, H*.08, glowR);
+    glow.addColorStop(0, 'rgba(251,191,36,.3)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(lx-glowR, H*.08-glowR, glowR*2, glowR*2);
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath(); ctx.arc(lx, H*.08, 5, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawRoad(t) {
+  // Sky
+  const sky = ctx.createLinearGradient(0, 0, 0, H*.5);
+  sky.addColorStop(0, '#1e1b4b');
+  sky.addColorStop(1, '#4c1d95');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H*.5);
+
+  // Distant buildings
+  ctx.fillStyle = '#1a0f2e';
+  for (let i = 0; i < 8; i++) {
+    const bx = i * W/7 - (t*5)%40;
+    const bh = 60 + (i*47)%80;
+    ctx.fillRect(bx, H*.5-bh, W/8, bh);
+    // Windows
+    ctx.fillStyle = 'rgba(251,191,36,.15)';
+    for (let r = 0; r < Math.floor(bh/20); r++) {
+      for (let c = 0; c < 3; c++) {
+        ctx.fillRect(bx+5+c*12, H*.5-bh+10+r*20, 6, 8);
+      }
+    }
+    ctx.fillStyle = '#1a0f2e';
+  }
+
+  // Road
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(0, H*.5, W, H*.5);
+
+  // Lane markings
+  ctx.fillStyle = '#fbbf24';
+  ctx.globalAlpha = .6;
+  const dashOffset = (t * 80) % 60;
+  for (let i = -1; i < W/60+1; i++) {
+    ctx.fillRect(i*60 - dashOffset, H*.72, 30, 4);
+  }
+  ctx.globalAlpha = 1;
+
+  // Sidewalk
+  ctx.fillStyle = '#3d3d4d';
+  ctx.fillRect(0, H*.5, W, 15);
+  ctx.fillRect(0, H*.92, W, H*.08);
+
+  // Trees
+  for (let i = 0; i < 3; i++) {
+    const tx = W*.1 + i * W*.35;
+    ctx.fillStyle = '#2d1b4e';
+    ctx.fillRect(tx, H*.3, 8, H*.2);
+    ctx.fillStyle = '#166534';
+    ctx.beginPath();
+    ctx.arc(tx+4, H*.28, 25, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#15803d';
+    ctx.beginPath();
+    ctx.arc(tx+10, H*.25, 18, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Street lights
+  ctx.fillStyle = '#555';
+  ctx.fillRect(W*.85, H*.25, 4, H*.27);
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath();
+  ctx.arc(W*.87, H*.25, 8, 0, Math.PI*2);
+  ctx.fill();
+  const streetGlow = ctx.createRadialGradient(W*.87, H*.25, 4, W*.87, H*.45, 100);
+  streetGlow.addColorStop(0, 'rgba(251,191,36,.1)');
+  streetGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = streetGlow;
+  ctx.fillRect(W*.6, H*.1, W*.4, H*.5);
+}
+
+function drawBike(x, y, scale, t) {
+  const s = scale;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Wheels
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 3*s;
+  ctx.beginPath(); ctx.arc(-20*s, 15*s, 16*s, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(20*s, 15*s, 16*s, 0, Math.PI*2); ctx.stroke();
+  // Spokes
+  ctx.lineWidth = 1*s;
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI/3 + t*3;
+    [-20, 20].forEach(wx => {
+      ctx.beginPath();
+      ctx.moveTo(wx*s, 15*s);
+      ctx.lineTo(wx*s + Math.cos(a)*14*s, 15*s + Math.sin(a)*14*s);
+      ctx.stroke();
+    });
+  }
+  // Hub
+  ctx.fillStyle = '#777';
+  ctx.beginPath(); ctx.arc(-20*s, 15*s, 3*s, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(20*s, 15*s, 3*s, 0, Math.PI*2); ctx.fill();
+
+  // Frame
+  ctx.strokeStyle = '#dc143c';
+  ctx.lineWidth = 3*s;
+  ctx.beginPath();
+  ctx.moveTo(-20*s, 15*s); ctx.lineTo(0, -5*s); ctx.lineTo(20*s, 15*s);
+  ctx.moveTo(0, -5*s); ctx.lineTo(-10*s, -15*s);
+  ctx.moveTo(0, -5*s); ctx.lineTo(15*s, -5*s); ctx.lineTo(20*s, 15*s);
+  ctx.stroke();
+
+  // Handlebar
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2.5*s;
+  ctx.beginPath();
+  ctx.moveTo(-15*s, -20*s); ctx.lineTo(-10*s, -15*s); ctx.lineTo(-5*s, -18*s);
+  ctx.stroke();
+
+  // Seat
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(12*s, -8*s, 8*s, 3*s, -.1, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawSunset(t) {
+  // Sky gradient
+  const sky = ctx.createLinearGradient(0, 0, 0, H*.7);
+  sky.addColorStop(0, '#1e1b4b');
+  sky.addColorStop(.3, '#4c1d95');
+  sky.addColorStop(.5, '#7c2d9f');
+  sky.addColorStop(.7, '#db2777');
+  sky.addColorStop(.85, '#f97316');
+  sky.addColorStop(1, '#fbbf24');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H*.7);
+
+  // Sun
+  const sunY = H*.45 + Math.sin(t*.3)*10;
+  const sunGlow = ctx.createRadialGradient(W/2, sunY, 30, W/2, sunY, 200);
+  sunGlow.addColorStop(0, 'rgba(251,191,36,.8)');
+  sunGlow.addColorStop(.3, 'rgba(249,115,22,.4)');
+  sunGlow.addColorStop(.6, 'rgba(219,39,119,.15)');
+  sunGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sunGlow;
+  ctx.fillRect(0, 0, W, H);
+  // Sun disc
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath();
+  ctx.arc(W/2, sunY, 45 + Math.sin(t*2)*3, 0, Math.PI*2);
+  ctx.fill();
+  // Sun rays
+  ctx.strokeStyle = 'rgba(251,191,36,.15)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 12; i++) {
+    const a = i * Math.PI/6 + t*.2;
+    ctx.beginPath();
+    ctx.moveTo(W/2 + Math.cos(a)*55, sunY + Math.sin(a)*55);
+    ctx.lineTo(W/2 + Math.cos(a)*(90+Math.sin(t*3+i)*15), sunY + Math.sin(a)*(90+Math.sin(t*3+i)*15));
+    ctx.stroke();
+  }
+
+  // Water
+  const water = ctx.createLinearGradient(0, H*.65, 0, H);
+  water.addColorStop(0, '#1e3a5f');
+  water.addColorStop(.5, '#1a2d4a');
+  water.addColorStop(1, '#0f1b2e');
+  ctx.fillStyle = water;
+  ctx.fillRect(0, H*.65, W, H*.35);
+
+  // Water reflections
+  ctx.globalAlpha = .15;
+  for (let i = 0; i < 20; i++) {
+    const ry = H*.68 + i * H*.015;
+    const rw = (20 - i) * W*.015;
+    ctx.fillStyle = i < 10 ? '#fbbf24' : '#f97316';
+    ctx.fillRect(W/2 - rw/2 + Math.sin(t*2+i*.5)*10, ry, rw, 2);
+  }
+  ctx.globalAlpha = 1;
+
+  // Water shimmer
+  ctx.strokeStyle = 'rgba(255,255,255,.05)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 30; i++) {
+    const sx = (i * 67 + t*20)%W;
+    const sy = H*.68 + (i * 31)%(H*.28);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + 15 + Math.sin(t+i)*5, sy);
+    ctx.stroke();
+  }
+}
+
+function drawMandap(t) {
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#1a0a2e');
+  bg.addColorStop(.5, '#2d1040');
+  bg.addColorStop(1, '#1a0a2e');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Floor
+  const floorGrad = ctx.createRadialGradient(W/2, H*.85, 50, W/2, H*.85, W*.5);
+  floorGrad.addColorStop(0, '#5b2e8a');
+  floorGrad.addColorStop(1, '#2d1040');
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(0, H*.7, W, H*.3);
+
+  // Rangoli pattern on floor
+  ctx.strokeStyle = 'rgba(255,215,0,.2)';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(W/2, H*.85, 40+i*25, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  // Mandap pillars
+  const pillarPositions = [W*.2, W*.35, W*.65, W*.8];
+  pillarPositions.forEach((px, idx) => {
+    // Pillar
+    const pillarGrad = ctx.createLinearGradient(px-8, 0, px+8, 0);
+    pillarGrad.addColorStop(0, '#8B0000');
+    pillarGrad.addColorStop(.5, '#dc143c');
+    pillarGrad.addColorStop(1, '#8B0000');
+    ctx.fillStyle = pillarGrad;
+    roundRect(px-8, H*.15, 16, H*.55, 4);
+    // Gold bands
+    ctx.fillStyle = '#FFD700';
+    roundRect(px-10, H*.15, 20, 8, 3);
+    roundRect(px-10, H*.68, 20, 8, 3);
+    roundRect(px-9, H*.4, 18, 5, 2);
+  });
+
+  // Mandap roof
+  ctx.fillStyle = '#8B0000';
+  ctx.beginPath();
+  ctx.moveTo(W*.15, H*.15);
+  ctx.lineTo(W*.5, H*.02);
+  ctx.lineTo(W*.85, H*.15);
+  ctx.fill();
+  // Gold trim
+  ctx.strokeStyle = '#FFD700';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(W*.15, H*.15);
+  ctx.lineTo(W*.5, H*.02);
+  ctx.lineTo(W*.85, H*.15);
+  ctx.stroke();
+
+  // Garlands
+  ctx.strokeStyle = '#f97316';
+  ctx.lineWidth = 4;
+  for (let g = 0; g < 3; g++) {
+    ctx.beginPath();
+    ctx.moveTo(W*.2, H*.15+g*3);
+    ctx.quadraticCurveTo(W*.5, H*.25+Math.sin(t*2+g)*5+g*3, W*.8, H*.15+g*3);
+    ctx.stroke();
+  }
+  // Flower details on garlands
+  ctx.fillStyle = '#fbbf24';
+  for (let i = 0; i < 15; i++) {
+    const fx = W*.22 + i * (W*.56/14);
+    const fy = H*.17 + Math.sin(i*.7)*8 + 5;
+    ctx.beginPath();
+    ctx.arc(fx, fy, 3, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Sacred fire
+  const fireX = W/2, fireY = H*.72;
+  // Fire pit
+  ctx.fillStyle = '#4a2020';
+  ctx.beginPath();
+  ctx.ellipse(fireX, fireY+5, 30, 10, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Fire flames
+  for (let i = 0; i < 8; i++) {
+    const fx = fireX + Math.sin(t*5+i*1.3)*12;
+    const fh = 25 + Math.sin(t*7+i*2)*12;
+    const fw = 6 + Math.sin(t*4+i)*3;
+    const grad = ctx.createLinearGradient(fx, fireY, fx, fireY-fh);
+    grad.addColorStop(0, '#ff4500');
+    grad.addColorStop(.4, '#ff6500');
+    grad.addColorStop(.7, '#ffa500');
+    grad.addColorStop(1, 'rgba(255,200,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(fx-fw, fireY);
+    ctx.quadraticCurveTo(fx-fw/2, fireY-fh*.7, fx, fireY-fh);
+    ctx.quadraticCurveTo(fx+fw/2, fireY-fh*.7, fx+fw, fireY);
+    ctx.fill();
+  }
+
+  // Fire glow
+  const fireGlow = ctx.createRadialGradient(fireX, fireY-10, 5, fireX, fireY-10, 120);
+  fireGlow.addColorStop(0, 'rgba(255,165,0,.2)');
+  fireGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = fireGlow;
+  ctx.fillRect(0, 0, W, H);
+
+  // Diyas (oil lamps) on sides
+  [-1, 1].forEach(side => {
+    const dx = W/2 + side * W*.3;
+    ctx.fillStyle = '#c2710a';
+    ctx.beginPath();
+    ctx.ellipse(dx, H*.75, 8, 4, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Small flame
+    const fGrad = ctx.createLinearGradient(dx, H*.75, dx, H*.72);
+    fGrad.addColorStop(0, '#ff6500');
+    fGrad.addColorStop(1, 'rgba(255,200,0,0)');
+    ctx.fillStyle = fGrad;
+    ctx.beginPath();
+    ctx.moveTo(dx-3, H*.75);
+    ctx.quadraticCurveTo(dx, H*.72 - Math.sin(t*6)*3, dx+3, H*.75);
+    ctx.fill();
+  });
+
+  // Floating flower petals
+  ctx.globalAlpha = .4;
+  ['#ec4899','#f43f5e','#fbbf24','#f97316'].forEach((col, i) => {
+    for (let j = 0; j < 4; j++) {
+      const px = (W*.1 + (i*197+j*311)%W*.8);
+      const py = (H*.1 + Math.sin(t*.8+i*2+j*1.3)*H*.12 + (j*151+i*89)%H*.5);
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.ellipse(px, py, 4, 2.5, t*.5+i+j, 0, Math.PI*2);
+      ctx.fill();
+    }
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawPhoneChat(t) {
+  // Background
+  ctx.fillStyle = '#0f0a1e';
+  ctx.fillRect(0, 0, W, H);
+
+  // Ambient
+  const amb = ctx.createRadialGradient(W/2, H/2, 50, W/2, H/2, W*.5);
+  amb.addColorStop(0, 'rgba(168,85,247,.08)');
+  amb.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = amb;
+  ctx.fillRect(0, 0, W, H);
+
+  // Phone
+  const pw = Math.min(220, W*.5), ph = pw*1.9;
+  const px = W/2 - pw/2, py = H/2 - ph/2;
+
+  // Phone shadow
+  ctx.shadowColor = 'rgba(168,85,247,.3)';
+  ctx.shadowBlur = 40;
+  ctx.fillStyle = '#1a1a2e';
+  roundRect(px-3, py-3, pw+6, ph+6, 24);
+  ctx.shadowBlur = 0;
+
+  // Phone body
+  ctx.fillStyle = '#1a1a2e';
+  roundRect(px, py, pw, ph, 22);
+
+  // Screen
+  ctx.fillStyle = '#0a0a15';
+  roundRect(px+6, py+6, pw-12, ph-12, 18);
+
+  // Status bar
+  ctx.fillStyle = '#1a1a2e';
+  roundRect(px+6, py+6, pw-12, 28, 18);
+  ctx.fillStyle = 'rgba(255,255,255,.4)';
+  ctx.font = '10px Inter';
+  ctx.textAlign = 'left';
+  ctx.fillText('9:41', px+18, py+24);
+
+  // Chat header
+  ctx.fillStyle = '#2d1b4e';
+  roundRect(px+6, py+34, pw-12, 38, 0);
+  ctx.fillStyle = '#f9a8d4';
+  ctx.beginPath();
+  ctx.arc(px+28, py+53, 12, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#e8b89d';
+  ctx.beginPath();
+  ctx.arc(px+28, py+51, 6, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = '600 13px Inter';
+  ctx.fillText('My Love ❤️', px+48, py+57);
+
+  return { px, py, pw, ph };
+}
+
+function drawChatBubble(phone, text, isMe, yOffset, progress) {
+  if (progress <= 0) return;
+  const { px, py, pw } = phone;
+  const bw = Math.min(pw*.65, ctx.measureText(text).width + 28);
+  const bh = 32;
+  const bx = isMe ? px+pw-12-bw : px+16;
+  const by = py + 85 + yOffset;
+
+  ctx.globalAlpha = Math.min(progress * 2, 1);
+  const scale = ease.outBack(Math.min(progress * 1.5, 1));
+  ctx.save();
+  ctx.translate(bx + (isMe ? bw : 0), by);
+  ctx.scale(scale, scale);
+  ctx.translate(-(bx + (isMe ? bw : 0)), -by);
+
+  ctx.fillStyle = isMe ? '#7c3aed' : '#2d1b4e';
+  roundRect(bx, by, bw, bh, 14);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = '13px Inter';
+  ctx.textAlign = isMe ? 'right' : 'left';
+  ctx.fillText(text, isMe ? bx+bw-14 : bx+14, by+20);
+  ctx.textAlign = 'left';
+
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function drawMontagePanel(x, y, w, h, sceneFn, label) {
+  ctx.save();
+  ctx.beginPath();
+  roundRectPath(x, y, w, h, 12);
+  ctx.clip();
+  sceneFn();
+  ctx.restore();
+
+  // Border
+  ctx.strokeStyle = 'rgba(249,168,212,.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  roundRectPath(x, y, w, h, 12);
+  ctx.stroke();
+}
+
+function roundRectPath(x, y, w, h, r) {
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+}
+
+// ==================== SCENE LOGIC ====================
+
+const SCENE_DURATIONS = [10, 10, 9, 11, 9, 8, 9, 5];
+let sceneTimers = [];
+
+function clearTimers() {
+  sceneTimers.forEach(t => clearTimeout(t));
+  sceneTimers = [];
+}
+
+// Scene 0: Guy on sofa, friend brings photo
+function renderScene0(t) {
+  drawLivingRoom(t);
+
+  const guyX = W*.3, guyY = H*.68;
+  const friendX = tween(W+50, W*.6, 3, t, ease.out);
+
+  // Guy sitting on sofa
+  drawCharacter(guyX, guyY, 1.3, {
+    type: 'guy', emotion: t > 5 ? 'love' : 'normal',
+    armAngle: t > 4.5 ? -30 : 0, headTilt: t > 4 ? 5 : 0
+  });
+
+  // Friend walks in
+  if (t > 1.5) {
+    const ft = t - 1.5;
+    const fx = tween(W+50, W*.58, 2.5, ft, ease.out);
+    drawCharacter(fx, H*.73, 1.2, {
+      type: 'guy', facing: -1,
+      legPhase: ft < 2.5 ? ft*4 : 0,
+      armAngle: ft > 3 ? -40 : ft > 2 ? -20 : 0,
+      skin: '#d4956b', hair: '#2d1b4e',
+      emotion: 'happy'
+    });
+
+    // Friend holds out photo
+    if (ft > 2.5) {
+      const photoProgress = clamp((ft-2.5)/1, 0, 1);
+      const photoX = lerp(fx - 30, guyX + 30, ease.out(photoProgress));
+      const photoY = H*.45;
+      drawPhoto(photoX, photoY, 55, 65, t);
+    }
+  }
+
+  // Hearts burst when guy sees photo
+  if (t > 5.5) {
+    if (Math.random() < .15) {
+      particles.emit(guyX, guyY - 80, 1, {
+        type: 'heart', colors: ['#ec4899','#f43f5e','#f9a8d4'],
+        speed: 2, rise: 2, size: 3
+      });
+    }
+  }
+
+  // Guy's reaction - slight bounce
+  if (t > 5 && t < 6) {
+    const bounce = Math.sin((t-5)*Math.PI*4) * 3;
+    ctx.save();
+    ctx.translate(0, -bounce);
+    ctx.restore();
+  }
+
+  particles.update();
+  particles.draw();
+}
+
+// Scene 1: Calling/chatting - split panels
+function renderScene1(t) {
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, W, H);
+
+  const panelW = W/3 - 8;
+  const panelH = H - 40;
+  const panelY = 20;
+
+  // Panel 1: At home on phone
+  drawMontagePanel(6, panelY, panelW, panelH, () => {
+    drawLivingRoom(t);
+    const gx = 6 + panelW/2;
+    drawCharacter(gx, panelY+panelH*.8, 1, {
+      type: 'guy', emotion: 'happy',
+      armAngle: -50, headTilt: 10
+    });
+    // Phone in hand
+    ctx.fillStyle = '#1a1a2e';
+    roundRect(gx-22, panelY+panelH*.55, 14, 22, 4);
+    ctx.fillStyle = 'rgba(168,85,247,.3)';
+    roundRect(gx-20, panelY+panelH*.56, 10, 18, 3);
+  });
+
+  // Panel 2: Cafe
+  drawMontagePanel(panelW+12, panelY, panelW, panelH, () => {
+    drawCafeScene(t);
+    const gx = panelW+12 + panelW/2;
+    drawCharacter(gx, panelY+panelH*.8, 1, {
+      type: 'guy', emotion: 'happy',
+      armAngle: -45, headTilt: -5
+    });
+    // Phone
+    ctx.fillStyle = '#1a1a2e';
+    roundRect(gx-22, panelY+panelH*.56, 14, 22, 4);
+    ctx.fillStyle = 'rgba(168,85,247,.3)';
+    roundRect(gx-20, panelY+panelH*.57, 10, 18, 3);
+  });
+
+  // Panel 3: Driving
+  drawMontagePanel(panelW*2+18, panelY, panelW, panelH, () => {
+    // Car interior
+    const cx = panelW*2+18;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(cx, panelY, panelW, panelH);
+    // Windshield view
+    const windGrad = ctx.createLinearGradient(cx, panelY, cx, panelY+panelH*.4);
+    windGrad.addColorStop(0, '#2d1b4e');
+    windGrad.addColorStop(1, '#1a0f2e');
+    ctx.fillStyle = windGrad;
+    ctx.fillRect(cx, panelY, panelW, panelH*.4);
+    // Road through windshield
+    ctx.fillStyle = '#2a2a3a';
+    ctx.beginPath();
+    ctx.moveTo(cx+panelW*.2, panelY+panelH*.4);
+    ctx.lineTo(cx+panelW*.45, panelY+panelH*.15);
+    ctx.lineTo(cx+panelW*.55, panelY+panelH*.15);
+    ctx.lineTo(cx+panelW*.8, panelY+panelH*.4);
+    ctx.fill();
+    // Dashboard
+    ctx.fillStyle = '#2d2d3d';
+    ctx.fillRect(cx, panelY+panelH*.7, panelW, panelH*.3);
+    // Steering wheel
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(cx+panelW*.4, panelY+panelH*.78, 30, 0, Math.PI*2);
+    ctx.stroke();
+
+    // Guy
+    drawCharacter(cx+panelW*.5, panelY+panelH*.85, .9, {
+      type: 'guy', emotion: 'happy',
+      armAngle: -30
+    });
+    // Phone at ear
+    ctx.fillStyle = '#1a1a2e';
+    roundRect(cx+panelW*.5+12, panelY+panelH*.48, 10, 18, 3);
+  });
+
+  // Panel labels - time of day indicators
+  ctx.fillStyle = 'rgba(255,255,255,.08)';
+  ctx.font = '600 11px Inter';
+  ctx.textAlign = 'center';
+}
+
+// Scene 2: Phone chat - "Meet pannalama?" "Yes!"
+function renderScene2(t) {
+  const phone = drawPhoneChat(t);
+
+  // Typing indicator
+  if (t > 1 && t < 2.5) {
+    const { px, py } = phone;
+    ctx.fillStyle = '#2d1b4e';
+    roundRect(px+16, py+85, 45, 25, 12);
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = 'rgba(255,255,255,.3)';
+      const bounce = Math.sin(t*5 + i*.8) * 3;
+      ctx.beginPath();
+      ctx.arc(px+28+i*10, py+97+bounce, 3, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // Messages appear with animation
+  if (t > 2.5) drawChatBubble(phone, 'Meet pannalama? 🥺', true, 0, (t-2.5)/0.8);
+  if (t > 4.5) drawChatBubble(phone, 'Yes! 🥰💕', false, 42, (t-4.5)/0.8);
+
+  // Hearts burst after "Yes!"
+  if (t > 5.5) {
+    if (Math.random() < .2) {
+      particles.emit(W/2 + (Math.random()-.5)*100, H/2 + (Math.random()-.5)*100, 1, {
+        type: 'heart', colors: ['#ec4899','#f43f5e','#f9a8d4','#c084fc'],
+        speed: 3, rise: 1.5, size: 4
+      });
+    }
+  }
+
+  // Glow effect after yes
+  if (t > 5) {
+    const glowAlpha = Math.sin((t-5)*2) * .05;
+    const glow = ctx.createRadialGradient(W/2, H/2, 50, W/2, H/2, 300);
+    glow.addColorStop(0, `rgba(236,72,153,${Math.abs(glowAlpha)})`);
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  particles.update();
+  particles.draw();
+}
+
+// Scene 3: Guy on bike, girl waiting, they meet
+function renderScene3(t) {
+  drawRoad(t);
+
+  // Girl waiting on right side
+  const girlX = W*.72;
+  const girlY = H*.75;
+  const girlBounce = Math.sin(t*2) * 2;
+  drawCharacter(girlX, girlY + girlBounce, 1.2, {
+    type: 'girl', facing: -1,
+    emotion: t > 5 ? 'happy' : 'normal',
+    armAngle: t > 4 ? 30 : (t > 3 ? 10 : 0),
+    headTilt: t > 3 ? -3 : 0,
+    dressColor: '#c084fc', dressColor2: '#7c3aed'
+  });
+
+  // Bike + guy approaching from left
+  if (t < 5) {
+    const bikeX = tween(-80, W*.35, 4, t, ease.inOutCubic);
+    drawBike(bikeX, H*.73, 1.2, t);
+    drawCharacter(bikeX+10, H*.58, 1.1, {
+      type: 'guy', emotion: 'happy',
+      armAngle: -25,
+      legPhase: t*3
+    });
+  }
+
+  // After bike parks, guy walks toward girl
+  if (t > 4) {
+    const walkT = t - 4;
+    const guyWalkX = tween(W*.35, W*.58, 3, walkT, ease.inOut);
+    const girlWalkX = tween(girlX, W*.62, 3, walkT, ease.inOut);
+
+    // Parked bike
+    drawBike(W*.25, H*.73, 1.2, t);
+
+    drawCharacter(guyWalkX, H*.75, 1.2, {
+      type: 'guy',
+      legPhase: walkT < 3 ? walkT*4 : 0,
+      emotion: 'happy',
+      armAngle: walkT > 2.5 ? 30 : 0
+    });
+
+    if (walkT > .5) {
+      drawCharacter(girlWalkX, girlY, 1.2, {
+        type: 'girl', facing: -1,
+        legPhase: walkT < 3 ? walkT*3 : 0,
+        emotion: 'happy',
+        armAngle: walkT > 2.5 ? 30 : 0,
+        dressColor: '#c084fc', dressColor2: '#7c3aed'
+      });
+    }
+
+    // Handshake sparkle
+    if (walkT > 3) {
+      if (Math.random() < .2) {
+        particles.emit(W*.6, H*.6, 2, {
+          colors: ['#fbbf24','#f9a8d4','#c084fc'],
+          speed: 2, rise: 1, size: 2
+        });
+      }
+    }
+  }
+
+  particles.update();
+  particles.draw();
+}
+
+// Scene 4: Montage - bike rides, laughing, street food, carefree days
+function renderScene4(t) {
+  // Cycling scene with both characters
+  const sky = ctx.createLinearGradient(0, 0, 0, H*.6);
+  sky.addColorStop(0, '#4c1d95');
+  sky.addColorStop(1, '#7c2d9f');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H*.6);
+
+  // Grass
+  ctx.fillStyle = '#166534';
+  ctx.fillRect(0, H*.6, W, H*.4);
+  ctx.fillStyle = '#15803d';
+  for (let i = 0; i < 20; i++) {
+    const gx = (i*W/18 + t*30)%W;
+    ctx.beginPath();
+    ctx.arc(gx, H*.6, 12+Math.sin(i)*5, Math.PI, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Scrolling background
+  const scrollX = t * 60;
+  // Trees
+  for (let i = 0; i < 6; i++) {
+    const tx = ((i * W/4 - scrollX*.3)%W + W)%W;
+    ctx.fillStyle = '#5b2e1a';
+    ctx.fillRect(tx, H*.35, 8, H*.25);
+    ctx.fillStyle = '#166534';
+    ctx.beginPath(); ctx.arc(tx+4, H*.33, 22, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#22863a';
+    ctx.beginPath(); ctx.arc(tx+10, H*.3, 16, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Road
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(0, H*.65, W, H*.2);
+  ctx.fillStyle = '#fbbf24';
+  ctx.globalAlpha = .5;
+  const dashOff = (t*100)%60;
+  for (let i = -1; i < W/60+2; i++) {
+    ctx.fillRect(i*60-dashOff, H*.74, 25, 3);
+  }
+  ctx.globalAlpha = 1;
+
+  // Bike with both
+  const bikeX = W*.4;
+  const bikeBounce = Math.sin(t*8)*.8;
+  drawBike(bikeX, H*.78+bikeBounce, 1.3, t);
+
+  // Guy on bike
+  drawCharacter(bikeX+10, H*.63+bikeBounce, 1.1, {
+    type: 'guy', emotion: 'happy',
+    armAngle: -20, legPhase: t*6
+  });
+
+  // Girl sitting behind (slightly overlapping)
+  drawCharacter(bikeX+30, H*.62+bikeBounce, 1, {
+    type: 'girl', facing: 1, emotion: 'happy',
+    armAngle: -10,
+    dressColor: '#f9a8d4', dressColor2: '#ec4899'
+  });
+
+  // Joy particles
+  if (Math.random() < .15) {
+    particles.emit(bikeX + Math.random()*60, H*.55, 1, {
+      colors: ['#fbbf24','#f9a8d4','#c084fc','#34d399'],
+      speed: 2, rise: 1.5, size: 2
+    });
+  }
+
+  // Street food stalls in background
+  for (let i = 0; i < 2; i++) {
+    const sx = ((W*.7 + i*W*.3 - scrollX*.5)%W + W)%W;
+    ctx.fillStyle = '#f97316';
+    roundRect(sx, H*.5, 50, 30, 5);
+    ctx.fillStyle = '#fbbf24';
+    roundRect(sx-5, H*.48, 60, 8, 3);
+    // Smoke
+    ctx.strokeStyle = 'rgba(255,255,255,.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx+25, H*.48);
+    ctx.quadraticCurveTo(sx+30, H*.42-Math.sin(t*3)*5, sx+20, H*.36);
+    ctx.stroke();
+  }
+
+  particles.update();
+  particles.draw();
+}
+
+// Scene 5: Sunset silhouette holding hands
+function renderScene5(t) {
+  drawSunset(t);
+
+  // Silhouette couple
+  const coupleX = W/2;
+  const coupleY = H*.72;
+
+  ctx.fillStyle = '#0a0a1a';
+
+  // Guy silhouette
+  ctx.save();
+  ctx.translate(coupleX - 20, coupleY);
+  ctx.scale(.9, .9);
+  // Body
+  ctx.beginPath();
+  ctx.ellipse(0, -50, 14, 18, 0, 0, Math.PI*2);
+  ctx.fill();
+  roundRect(-12, -35, 24, 30, 5);
+  // Legs
+  roundRect(-10, -8, 8, 30, 3);
+  roundRect(2, -8, 8, 30, 3);
+  // Head
+  ctx.beginPath();
+  ctx.arc(0, -68, 12, 0, Math.PI*2);
+  ctx.fill();
+  // Hair
+  ctx.beginPath();
+  ctx.ellipse(0, -74, 13, 8, 0, Math.PI, Math.PI*2);
+  ctx.fill();
+  // Arm reaching to girl
+  ctx.save();
+  ctx.translate(12, -32);
+  ctx.rotate(-.4);
+  roundRect(0, 0, 7, 22, 3);
+  ctx.restore();
+  ctx.restore();
+
+  // Girl silhouette
+  ctx.save();
+  ctx.translate(coupleX + 20, coupleY);
+  ctx.scale(.85, .85);
+  // Dress
+  ctx.beginPath();
+  ctx.moveTo(-10, -35);
+  ctx.lineTo(-18, 0);
+  ctx.lineTo(18, 0);
+  ctx.lineTo(10, -35);
+  ctx.fill();
+  // Upper body
+  roundRect(-10, -50, 20, 18, 5);
+  // Head
+  ctx.beginPath();
+  ctx.arc(0, -65, 11, 0, Math.PI*2);
+  ctx.fill();
+  // Long hair
+  ctx.beginPath();
+  ctx.moveTo(-11, -65);
+  ctx.quadraticCurveTo(-15, -45, -10, -30);
+  ctx.lineTo(-7, -30);
+  ctx.quadraticCurveTo(-12, -45, -8, -65);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(11, -65);
+  ctx.quadraticCurveTo(15, -45, 10, -30);
+  ctx.lineTo(7, -30);
+  ctx.quadraticCurveTo(12, -45, 8, -65);
+  ctx.fill();
+  // Arm reaching to guy
+  ctx.save();
+  ctx.translate(-10, -40);
+  ctx.rotate(.4);
+  roundRect(-7, 0, 7, 20, 3);
+  ctx.restore();
+  ctx.restore();
+
+  // Holding hands glow
+  const handGlow = ctx.createRadialGradient(coupleX, coupleY-30, 2, coupleX, coupleY-30, 30);
+  handGlow.addColorStop(0, 'rgba(249,168,212,.3)');
+  handGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = handGlow;
+  ctx.fillRect(coupleX-30, coupleY-60, 60, 60);
+
+  // Floating hearts
+  if (Math.random() < .1) {
+    particles.emit(coupleX + (Math.random()-.5)*40, coupleY-80, 1, {
+      type: 'heart', colors: ['#ec4899','#f43f5e'],
+      speed: 1, rise: 2, size: 4
+    });
+  }
+
+  particles.update();
+  particles.draw();
+}
+
+// Scene 6: Marriage ceremony
+function renderScene6(t) {
+  drawMandap(t);
+
+  const centerX = W/2;
+  const coupleY = H*.78;
+
+  // Groom
+  drawCharacter(centerX - 35, coupleY, 1.2, {
+    type: 'groom', emotion: 'happy',
+    armAngle: 10, headTilt: 3,
+    skin: '#e8b89d'
+  });
+
+  // Bride
+  drawCharacter(centerX + 35, coupleY, 1.15, {
+    type: 'bride', facing: -1, emotion: 'happy',
+    armAngle: 8, headTilt: -3,
+    skin: '#e8b89d'
+  });
+
+  // Garland exchange animation
+  if (t > 3 && t < 6) {
+    const gt = (t - 3) / 3;
+    ctx.strokeStyle = '#ff6347';
+    ctx.lineWidth = 3;
+    const garlandDrop = ease.outElastic(Math.min(gt*2, 1));
+
+    // Garland being placed
+    ctx.beginPath();
+    ctx.arc(centerX + 35, coupleY - 95 + garlandDrop*15, 15, -.5, Math.PI+.5);
+    ctx.stroke();
+    ctx.fillStyle = '#fbbf24';
+    for (let i = 0; i < 5; i++) {
+      const a = -.3 + i*.4;
+      ctx.beginPath();
+      ctx.arc(centerX+35+Math.cos(a)*15, coupleY-95+garlandDrop*15+Math.sin(a)*15, 3, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // Akshata (rice) throwing
+  if (t > 4) {
+    if (Math.random() < .2) {
+      particles.emit(
+        centerX + (Math.random()-.5)*100,
+        coupleY - 60 - Math.random()*40,
+        2,
+        { colors: ['#fbbf24','#fff','#fef3c7'], speed: 3, rise: -1, size: 2 }
+      );
+    }
+  }
+
+  // Mangalsutra moment glow
+  if (t > 5) {
+    const glow = ctx.createRadialGradient(centerX, coupleY-60, 10, centerX, coupleY-60, 150);
+    glow.addColorStop(0, 'rgba(255,215,0,.15)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  particles.update();
+  particles.draw();
+}
+
+// Scene 7: Birthday transition → quiz
+function renderScene7(t) {
+  // Festive background
+  const bg = ctx.createRadialGradient(W/2, H/2, 50, W/2, H/2, W*.6);
+  bg.addColorStop(0, '#2d1040');
+  bg.addColorStop(1, '#0f0a1e');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Birthday decorations
+  // Balloons
+  const balloonColors = ['#ec4899','#a855f7','#6366f1','#f43f5e','#fbbf24'];
+  for (let i = 0; i < 8; i++) {
+    const bx = W*.1 + i * W*.11;
+    const by = H*.15 + Math.sin(t*1.5 + i)*15;
+    ctx.fillStyle = balloonColors[i%balloonColors.length];
+    ctx.beginPath();
+    ctx.ellipse(bx, by, 18, 22, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = balloonColors[i%balloonColors.length];
+    ctx.globalAlpha = .7;
+    ctx.beginPath();
+    ctx.moveTo(bx-3, by+22);
+    ctx.lineTo(bx, by+28);
+    ctx.lineTo(bx+3, by+22);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // String
+    ctx.strokeStyle = 'rgba(255,255,255,.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx, by+28);
+    ctx.quadraticCurveTo(bx+Math.sin(t+i)*5, by+50, bx, by+70);
+    ctx.stroke();
+    // Shine
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.beginPath();
+    ctx.ellipse(bx-5, by-6, 4, 6, -.3, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Banner
+  ctx.fillStyle = '#7c3aed';
+  ctx.globalAlpha = .8;
+  const bannerY = H*.32;
+  ctx.beginPath();
+  ctx.moveTo(W*.1, bannerY);
+  ctx.lineTo(W*.9, bannerY);
+  ctx.lineTo(W*.88, bannerY+35);
+  ctx.lineTo(W*.12, bannerY+35);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = `700 ${Math.min(24, W*.04)}px 'Dancing Script', cursive`;
+  ctx.textAlign = 'center';
+  ctx.fillText('🎂 Happy Birthday My Love! 🎂', W/2, bannerY+24);
+
+  // Guy in suit
+  drawCharacter(W/2, H*.78, 1.4, {
+    type: 'guy', emotion: 'happy',
+    armAngle: t > 2 ? -30 + Math.sin(t*3)*10 : 0,
+    headTilt: Math.sin(t)*3
+  });
+
+  // Confetti
+  if (Math.random() < .25) {
+    particles.emit(Math.random()*W, -10, 1, {
+      type: 'confetti',
+      colors: ['#ec4899','#a855f7','#fbbf24','#6366f1','#34d399','#f43f5e'],
+      speed: 3, rise: -2, size: 5
+    });
+  }
+
+  // "Ready for your gift?" text after a moment
+  if (t > 2.5) {
+    const alpha = ease.out(clamp((t-2.5)/1, 0, 1));
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#fff';
+    ctx.font = `600 ${Math.min(20, W*.035)}px Inter`;
+    ctx.textAlign = 'center';
+    ctx.fillText('But first... answer some questions! 😏', W/2, H*.52);
+    ctx.globalAlpha = 1;
+  }
+
+  particles.update();
+  particles.draw();
+}
+
+const sceneRenderers = [renderScene0, renderScene1, renderScene2, renderScene3, renderScene4, renderScene5, renderScene6, renderScene7];
+
+// ==================== MAIN LOOP ====================
+
+function render(now) {
+  if (currentScene < 0) { animFrame = requestAnimationFrame(render); return; }
+
+  const t = (now - sceneStartTime) / 1000;
+  sceneTime = t;
+
+  ctx.clearRect(0, 0, W, H);
+
+  if (currentScene < sceneRenderers.length) {
+    sceneRenderers[currentScene](t);
+  }
+
+  // Letterbox bars
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H*.06);
+  ctx.fillRect(0, H*.94, W, H*.06);
+
+  // Progress bar
+  if (currentScene < 8) {
+    const totalDur = SCENE_DURATIONS.reduce((a,b)=>a+b,0);
+    let elapsed = 0;
+    for (let i = 0; i < currentScene; i++) elapsed += SCENE_DURATIONS[i];
+    elapsed += Math.min(t, SCENE_DURATIONS[currentScene]);
+    const prog = elapsed / totalDur;
+    ctx.fillStyle = 'rgba(255,255,255,.1)';
+    ctx.fillRect(W*.1, H*.97, W*.8, 3);
+    ctx.fillStyle = '#ec4899';
+    roundRect(W*.1, H*.97, W*.8 * prog, 3, 1.5);
+  }
+
+  animFrame = requestAnimationFrame(render);
+}
+
+function startScene(idx) {
+  if (idx >= sceneRenderers.length) {
+    // Show quiz
+    setTimeout(() => {
+      document.getElementById('skipBtn').classList.remove('show');
+      startQuiz();
+    }, 500);
+    return;
+  }
+  currentScene = idx;
+  sceneStartTime = performance.now();
+  particles.p = [];
+
+  // Auto advance
+  const dur = SCENE_DURATIONS[idx] * 1000;
+  sceneTimers.push(setTimeout(() => {
+    // Fade transition
+    ctx.globalAlpha = 1;
+    startScene(idx + 1);
+  }, dur));
+}
+
+function beginFilm() {
+  document.getElementById('titleOverlay').classList.add('hide');
+  document.getElementById('lbTop').classList.add('on');
+  document.getElementById('lbBot').classList.add('on');
+  document.getElementById('skipBtn').classList.add('show');
+
+  setTimeout(() => startScene(0), 800);
+}
+
+function skipToQuiz() {
+  clearTimers();
+  cancelAnimationFrame(animFrame);
+  document.getElementById('skipBtn').classList.remove('show');
+  document.getElementById('lbTop').classList.remove('on');
+  document.getElementById('lbBot').classList.remove('on');
+  startQuiz();
+}
+
+// ==================== QUIZ ====================
+
+const questions = [
+  {
+    q: "When did I approach you?",
+    options: ["Mar 31, 2025", "Apr 2, 2025", "Apr 4, 2025", "Apr 1, 2025"],
+    correct: 1,
+    wrongMsgs: [
+      "Babe, really? 😭 That's not even close!",
+      "Were you even there? 🤣",
+      "I'm starting to question this relationship... 😤"
+    ]
+  },
+  {
+    q: "When was our First Kiss? 💋",
+    options: ["Aug 13, 2025", "Aug 16, 2025", "Aug 15, 2025", "Aug 14, 2025"],
+    correct: 2,
+    wrongMsgs: [
+      "HOW do you forget THIS?! 💀",
+      "I can't believe you right now 😑",
+      "That kiss meant NOTHING to you?! 😢"
+    ]
+  },
+  {
+    q: "When was our First Fight? 😤",
+    options: ["Aug 25, 2025", "Aug 28, 2025", "Aug 26, 2025", "Aug 27, 2025"],
+    correct: 2,
+    wrongMsgs: [
+      "Oh so fights don't matter to you? 😏",
+      "Selective memory much? 🙄",
+      "Even Google remembers better than you!"
+    ]
+  },
+  {
+    q: "Our Home Engagement happened on?",
+    options: ["Aug 26, 2025", "Aug 29, 2025", "Aug 27, 2025", "Aug 28, 2025"],
+    correct: 2,
+    wrongMsgs: [
+      "THE RING IS RIGHT THERE ON YOUR FINGER 💍😤",
+      "Should I return the ring? 🤔",
+      "I'm calling your mom right now! 📞"
+    ]
+  },
+  {
+    q: "Our First Movie together? 🎬",
+    options: ["Sep 20, 2025", "Sep 22, 2025", "Sep 21, 2025", "Sep 19, 2025"],
+    correct: 2,
+    wrongMsgs: [
+      "Not the popcorn memories! 🍿😭",
+      "I still have the ticket stub... do you? 🎫",
+      "Wow, the disrespect is REAL 💔"
+    ]
+  }
+];
+
+let qIdx = 0, score = 0, answered = false;
+
+function startQuiz() {
+  cancelAnimationFrame(animFrame);
+  const overlay = document.getElementById('quizOverlay');
+  overlay.style.display = 'block';
+  C.style.display = 'none';
+  document.getElementById('lbTop').style.display = 'none';
+  document.getElementById('lbBot').style.display = 'none';
+  qIdx = 0; score = 0;
+  loadQuestion();
+}
+
+function loadQuestion() {
+  answered = false;
+  const q = questions[qIdx];
+  const overlay = document.getElementById('quizOverlay');
+  overlay.innerHTML = `
+    <div class="quiz-wrap">
+      <div class="quiz-score">Question ${qIdx+1} of ${questions.length} • Score: ${score}/${qIdx}</div>
+      <div class="quiz-q">${q.q}</div>
+      <div class="quiz-opts">
+        ${q.options.map((o,i) => `<div class="quiz-opt" onclick="pick(${i})">${o}</div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function pick(idx) {
+  if (answered) return;
+  answered = true;
+  const q = questions[qIdx];
+  const opts = document.querySelectorAll('.quiz-opt');
+
+  if (idx === q.correct) {
+    opts[idx].classList.add('correct');
+    opts[idx].textContent += ' ✅';
+    score++;
+  } else {
+    opts[idx].classList.add('wrong');
+    opts[q.correct].classList.add('correct');
+    // Show funny message
+    const msg = q.wrongMsgs[Math.floor(Math.random()*q.wrongMsgs.length)];
+    showPopup(msg, false);
+    return;
+  }
+
+  setTimeout(() => {
+    qIdx++;
+    if (qIdx < questions.length) loadQuestion();
+    else finishQuiz();
+  }, 1200);
+}
+
+function showPopup(msg, isEnd) {
+  const overlay = document.getElementById('quizOverlay');
+  const popup = document.createElement('div');
+  popup.className = 'quiz-popup';
+  popup.innerHTML = `
+    <h2>${isEnd ? (score === questions.length ? '🎉 Perfect!' : '😅 Oops!') : '❌ Wrong!'}</h2>
+    <p>${msg}</p>
+    <button onclick="this.parentElement.remove();${isEnd ? (score === questions.length ? 'showGift()' : 'retryQuiz()') : 'nextAfterWrong()'}">${isEnd ? (score === questions.length ? 'Claim Your Gift! 🎁' : 'Try Again 💪') : 'Next Question →'}</button>
+  `;
+  overlay.appendChild(popup);
+}
+
+window.nextAfterWrong = function() {
+  qIdx++;
+  if (qIdx < questions.length) loadQuestion();
+  else finishQuiz();
+};
+
+function retryQuiz() {
+  qIdx = 0; score = 0;
+  loadQuestion();
+}
+
+function finishQuiz() {
+  if (score === questions.length) {
+    showPopup("You really DO remember everything! 🥹💕 You've earned your gift!", true);
+  } else {
+    const msgs = [
+      `${score}/${questions.length}?! My goldfish remembers better! 🐠`,
+      `${score}/${questions.length}... I'm not angry, I'm disappointed 😤`,
+      `Only ${score}/${questions.length}?! We need couples therapy! 💊`,
+      `${score}/${questions.length}... Even autocorrect does better! 📱`
     ];
-    msgs.forEach(m=>{
-        setTimeout(()=>{
-            const d=document.createElement('div');d.className='pmsg '+m.t;d.textContent=m.m;
-            d.style.animationDelay='0s';c.appendChild(d);c.scrollTop=c.scrollHeight;
-        },m.d);
+    showPopup(msgs[Math.floor(Math.random()*msgs.length)], true);
+  }
+}
+
+function showGift() {
+  document.getElementById('quizOverlay').style.display = 'none';
+  const gift = document.getElementById('giftOverlay');
+  gift.style.display = 'flex';
+
+  // Draw teddy on a canvas
+  gift.innerHTML = `
+    <div class="gift-title">Your Gift Is Here! 🎁</div>
+    <div class="teddy-container">
+      <canvas id="teddyCanvas" width="200" height="200"></canvas>
+    </div>
+    <div class="gift-msg">
+      A Big Teddy Bear! 🧸<br>
+      <span style="font-size:14px;color:#a78bfa">Because you deserve all the cuddles in the world 💕</span>
+    </div>
+  `;
+
+  drawTeddy();
+  launchGiftConfetti();
+}
+
+function drawTeddy() {
+  const tc = document.getElementById('teddyCanvas');
+  if (!tc) return;
+  const t = tc.getContext('2d');
+
+  // Body
+  t.fillStyle = '#8B6914';
+  t.beginPath(); t.ellipse(100, 130, 50, 55, 0, 0, Math.PI*2); t.fill();
+
+  // Belly
+  t.fillStyle = '#C4A24E';
+  t.beginPath(); t.ellipse(100, 135, 30, 35, 0, 0, Math.PI*2); t.fill();
+
+  // Head
+  t.fillStyle = '#8B6914';
+  t.beginPath(); t.ellipse(100, 65, 40, 38, 0, 0, Math.PI*2); t.fill();
+
+  // Inner face
+  t.fillStyle = '#C4A24E';
+  t.beginPath(); t.ellipse(100, 72, 25, 22, 0, 0, Math.PI*2); t.fill();
+
+  // Ears
+  t.fillStyle = '#8B6914';
+  t.beginPath(); t.arc(65, 38, 15, 0, Math.PI*2); t.fill();
+  t.beginPath(); t.arc(135, 38, 15, 0, Math.PI*2); t.fill();
+  t.fillStyle = '#C4A24E';
+  t.beginPath(); t.arc(65, 38, 8, 0, Math.PI*2); t.fill();
+  t.beginPath(); t.arc(135, 38, 8, 0, Math.PI*2); t.fill();
+
+  // Eyes
+  t.fillStyle = '#1a1a2e';
+  t.beginPath(); t.arc(85, 60, 5, 0, Math.PI*2); t.fill();
+  t.beginPath(); t.arc(115, 60, 5, 0, Math.PI*2); t.fill();
+  // Eye shine
+  t.fillStyle = '#fff';
+  t.beginPath(); t.arc(87, 58, 2, 0, Math.PI*2); t.fill();
+  t.beginPath(); t.arc(117, 58, 2, 0, Math.PI*2); t.fill();
+
+  // Nose
+  t.fillStyle = '#333';
+  t.beginPath(); t.ellipse(100, 72, 6, 4, 0, 0, Math.PI*2); t.fill();
+
+  // Mouth
+  t.strokeStyle = '#333';
+  t.lineWidth = 2;
+  t.beginPath(); t.arc(100, 75, 8, .2, Math.PI-.2); t.stroke();
+
+  // Arms
+  t.fillStyle = '#8B6914';
+  t.beginPath(); t.ellipse(55, 115, 15, 28, .3, 0, Math.PI*2); t.fill();
+  t.beginPath(); t.ellipse(145, 115, 15, 28, -.3, 0, Math.PI*2); t.fill();
+
+  // Legs
+  t.beginPath(); t.ellipse(78, 180, 18, 14, .2, 0, Math.PI*2); t.fill();
+  t.beginPath(); t.ellipse(122, 180, 18, 14, -.2, 0, Math.PI*2); t.fill();
+  // Paw pads
+  t.fillStyle = '#C4A24E';
+  t.beginPath(); t.ellipse(78, 182, 10, 8, .2, 0, Math.PI*2); t.fill();
+  t.beginPath(); t.ellipse(122, 182, 10, 8, -.2, 0, Math.PI*2); t.fill();
+
+  // Bow tie
+  t.fillStyle = '#ec4899';
+  t.beginPath();
+  t.moveTo(100, 95);
+  t.lineTo(85, 85); t.lineTo(85, 105);
+  t.fill();
+  t.beginPath();
+  t.moveTo(100, 95);
+  t.lineTo(115, 85); t.lineTo(115, 105);
+  t.fill();
+  t.fillStyle = '#f43f5e';
+  t.beginPath(); t.arc(100, 95, 4, 0, Math.PI*2); t.fill();
+
+  // Heart
+  t.fillStyle = '#ec4899';
+  t.save();
+  t.translate(100, 135);
+  const hs = 1;
+  t.beginPath();
+  t.moveTo(0, -3*hs);
+  t.bezierCurveTo(-7.5*hs, -12*hs, -15*hs, 0, 0, 10*hs);
+  t.bezierCurveTo(15*hs, 0, 7.5*hs, -12*hs, 0, -3*hs);
+  t.fill();
+  t.restore();
+}
+
+function launchGiftConfetti() {
+  const gift = document.getElementById('giftOverlay');
+  const confettiCanvas = document.createElement('canvas');
+  confettiCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none';
+  confettiCanvas.width = W * dpr;
+  confettiCanvas.height = H * dpr;
+  gift.appendChild(confettiCanvas);
+  const cc = confettiCanvas.getContext('2d');
+  cc.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const confetti = [];
+  const colors = ['#ec4899','#a855f7','#fbbf24','#6366f1','#34d399','#f43f5e','#3b82f6'];
+  for (let i = 0; i < 150; i++) {
+    confetti.push({
+      x: Math.random()*W, y: -Math.random()*H,
+      vx: (Math.random()-.5)*4, vy: 1+Math.random()*3,
+      size: 4+Math.random()*6, color: colors[Math.floor(Math.random()*colors.length)],
+      rot: Math.random()*Math.PI*2, rotV: (Math.random()-.5)*.15
     });
-}
+  }
 
-// Scene 4: Bike rides in, girl appears, they meet
-function runS4(){
-    const bike=document.getElementById('s4Bike');
-    const girl=document.getElementById('s4Girl');
-    const hearts=document.getElementById('s4Hearts');
-
-    bike.classList.remove('ride');girl.classList.remove('show','walk');
-    bike.style.opacity='0';girl.style.opacity='0';hearts.classList.remove('show');hearts.innerHTML='';
-
-    setTimeout(()=>{bike.classList.add('ride')},500);
-    setTimeout(()=>{girl.classList.add('show')},1000);
-    setTimeout(()=>{
-        // Girl waves
-        const arm=document.getElementById('s4GirlArm');
-        if(arm)arm.classList.add('wave-arm');
-    },3000);
-    setTimeout(()=>{girl.classList.add('walk')},4500);
-    setTimeout(()=>{
-        hearts.classList.add('show');
-        const h=['💕','💖','✨','❤️','🤝','💗'];
-        for(let i=0;i<6;i++){
-            const sp=document.createElement('span');sp.textContent=h[i];sp.style.position='absolute';
-            sp.style.fontSize='22px';sp.style.animation='heartFloat 1.5s ease-out forwards';
-            sp.style.animationDelay=(i*.2)+'s';
-            const a=(i/6)*Math.PI*2;
-            sp.style.setProperty('--hx',Math.cos(a)*50+'px');
-            sp.style.setProperty('--hy',Math.sin(a)*50-20+'px');
-            hearts.appendChild(sp);
-        }
-    },7500);
-}
-
-// Scene 5: Montage panels
-function runS5(){
-    ['m1','m2','m3','m4'].forEach((id,i)=>{
-        const el=document.getElementById(id);el.classList.remove('show');
-        setTimeout(()=>el.classList.add('show'),300+i*1500);
+  function animConfetti() {
+    cc.clearRect(0, 0, W, H);
+    let active = false;
+    confetti.forEach(c => {
+      c.x += c.vx; c.y += c.vy; c.vy += .03; c.rot += c.rotV;
+      if (c.y < H + 20) active = true;
+      cc.save();
+      cc.translate(c.x, c.y);
+      cc.rotate(c.rot);
+      cc.fillStyle = c.color;
+      cc.fillRect(-c.size/2, -c.size/2, c.size, c.size*1.5);
+      cc.restore();
     });
+    if (active) requestAnimationFrame(animConfetti);
+  }
+  animConfetti();
 }
 
-// Scene 6: Silhouette appears
-function runS6(){
-    const sil=document.getElementById('s6Sil');sil.classList.remove('show');
-    setTimeout(()=>sil.classList.add('show'),800);
-}
+// ==================== INIT ====================
 
-// Scene 7: Marriage
-function runS7(){
-    const couple=document.getElementById('s7Couple');
-    const text=document.getElementById('s7Text');
-    couple.style.opacity='0';text.classList.remove('show');
-    setTimeout(()=>{couple.style.opacity='1';couple.style.transition='opacity 1.5s ease'},1000);
-    setTimeout(()=>text.classList.add('show'),3000);
-    setTimeout(()=>launchConfetti(),3500);
-}
-
-function skipToApp(){
-    clearTimeout(sceneTimer);
-    document.getElementById('cinema').style.display='none';
-    document.getElementById('skipBtn').classList.remove('show');
-    document.getElementById('appWrap').classList.add('active');
-    document.querySelector('.music-bar').style.display='none';
-    document.body.style.overflowY='auto';
-    loadQ();
-}
-
-function goToApp(){
-    document.getElementById('cinema').style.display='none';
-    document.getElementById('skipBtn').classList.remove('show');
-    document.getElementById('appWrap').classList.add('active');
-    document.querySelector('.music-bar').style.display='none';
-    document.body.style.overflowY='auto';
-    loadQ();
-}
-
-// ===== QUIZ =====
-const Qs=[
-    {q:"When did he first approach you? 😏",a:"Apr 2, 2025",o:["Mar 31, 2025","Apr 2, 2025","Apr 4, 2025","Apr 1, 2025"]},
-    {q:"When was your first kiss? 💋",a:"Aug 15, 2025",o:["Aug 13, 2025","Aug 16, 2025","Aug 15, 2025","Aug 14, 2025"]},
-    {q:"When was your first fight? 😡💕",a:"Aug 26, 2025",o:["Aug 25, 2025","Aug 26, 2025","Aug 28, 2025","Aug 24, 2025"]},
-    {q:"When did the home engagement happen? 💍",a:"Aug 27, 2025",o:["Aug 29, 2025","Aug 26, 2025","Aug 27, 2025","Aug 28, 2025"]},
-    {q:"When was your first movie together? 🎬🍿",a:"Sep 21, 2025",o:["Sep 20, 2025","Sep 22, 2025","Sep 19, 2025","Sep 21, 2025"]}
-];
-const wR=[
-    {t:"Excuse me?!",m:"You forgot when I approached you?! I gathered all my courage! 😤"},
-    {t:"Girl... NO!",m:"Our FIRST KISS?! My lips are crying right now. 😭"},
-    {t:"Oh wow!",m:"Our first FIGHT?! Even WhatsApp remembers! 📱😂"},
-    {t:"This is painful!",m:"The ENGAGEMENT?! We said 'yes' to FOREVER! 💍🔔"},
-    {t:"Seriously?!",m:"Our first MOVIE?! The popcorn remembers but you don't! 🍿😩"}
-];
-let cQ=0,sc=0,ans=false;
-
-function showAV(id){['av-quiz','av-gift','av-fail'].forEach(v=>{
-    const el=document.getElementById(v);el.classList.remove('active');el.style.display='none'});
-    const el=document.getElementById(id);el.classList.add('active');el.style.display='flex';
-    window.scrollTo({top:0,behavior:'smooth'});
-}
-
-function updH(){
-    const r=document.getElementById('hR');r.innerHTML='';
-    for(let i=0;i<Qs.length;i++){
-        const h=document.createElement('span');h.className='hi';
-        if(i<sc){h.textContent='💖';h.classList.add('f')}
-        else if(i<cQ){h.textContent='💔';h.classList.add('e')}
-        else h.textContent='🤍';r.appendChild(h);
-    }
-}
-
-function loadQ(){
-    if(cQ>=Qs.length){finQ();return}
-    ans=false;const q=Qs[cQ];
-    document.getElementById('qN').textContent=cQ+1;
-    document.getElementById('qT').textContent=q.q;
-    document.getElementById('pF').style.width=(cQ/Qs.length*100)+'%';
-    document.getElementById('sT').textContent=`Score: ${sc} / ${Qs.length}`;
-    const g=document.getElementById('oG');g.innerHTML='';
-    [...q.o].sort(()=>Math.random()-.5).forEach(o=>{
-        const b=document.createElement('button');b.className='ob';b.textContent=o;
-        b.onclick=()=>pick(b,o,q.a);g.appendChild(b);
-    });
-    updH();
-    const ct=["Okay here we go... 🤔","This one's important! 😏","Remember THIS one? 👀","Almost there! 😬","Last one! 🤭"];
-    document.getElementById('qzC').textContent=ct[cQ]||ct[0];
-}
-
-function pick(btn,sel,cor){
-    if(ans)return;ans=true;
-    document.querySelectorAll('.ob').forEach(b=>b.disabled=true);
-    if(sel===cor){
-        btn.classList.add('c');sc++;starB(btn);
-        setTimeout(()=>{cQ++;loadQ()},1200);
-    }else{
-        btn.classList.add('w');
-        document.querySelectorAll('.ob').forEach(b=>{if(b.textContent===cor)b.classList.add('c')});
-        wPop();setTimeout(()=>{cQ++;loadQ()},3500);
-    }
-}
-
-function starB(el){
-    const r=el.getBoundingClientRect(),b=document.createElement('div');b.className='sb';
-    b.style.left=r.left+r.width/2+'px';b.style.top=r.top+r.height/2+'px';
-    ['⭐','✨','💖','🌟','💫','🎉','💕','✨'].forEach((e,i)=>{
-        const s=document.createElement('span');s.textContent=e;
-        const a=(i/8)*Math.PI*2;s.style.setProperty('--tx',Math.cos(a)*60+'px');s.style.setProperty('--ty',Math.sin(a)*60+'px');
-        b.appendChild(s);
-    });document.body.appendChild(b);setTimeout(()=>b.remove(),1000);
-}
-
-function wPop(){
-    const r=wR[cQ];
-    const ov=document.createElement('div');ov.className='ov';document.body.appendChild(ov);
-    const p=document.createElement('div');p.className='pp';
-    p.innerHTML=`<h3>${r.t}</h3><p>${r.m}</p>`;
-    document.body.appendChild(p);setTimeout(()=>{ov.remove();p.remove()},3200);
-}
-
-function finQ(){
-    document.getElementById('pF').style.width='100%';
-    if(sc===Qs.length)setTimeout(()=>{showAV('av-gift');launchConfetti()},500);
-    else setTimeout(()=>{showAV('av-fail');updFail()},500);
-}
-
-function updFail(){
-    const c=document.getElementById('fH');c.innerHTML='';
-    for(let i=0;i<Qs.length;i++){const h=document.createElement('span');h.className='hi';
-        h.textContent=i<sc?'💖':'💔';h.classList.add(i<sc?'f':'e');c.appendChild(h)}
-    const m=[{t:"Zero?!",s:"NONE right?! 😭"},{t:"Just one?!",s:"Goldfish memory! 🐠"},
-        {t:"Hmm...",s:"Need a calendar! 📅"},{t:"So close!",s:"Almost doesn't get a gift! 🎁"},
-        {t:"ONE more!",s:"You were THIS close! 🤏"}];
-    const d=m[sc]||m[2];document.getElementById('fT').textContent=d.t;document.getElementById('fS').innerHTML=d.s;
-}
-
-function restartQ(){cQ=0;sc=0;showAV('av-quiz');loadQ()}
-
-function openGift(){
-    const box=document.getElementById('gB'),ct=document.getElementById('gC');
-    if(!ct.classList.contains('hidden'))return;
-    box.style.animation='shake .5s ease';
-    setTimeout(()=>{box.textContent='🎊';setTimeout(()=>{box.classList.add('hidden');ct.classList.remove('hidden');launchConfetti();launchConfetti()},600)},500);
-}
-
-function launchConfetti(){
-    const cols=['#ec4899','#a855f7','#f43f5e','#f59e0b','#f9a8d4','#10b981','#fbbf24','#ffd700'];
-    for(let i=0;i<50;i++){setTimeout(()=>{
-        const c=document.createElement('div');c.className='cf';
-        c.textContent=['■','●','★','💕','✨','🌸'][Math.floor(Math.random()*6)];
-        c.style.left=Math.random()*100+'vw';c.style.color=cols[Math.floor(Math.random()*cols.length)];
-        c.style.fontSize=(Math.random()*12+8)+'px';c.style.animationDuration=(Math.random()*2+2)+'s';
-        document.body.appendChild(c);setTimeout(()=>c.remove(),4000);
-    },i*30)}
-}
+document.getElementById('titleOverlay').addEventListener('click', beginFilm);
+animFrame = requestAnimationFrame(render);
 </script>
 </body>
 </html>
