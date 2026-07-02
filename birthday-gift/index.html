@@ -425,8 +425,6 @@ function drawPhoto(x,y,w,h,rot){
     cx.strokeStyle='#111';cx.lineWidth=1;
     cx.beginPath();cx.arc(ex,-3,3,-Math.PI*.8,-Math.PI*.2);cx.stroke();
   });
-  // Bindi/dot
-  cx.fillStyle='#dc143c';cx.beginPath();cx.arc(0,-8,1.5,0,Math.PI*2);cx.fill();
   // Smile with lipstick
   cx.fillStyle='#d04060';
   cx.beginPath();cx.arc(0,4,3,.15,Math.PI-.15);cx.fill();
@@ -778,45 +776,94 @@ function S1(t){
   cx.fillText(msgs[chatPhase],p2x,12+ph*.32+4);
   cx.restore();
 
-  // Panel 3: Driving - on call while driving with visible phone + call indicator
+  // Panel 3: IN A CAR - clear car interior with windshield, mirror, road ahead
   cx.save();cx.beginPath();rr(pw*2+18,12,pw,ph,10);cx.clip();
   const cx3=pw*2+18;
-  cx.fillStyle='#0c0820';cx.fillRect(cx3,12,pw,ph);
-  let g=cx.createLinearGradient(cx3,12,cx3,12+ph*.35);
-  g.addColorStop(0,'#1a1040');g.addColorStop(1,'#0c0820');
-  cx.fillStyle=g;cx.fillRect(cx3,12,pw,ph*.35);
-  // Road through windshield
-  cx.fillStyle='#1a1a28';
-  cx.beginPath();cx.moveTo(cx3+pw*.15,12+ph*.35);cx.lineTo(cx3+pw*.42,12+ph*.12);
-  cx.lineTo(cx3+pw*.58,12+ph*.12);cx.lineTo(cx3+pw*.85,12+ph*.35);cx.fill();
-  // Animated lane markings
-  cx.fillStyle='rgba(250,200,50,.3)';
-  const lOff=(t*40)%30;
-  for(let i=0;i<4;i++){
-    const ly=12+ph*.18+i*ph*.05-lOff%(ph*.05);
-    cx.fillRect(cx3+pw*.49,ly,3+i*2,ph*.02);
+  // Sky through windshield
+  let g=cx.createLinearGradient(cx3,12,cx3,12+ph*.5);
+  g.addColorStop(0,'#0c0820');g.addColorStop(1,'#1a1040');
+  cx.fillStyle=g;cx.fillRect(cx3,12,pw,ph);
+
+  // WINDSHIELD frame - curved top, clearly a car window
+  cx.fillStyle='#1a1a28';cx.fillRect(cx3,12,pw,ph*.06);// roof
+  cx.fillStyle='#222';
+  // A-pillars (side frames of windshield)
+  cx.beginPath();cx.moveTo(cx3,12+ph*.06);cx.lineTo(cx3+pw*.08,12+ph*.06);
+  cx.lineTo(cx3+pw*.15,12+ph*.48);cx.lineTo(cx3,12+ph*.48);cx.fill();
+  cx.beginPath();cx.moveTo(cx3+pw,12+ph*.06);cx.lineTo(cx3+pw*.92,12+ph*.06);
+  cx.lineTo(cx3+pw*.85,12+ph*.48);cx.lineTo(cx3+pw,12+ph*.48);cx.fill();
+
+  // Road through windshield - perspective with vanishing point
+  cx.fillStyle='#252530';
+  cx.beginPath();cx.moveTo(cx3+pw*.15,12+ph*.48);cx.lineTo(cx3+pw*.85,12+ph*.48);
+  cx.lineTo(cx3+pw,12+ph*.48);cx.lineTo(cx3,12+ph*.48);cx.fill();
+  // Road surface
+  cx.fillStyle='#2a2a38';
+  cx.beginPath();cx.moveTo(cx3+pw*.2,12+ph*.48);cx.lineTo(cx3+pw*.46,12+ph*.15);
+  cx.lineTo(cx3+pw*.54,12+ph*.15);cx.lineTo(cx3+pw*.8,12+ph*.48);cx.fill();
+  // Animated lane markings (dashed center line moving toward viewer)
+  cx.fillStyle='rgba(250,200,50,.5)';
+  const lOff=(t*50)%20;
+  for(let i=0;i<6;i++){
+    const p3=i/5;
+    const ly=12+ph*.16+p3*ph*.3;
+    const lx=cx3+pw*.5;
+    const lw=2+p3*4,lh=2+p3*5;
+    const yy=ly-(lOff/20)*ph*.06;
+    if(yy>12+ph*.14)cx.fillRect(lx-lw/2,yy,lw,lh);
   }
-  // Dashboard
-  cx.fillStyle='#1a1a28';cx.fillRect(cx3,12+ph*.65,pw,ph*.35);
-  // Steering wheel
-  cx.strokeStyle='#444';cx.lineWidth=4;
-  cx.beginPath();cx.arc(cx3+pw*.38,12+ph*.74,22,0,Math.PI*2);cx.stroke();
+  // Side road edges
+  cx.strokeStyle='rgba(255,255,255,.08)';cx.lineWidth=1;
+  cx.beginPath();cx.moveTo(cx3+pw*.2,12+ph*.48);cx.lineTo(cx3+pw*.46,12+ph*.15);cx.stroke();
+  cx.beginPath();cx.moveTo(cx3+pw*.8,12+ph*.48);cx.lineTo(cx3+pw*.54,12+ph*.15);cx.stroke();
+
+  // Rearview mirror
+  cx.fillStyle='#333';
+  cx.beginPath();cx.moveTo(cx3+pw*.5,12+ph*.06);cx.lineTo(cx3+pw*.5,12+ph*.1);cx.lineWidth=2;cx.strokeStyle='#333';cx.stroke();
+  cx.fillStyle='#2a2a40';fillRR(cx3+pw*.4,12+ph*.1,pw*.2,ph*.06,3);
+  cx.fillStyle='rgba(100,100,150,.3)';fillRR(cx3+pw*.41,12+ph*.105,pw*.18,ph*.05,2);
+
+  // DASHBOARD - clearly a car dashboard
+  g=cx.createLinearGradient(cx3,12+ph*.48,cx3,12+ph);
+  g.addColorStop(0,'#1a1a28');g.addColorStop(.3,'#222235');g.addColorStop(1,'#1a1a20');
+  cx.fillStyle=g;cx.fillRect(cx3,12+ph*.48,pw,ph*.52);
+  // Dashboard top edge
+  cx.fillStyle='#2a2a3a';fillRR(cx3+pw*.05,12+ph*.48,pw*.9,ph*.04,2);
+
+  // Steering wheel (big and obvious)
+  const swx=cx3+pw*.38,swy=12+ph*.72,swr=pw*.12;
+  cx.strokeStyle='#444';cx.lineWidth=5;
+  cx.beginPath();cx.arc(swx,swy,swr,0,Math.PI*2);cx.stroke();
+  // Steering spokes
+  cx.lineWidth=3;
+  cx.beginPath();cx.moveTo(swx,swy-swr);cx.lineTo(swx,swy+swr);cx.stroke();
+  cx.beginPath();cx.moveTo(swx-swr,swy);cx.lineTo(swx+swr,swy);cx.stroke();
+  // Center hub
+  cx.fillStyle='#555';cx.beginPath();cx.arc(swx,swy,swr*.3,0,Math.PI*2);cx.fill();
+
+  // Hand on wheel (animated slight turn)
   cx.fillStyle='#e8b89d';
-  const wa=Math.sin(t*.8)*.15;
-  cx.beginPath();cx.arc(cx3+pw*.38+Math.cos(wa+Math.PI*.7)*20,
-    12+ph*.74+Math.sin(wa+Math.PI*.7)*20,5,0,Math.PI*2);cx.fill();
-  // Guy driving
-  drawPerson(cx3+pw*.5,12+ph*.88,.8,{kind:'M',mood:'happy',
+  const wa2=Math.sin(t*.8)*.2;
+  cx.beginPath();cx.arc(swx+Math.cos(wa2-Math.PI*.3)*swr,swy+Math.sin(wa2-Math.PI*.3)*swr,5,0,Math.PI*2);cx.fill();
+
+  // Speedometer glow on dashboard
+  cx.fillStyle='rgba(52,211,153,.15)';cx.beginPath();cx.arc(cx3+pw*.7,12+ph*.58,12,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#34d399';cx.font=`bold ${Math.min(10,pw*.045)}px monospace`;cx.textAlign='center';
+  cx.fillText('60',cx3+pw*.7,12+ph*.59+3);
+  cx.fillStyle='rgba(52,211,153,.4)';cx.font=`${Math.min(7,pw*.03)}px monospace`;
+  cx.fillText('km/h',cx3+pw*.7,12+ph*.62);
+
+  // Guy visible in seat
+  drawPerson(cx3+pw*.42,12+ph*.92,.65,{kind:'M',mood:'happy',
     arm:-25+Math.sin(t*1.5)*5,tilt:Math.sin(t*2)*3});
-  // Phone at ear (bigger, more visible)
-  cx.fillStyle='#1a1030';fillRR(cx3+pw*.5+8,12+ph*.48,13,22,4);
-  cx.fillStyle='rgba(100,200,255,.3)';fillRR(cx3+pw*.5+10,12+ph*.49,9,16,3);
-  // "On Call" indicator with pulsing green dot
-  cx.fillStyle='rgba(52,211,153,.7)';cx.font=`bold ${Math.min(13,pw*.06)}px system-ui`;cx.textAlign='center';
-  cx.fillText('📞 On Call',cx3+pw/2,12+ph*.18);
-  // Pulsing green dot
-  cx.fillStyle=`rgba(52,211,153,${.4+Math.sin(t*4)*.3})`;
-  cx.beginPath();cx.arc(cx3+pw/2-35,12+ph*.17,4,0,Math.PI*2);cx.fill();
+
+  // Phone at ear
+  cx.fillStyle='#1a1030';fillRR(cx3+pw*.42+12,12+ph*.6,11,20,4);
+  cx.fillStyle='rgba(100,200,255,.35)';fillRR(cx3+pw*.42+13,12+ph*.61,9,14,3);
+
+  // "🚗 Driving" label
+  cx.fillStyle='rgba(52,211,153,.8)';cx.font=`bold ${Math.min(12,pw*.055)}px system-ui`;cx.textAlign='center';
+  cx.fillText('🚗 Driving & Calling',cx3+pw/2,12+ph*.97);
   cx.restore();
 
   // Panel borders with pink glow
@@ -1003,74 +1050,92 @@ function S6(t){
   tickParts();drawParts();
 }
 
-// S7: Birthday - VIBRANT pink/black/rose, guy kneels, funny text, then quiz
+// S7: Birthday - MODERN premium design, glassmorphism, elegant typography
 function S7(t){
-  // Pink/Black/Rose vibrant background
-  let g=cx.createRadialGradient(W/2,H*.4,40,W/2,H*.4,W*.65);
-  g.addColorStop(0,'#3d0a30');g.addColorStop(.4,'#2d0520');g.addColorStop(.7,'#1a0318');g.addColorStop(1,'#0a0008');
+  // Deep rich gradient background - pink to dark
+  let g=cx.createRadialGradient(W/2,H*.35,20,W/2,H*.5,W*.7);
+  g.addColorStop(0,'#4a1042');g.addColorStop(.3,'#2d0a2e');g.addColorStop(.6,'#1a0520');g.addColorStop(1,'#080010');
   cx.fillStyle=g;cx.fillRect(0,0,W,H);
 
-  // Animated pink/rose light rays
-  cx.globalAlpha=.06;
-  for(let i=0;i<12;i++){
-    const a=i*Math.PI/6+t*.15;
-    cx.fillStyle=i%2===0?'#ec4899':'#f43f5e';
-    cx.beginPath();cx.moveTo(W/2,H*.4);
-    cx.lineTo(W/2+Math.cos(a)*W,H*.4+Math.sin(a)*W);
-    cx.lineTo(W/2+Math.cos(a+.08)*W,H*.4+Math.sin(a+.08)*W);
-    cx.fill();
+  // Animated aurora/gradient waves
+  cx.globalAlpha=.08;
+  for(let i=0;i<5;i++){
+    const wy=H*.2+i*H*.12+Math.sin(t*.3+i)*H*.03;
+    g=cx.createLinearGradient(0,wy,W,wy+H*.1);
+    g.addColorStop(0,'rgba(236,72,153,0)');g.addColorStop(.3,'#ec4899');
+    g.addColorStop(.5,'#a855f7');g.addColorStop(.7,'#ec4899');g.addColorStop(1,'rgba(236,72,153,0)');
+    cx.fillStyle=g;
+    cx.beginPath();
+    cx.moveTo(0,wy);
+    for(let x=0;x<=W;x+=W/20){
+      cx.lineTo(x,wy+Math.sin(x/W*Math.PI*2+t*.5+i)*H*.02);
+    }
+    cx.lineTo(W,wy+H*.08);cx.lineTo(0,wy+H*.08);cx.fill();
   }
   cx.globalAlpha=1;
 
-  // Sparkle background
-  cx.fillStyle='rgba(249,168,212,.12)';
-  for(let i=0;i<25;i++){
-    const sx=W*.05+(i*131)%(W*.9),sy=H*.05+Math.sin(t*.6+i*1.7)*H*.08+(i*97)%(H*.7);
-    const sz=1+Math.sin(t*2+i)*1;
-    cx.beginPath();cx.arc(sx,sy,sz,0,Math.PI*2);cx.fill();
+  // Floating bokeh circles (premium feel)
+  for(let i=0;i<18;i++){
+    const bkx=W*.05+(i*173)%(W*.9);
+    const bky=H*.05+Math.sin(t*.4+i*1.3)*H*.06+(i*97)%(H*.75);
+    const bkr=3+Math.sin(t*.7+i)*2+(i%5)*2;
+    cx.globalAlpha=.04+Math.sin(t+i*.8)*.02;
+    g=cx.createRadialGradient(bkx,bky,0,bkx,bky,bkr);
+    g.addColorStop(0,'rgba(249,168,212,.4)');g.addColorStop(.6,'rgba(168,85,247,.15)');g.addColorStop(1,'rgba(0,0,0,0)');
+    cx.fillStyle=g;cx.beginPath();cx.arc(bkx,bky,bkr,0,Math.PI*2);cx.fill();
   }
-
-  // Rose gold floating circles
-  cx.globalAlpha=.04;
-  cx.fillStyle='#ec4899';
-  cx.beginPath();cx.arc(W*.2+Math.sin(t*.7)*20,H*.25,80,0,Math.PI*2);cx.fill();
-  cx.fillStyle='#f43f5e';
-  cx.beginPath();cx.arc(W*.8+Math.cos(t*.5)*15,H*.6,60,0,Math.PI*2);cx.fill();
   cx.globalAlpha=1;
 
-  // Balloons - pink/rose/black theme
-  const bCols=['#ec4899','#f43f5e','#1a1a2e','#f9a8d4','#be185d'];
-  for(let i=0;i<8;i++){
-    const bx=W*.06+i*W*.12,by=H*.08+Math.sin(t*1.2+i)*12;
-    cx.fillStyle=bCols[i%5];
-    cx.beginPath();cx.ellipse(bx,by,15,20,0,0,Math.PI*2);cx.fill();
-    // Shine
-    cx.fillStyle='rgba(255,255,255,.15)';
-    cx.beginPath();cx.ellipse(bx-4,by-6,3,6,-.3,0,Math.PI*2);cx.fill();
-    cx.strokeStyle='rgba(249,168,212,.12)';cx.lineWidth=.8;
-    cx.beginPath();cx.moveTo(bx,by+20);
-    cx.quadraticCurveTo(bx+Math.sin(t+i)*5,by+45,bx,by+65);cx.stroke();
+  // Sparkle stars
+  for(let i=0;i<30;i++){
+    const sx=W*.03+(i*151)%(W*.94),sy=H*.03+(i*89)%(H*.85);
+    const twinkle=Math.sin(t*3+i*2.1)*.5+.5;
+    cx.globalAlpha=twinkle*.25;cx.fillStyle='#fff';
+    const ssz=.8+twinkle*1.2;
+    // 4-point star shape
+    cx.beginPath();cx.moveTo(sx,sy-ssz*2);cx.lineTo(sx+ssz*.5,sy);cx.lineTo(sx,sy+ssz*2);
+    cx.lineTo(sx-ssz*.5,sy);cx.closePath();cx.fill();
+    cx.beginPath();cx.moveTo(sx-ssz*2,sy);cx.lineTo(sx,sy+ssz*.5);cx.lineTo(sx+ssz*2,sy);
+    cx.lineTo(sx,sy-ssz*.5);cx.closePath();cx.fill();
   }
-
-  // Banner - pink gradient
-  g=cx.createLinearGradient(W*.1,0,W*.9,0);
-  g.addColorStop(0,'#be185d');g.addColorStop(.5,'#ec4899');g.addColorStop(1,'#be185d');
-  cx.fillStyle=g;cx.globalAlpha=.85;
-  cx.beginPath();cx.moveTo(W*.08,H*.26);cx.lineTo(W*.92,H*.26);
-  cx.lineTo(W*.9,H*.26+35);cx.lineTo(W*.1,H*.26+35);cx.fill();
   cx.globalAlpha=1;
-  // Banner triangles
-  for(let i=0;i<12;i++){
-    const tx=W*.1+i*(W*.8/11);
-    cx.fillStyle=i%2===0?'#f9a8d4':'#ec4899';
-    cx.beginPath();cx.moveTo(tx-5,H*.26+35);cx.lineTo(tx+5,H*.26+35);
-    cx.lineTo(tx,H*.26+45);cx.fill();
-  }
-  cx.fillStyle='#fff';cx.font=`700 ${Math.min(22,W*.04)}px system-ui`;
-  cx.textAlign='center';
-  cx.shadowColor='rgba(0,0,0,.5)';cx.shadowBlur=8;
-  cx.fillText('🎂 Happy Birthday My Love! 🎂',W/2,H*.26+25);
+
+  // Glassmorphism card for Happy Birthday text
+  const cardW=Math.min(W*.7,420),cardH=70,cardX=W/2-cardW/2,cardY=H*.14;
+  // Card blur/glass effect
+  cx.fillStyle='rgba(255,255,255,.06)';fillRR(cardX,cardY,cardW,cardH,20);
+  cx.strokeStyle='rgba(255,255,255,.1)';cx.lineWidth=1;
+  cx.beginPath();rr(cardX,cardY,cardW,cardH,20);cx.stroke();
+  // Inner glow
+  g=cx.createLinearGradient(cardX,cardY,cardX,cardY+cardH);
+  g.addColorStop(0,'rgba(255,255,255,.08)');g.addColorStop(1,'rgba(255,255,255,0)');
+  cx.fillStyle=g;fillRR(cardX,cardY,cardW,cardH/2,20);
+
+  // Elegant typography - gradient text
+  const fs=Math.min(28,W*.05);
+  cx.font=`300 ${fs}px system-ui`;cx.textAlign='center';
+  cx.fillStyle='#f9a8d4';
+  cx.shadowColor='rgba(236,72,153,.4)';cx.shadowBlur=20;
+  cx.fillText('Happy Birthday',W/2,cardY+cardH/2-2);
+  cx.font=`600 ${fs*1.1}px system-ui`;
+  cx.fillStyle='#fff';
+  cx.fillText('My Love',W/2,cardY+cardH/2+fs*1.1-2);
   cx.shadowBlur=0;
+
+  // Elegant golden balloons (3D-ish with gradient)
+  const bCols=[['#ec4899','#be185d'],['#f43f5e','#b91c1c'],['#c084fc','#7c3aed'],['#f9a8d4','#ec4899'],['#fbbf24','#d97706']];
+  for(let i=0;i<10;i++){
+    const bx=W*.04+i*W*.1,by=H*.04+Math.sin(t*1.2+i*.7)*10+(i%3)*6;
+    const br=10+i%3*4;
+    g=cx.createRadialGradient(bx-br*.2,by-br*.3,br*.1,bx,by,br);
+    const bc=bCols[i%5];
+    g.addColorStop(0,'rgba(255,255,255,.3)');g.addColorStop(.3,bc[0]);g.addColorStop(1,bc[1]);
+    cx.fillStyle=g;cx.beginPath();cx.ellipse(bx,by,br*.8,br,0,0,Math.PI*2);cx.fill();
+    // String
+    cx.strokeStyle='rgba(255,255,255,.08)';cx.lineWidth=.7;
+    cx.beginPath();cx.moveTo(bx,by+br);
+    cx.bezierCurveTo(bx+Math.sin(t+i)*4,by+br+20,bx-Math.sin(t+i)*3,by+br+40,bx,by+br+55);cx.stroke();
+  }
 
   // Guy - kneeling after t>2, walks in first
   const guyX=W/2;
@@ -1090,7 +1155,7 @@ function S7(t){
     }
   }
 
-  // Funny text sequence
+  // Funny text sequence with glassmorphism speech cards
   const texts=[
     {t:3,text:"Hey Beautiful! 🌹",dur:2},
     {t:5.5,text:"Happy Birthday to the most amazing person! 🎉",dur:2.5},
@@ -1101,12 +1166,21 @@ function S7(t){
     if(t>tx.t && t<tx.t+tx.dur){
       const ap=EO(clamp((t-tx.t)/.5,0,1));
       const fp=1-EO(clamp((t-tx.t-tx.dur+.5)/.5,0,1));
-      cx.globalAlpha=Math.min(ap,fp);
+      const alpha=Math.min(ap,fp);
+      cx.globalAlpha=alpha;
+      // Glass card behind text
+      const tfs=Math.min(18,W*.032);
+      cx.font=`600 ${tfs}px system-ui`;
+      const tw=cx.measureText(tx.text).width+40;
+      const th=36;
+      cx.fillStyle='rgba(255,255,255,.07)';fillRR(W/2-tw/2,H*.53-th/2,tw,th,14);
+      cx.strokeStyle='rgba(255,255,255,.1)';cx.lineWidth=.8;
+      cx.beginPath();rr(W/2-tw/2,H*.53-th/2,tw,th,14);cx.stroke();
+      // Text with glow
       cx.fillStyle='#fff';
-      cx.font=`600 ${Math.min(18,W*.032)}px system-ui`;
       cx.textAlign='center';
-      cx.shadowColor='rgba(236,72,153,.5)';cx.shadowBlur=15;
-      cx.fillText(tx.text,W/2,H*.55);
+      cx.shadowColor='rgba(236,72,153,.5)';cx.shadowBlur=20;
+      cx.fillText(tx.text,W/2,H*.53+6);
       cx.shadowBlur=0;
       cx.globalAlpha=1;
     }
