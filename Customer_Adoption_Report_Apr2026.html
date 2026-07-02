@@ -1,0 +1,4788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Adoption Report — April 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0066b2; --secondary: #00a0dc;
+            --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+            --text-primary: #1f2937; --text-secondary: #6b7280; --bg-primary: #f8fafc;
+            --finops: #10b981; --cloudops: #3b82f6; --secops: #f59e0b; --assessments: #ec4899;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg-primary); color: var(--text-primary); line-height: 1.5; font-size: 14px; }
+        .header { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); padding: 24px 40px; }
+        .header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: white; margin-bottom: 4px; }
+        .header .subtitle { color: rgba(255,255,255,0.7); font-size: 15px; }
+        .main-container { padding: 20px 40px; }
+        .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+        .summary-card { background: white; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 16px; }
+        .summary-card .icon-box { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .summary-card .icon-box.platinum { background: linear-gradient(135deg, #1a1a2e, #2d2d44); }
+        .summary-card .icon-box.gold { background: linear-gradient(135deg, #b8860b, #daa520); }
+        .summary-card .icon-box.silver { background: linear-gradient(135deg, #708090, #94a3b8); }
+        .summary-card .icon-box.bronze { background: linear-gradient(135deg, #cd7f32, #daa06d); }
+        .summary-card .info h4 { font-size: 12px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 2px; }
+        .summary-card .info .value { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; color: var(--text-primary); }
+        .summary-card .info .desc { font-size: 11px; color: var(--text-secondary); }
+        .list-header { padding: 16px 18px; border-bottom: 1px solid #e5e7eb; background: white; border-radius: 10px 10px 0 0; }
+        .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+        .filter-group { display: flex; align-items: center; gap: 6px; }
+        .filter-group label { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); }
+        .filter-group select { padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 5px; font-size: 13px; }
+        .search-box { flex: 1; min-width: 140px; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 5px; font-size: 14px; }
+        .stats-row { display: flex; gap: 14px; font-size: 13px; color: var(--text-secondary); flex-wrap: wrap; }
+        .stats-row .count { font-weight: 700; color: var(--primary); }
+        .customer-table { background: white; border-radius: 0 0 10px 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-height: 420px; overflow-y: auto; }
+        .customer-row { display: grid; grid-template-columns: 180px 70px 90px 55px 75px 60px 55px 1fr; gap: 10px; padding: 12px 18px; border-bottom: 1px solid #f1f5f9; cursor: pointer; align-items: center; transition: background 0.15s; font-size: 13px; }
+        .customer-row:hover { background: #f0f9ff; }
+        .customer-row.active { background: #dbeafe; border-left: 3px solid var(--primary); }
+        .customer-row.header-row { background: #f1f5f9; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); cursor: default; position: sticky; top: 0; z-index: 5; }
+        .customer-row.header-row:hover { background: #f1f5f9; }
+        .customer-name { font-weight: 600; color: var(--primary); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tier-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; min-width: 55px; }
+        .tier-badge.platinum { background: linear-gradient(135deg, #1a1a2e, #2d2d44); color: #ffd700; }
+        .tier-badge.gold { background: linear-gradient(135deg, #b8860b, #daa520); color: white; }
+        .tier-badge.silver { background: linear-gradient(135deg, #708090, #94a3b8); color: white; }
+        .tier-badge.bronze { background: linear-gradient(135deg, #cd7f32, #daa06d); color: white; }
+        .segment-text { font-size: 12px; font-weight: 500; color: #475569; padding-left: 8px; border-left: 3px solid; }
+        .segment-text.enterprise { border-color: #dc2626; }
+        .segment-text.msp { border-color: #2563eb; }
+        .segment-text.distri-msp { border-color: #7c3aed; }
+        .segment-text.gsi { border-color: #059669; }
+        .segment-text.si { border-color: #ea580c; }
+        .region-text { font-size: 12px; font-weight: 600; color: #64748b; }
+        .time-cell { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; }
+        .trend { font-size: 11px; font-weight: 600; padding: 3px 6px; border-radius: 8px; }
+        .trend.up { background: #dcfce7; color: #166534; }
+        .trend.down { background: #fee2e2; color: #dc2626; }
+        .trend.neutral { background: #f3f4f6; color: #6b7280; }
+        .product-tag { padding: 3px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+        .product-tag.finops { background: #dcfce7; color: #166534; }
+        .product-tag.cloudops { background: #e0f2fe; color: #0369a1; }
+        .product-tag.secops { background: #fef9c3; color: #a16207; }
+        .product-tag.assessments { background: #fce7f3; color: #be185d; }
+        .detail-panel { margin-top: 20px; display: none; }
+        .detail-panel.active { display: block; }
+        .detail-header { background: white; border-radius: 10px; padding: 18px 22px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .detail-header-left h2 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .detail-meta { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; font-size: 14px; }
+        .products-list { display: flex; gap: 6px; margin-top: 10px; }
+        .products-list .product-tag { font-size: 11px; padding: 4px 10px; }
+        .close-btn { background: #f1f5f9; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+        .close-btn:hover { background: #e2e8f0; }
+        .widget-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .widget { background: white; border-radius: 10px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .widget.full-width { grid-column: span 2; }
+        .widget h3 { font-size: 14px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .widget h3 .icon { font-size: 16px; }
+        .chart-container { height: 170px; position: relative; }
+        .bar-chart { display: flex; align-items: flex-end; justify-content: space-between; height: 140px; padding: 0 12px; border-bottom: 1px solid #e5e7eb; }
+        .bar-group { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .bar { width: 40px; background: linear-gradient(180deg, var(--primary) 0%, #0284c7 100%); border-radius: 4px 4px 0 0; transition: all 0.3s; min-height: 2px; }
+        .bar:hover { opacity: 0.8; transform: scaleY(1.02); }
+        .bar.visitors { background: linear-gradient(180deg, #7c3aed 0%, #a78bfa 100%); }
+        .bar-label { font-size: 11px; color: var(--text-secondary); margin-top: 8px; font-weight: 500; }
+        .bar-value { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+        .bar-trend { font-size: 10px; margin-bottom: 2px; }
+        .bar-trend.up { color: var(--success); }
+        .bar-trend.down { color: var(--danger); }
+        .feature-trends { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+        .feature-card { background: #f8fafc; border-radius: 8px; padding: 14px; border: 1px solid #e5e7eb; }
+        .feature-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .feature-card-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .feature-card-product { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+        .feature-card-product.finops { background: #dcfce7; color: #166534; }
+        .feature-card-product.cloudops { background: #e0f2fe; color: #0369a1; }
+        .feature-card-product.secops { background: #fef9c3; color: #a16207; }
+        .feature-card-product.assessments { background: #fce7f3; color: #be185d; }
+        .feature-card-product.unsubscribed { background: #fee2e2; color: #dc2626; }
+        .feature-mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 55px; }
+        .feature-mini-bar { flex: 1; border-radius: 3px 3px 0 0; min-height: 2px; transition: all 0.3s; }
+        .feature-mini-bar.finops { background: linear-gradient(180deg, #10b981, #34d399); }
+        .feature-mini-bar.cloudops { background: linear-gradient(180deg, #3b82f6, #60a5fa); }
+        .feature-mini-bar.secops { background: linear-gradient(180deg, #f59e0b, #fbbf24); }
+        .feature-mini-bar.assessments { background: linear-gradient(180deg, #ec4899, #f472b6); }
+        .feature-mini-bar.unsubscribed { background: linear-gradient(180deg, #ef4444, #f87171); }
+        .feature-mini-labels { display: flex; justify-content: space-between; margin-top: 6px; }
+        .feature-mini-labels span { font-size: 10px; color: var(--text-secondary); }
+        .feature-avg { font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center; }
+        .feature-avg strong { color: var(--text-primary); font-size: 14px; }
+        .comments-section { background: white; border-radius: 10px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 16px; }
+        .comments-section h3 { font-size: 14px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 12px; }
+        .comment-input { width: 100%; min-height: 90px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px; font-family: inherit; resize: vertical; }
+        .comment-input:focus { outline: none; border-color: var(--primary); }
+        .legend { display: flex; gap: 18px; justify-content: flex-end; font-size: 11px; margin-bottom: 10px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+        @media (max-width: 1100px) { .summary-row { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 900px) { .widget-row { grid-template-columns: 1fr; } .widget.full-width { grid-column: span 1; } .summary-row { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Customer Adoption Report</h1>
+        <p class="subtitle">6-Month Feature Usage Analysis • November 2025 — April 2026</p>
+    </div>
+    <div class="main-container">
+        <div class="summary-row">
+            <div class="summary-card"><div class="icon-box platinum">👑</div><div class="info"><h4>Platinum</h4><div class="value">2</div><div class="desc">FinOps + CloudOps + SecOps</div></div></div>
+            <div class="summary-card"><div class="icon-box gold">⭐</div><div class="info"><h4>Gold</h4><div class="value">12</div><div class="desc">High engagement accounts</div></div></div>
+            <div class="summary-card"><div class="icon-box silver">🥈</div><div class="info"><h4>Silver</h4><div class="value">8</div><div class="desc">Growing adoption</div></div></div>
+            <div class="summary-card"><div class="icon-box bronze">🥉</div><div class="info"><h4>Bronze</h4><div class="value">34</div><div class="desc">Early stage / Low usage</div></div></div>
+        </div>
+        <div class="list-header">
+            <div class="filters">
+                <div class="filter-group"><label>Tier</label><select id="tierFilter" onchange="filterCustomers()"><option value="all">All</option><option value="Platinum">Platinum</option><option value="Gold">Gold</option><option value="Silver">Silver</option><option value="Bronze">Bronze</option></select></div>
+                <div class="filter-group"><label>Segment</label><select id="segmentFilter" onchange="filterCustomers()"><option value="all">All</option><option value="Enterprise">Enterprise</option><option value="MSP">MSP</option><option value="Distri-MSP">Distri-MSP</option><option value="GSI">GSI</option><option value="SI">SI</option></select></div>
+                <div class="filter-group"><label>Region</label><select id="regionFilter" onchange="filterCustomers()"><option value="all">All</option><option value="US">US</option><option value="APAC">APAC</option><option value="EU">EU</option><option value="MEA">MEA</option><option value="US3">US3</option></select></div>
+                <div class="filter-group"><label>Product</label><select id="productFilter" onchange="filterCustomers()"><option value="all">All</option><option value="FinOps">FinOps</option><option value="CloudOps">CloudOps</option><option value="SecOps">SecOps</option><option value="Assessments">Assessments</option></select></div>
+                <input type="text" class="search-box" id="searchBox" placeholder="Search customer..." onkeyup="filterCustomers()">
+            </div>
+            <div class="stats-row"><span>Showing <span class="count" id="visibleCount">58</span> of 58 customers</span></div>
+        </div>
+        <div class="customer-table">
+            <div class="customer-row header-row">
+                <div>Customer</div><div>Tier</div><div>Segment</div><div>Region</div>
+                <div>Apr Time</div><div>Visitors</div><div>Trend</div><div>Products</div>
+            </div>
+            <div id="customerList"></div>
+        </div>
+        <div class="detail-panel" id="detailPanel">
+            <div class="detail-header">
+                <div class="detail-header-left">
+                    <h2 id="detailTitle"></h2>
+                    <div class="detail-meta" id="detailMeta"></div>
+                    <div class="products-list" id="detailProducts"></div>
+                </div>
+                <button class="close-btn" onclick="closeDetail()">✕ Close</button>
+            </div>
+            <div class="widget-row">
+                <div class="widget"><h3><span class="icon">⏱️</span> Time on App (6 Months)</h3><div class="chart-container"><div class="bar-chart" id="timeChart"></div></div></div>
+                <div class="widget"><h3><span class="icon">👥</span> Visitors (6 Months)</h3><div class="chart-container"><div class="bar-chart" id="visitorsChart"></div></div></div>
+            </div>
+            <div class="widget full-width" style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                    <h3 style="margin-bottom:0;"><span class="icon">📊</span> Feature Usage Trends (6 Months)</h3>
+                    <div class="legend">
+                        <div class="legend-item"><span class="legend-dot" style="background:var(--finops)"></span>FinOps</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:var(--cloudops)"></span>CloudOps</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:var(--secops)"></span>SecOps</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:var(--assessments)"></span>Assessments</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Unsubscribed</div>
+                    </div>
+                </div>
+                <div class="feature-trends" id="featureTrends"></div>
+            </div>
+            <div class="comments-section"><h3>💬 Insights & Comments</h3><textarea class="comment-input" id="commentInput" placeholder="Add insights about this customer..."></textarea></div>
+        </div>
+    </div>
+    <script>
+    const tierAssignments = {
+  "Taylor_Farms": "Platinum",
+  "Newrealm": "Platinum",
+  "Logicalis": "Gold",
+  "Synoptek": "Gold",
+  "BlueMantis": "Gold",
+  "Hitachi": "Gold",
+  "TCL": "Gold",
+  "IT1": "Gold",
+  "Synopsys": "Gold",
+  "Otsuka": "Gold",
+  "CMPC_Kyndryl": "Gold",
+  "GE_VERNOVA": "Gold",
+  "Cloudelligent": "Silver",
+  "Aliando": "Silver",
+  "Virtusa": "Silver",
+  "Sonata": "Silver",
+  "Damac": "Silver",
+  "NBF": "Silver",
+  "NTT": "Silver",
+  "Microland": "Silver",
+  "SHILocuz": "Bronze",
+  "Lifelabs": "Bronze",
+  "TrustedTech": "Bronze",
+  "ACME_Service": "Bronze",
+  "V_Valley": "Bronze",
+  "TheMutualGroup": "Bronze",
+  "Flatiron": "Gold",
+  "Okta": "Gold",
+  "Clickup": "Gold",
+  "Roblox": "Bronze",
+  "SoundHound": "Bronze",
+  "Blackstone": "Bronze",
+  "TAQA": "Bronze",
+  "Redington": "Bronze",
+  "Myriad360": "Bronze"
+};
+    const customerComments = {
+  "Taylor_Farms": "Sales driven, PS focused account with remediation on FinOps and Tagging Governance as key initiatives. SecOps and CloudOps are also parallelly tracked.",
+  "Otsuka": "Sales driven account not handed over to CSM. PS focused account with more than 30+ accounts delivered as a replacement for CloudHealth.",
+  "Synoptek": "CSM driven account focused on FinOps primarily. MSP billing - end customer using CoreStack.",
+  "Synopsys": "CSM driven account. Dashboard for multi-cloud and tagging governance. Planning to integrate with ServiceNow.",
+  "Virtusa": "CSM driven account focused on FinOps primarily. FinOps and CloudOps adoption.",
+  "Logicalis": "CSM driven account. MSP reports and API usage of CoreStack - has custom dashboard built using it.",
+  "Cloudelligent": "CSM driven account. Assessment adoption primary - runs it for end customers and started FinOps as well.",
+  "ConRes": "CSM driven account. Strong advocate of CoreStack with FinOps consumption.",
+  "IT1": "Sales driven account with usage over dashboard and FinOps reports. Switching from retailer to MSP model.",
+  "GE_VERNOVA": "Enterprise CloudOps account. POV kickstarted in October with FinOps exploration. November saw full FinOps mode with workshop-style daily calls. Largely PS driven with customization in CloudOps modules."
+};
+    const featureProductMap = {"Cost Visibility-UI":"FinOps","Cost Visibility-Reports":"FinOps","Cost Allocation":"FinOps","Cost Optimization-Usage":"FinOps","Budgets":"FinOps","Anomaly":"FinOps","BillOps":"FinOps","RI Visibility":"FinOps","ITSM":"FinOps","Customizations":"FinOps","Inventory Visibility":"CloudOps","Tagging Governance":"CloudOps","Monitoring-Alerts":"CloudOps","Backup Report":"CloudOps","Patch Report":"CloudOps","Template Schedules":"CloudOps","CloudOps Reports":"CloudOps","CloudOps Visibility":"CloudOps","VM Agent Dashboard":"CloudOps","VM Utilization Dashboard":"CloudOps","Workload Creation":"Assessments","Custom Assessment":"Assessments","Assessments":"Assessments","Assessment Reports":"Assessments","Threats":"SecOps","Vulnerabilities":"SecOps","Guardrails":"SecOps","Standards":"SecOps","SecOps Reports":"SecOps"};
+    const customers = [
+  {
+    "name": "Otsuka",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 2207,
+        "visitors": 4,
+        "trend": "up",
+        "change": 1341,
+        "features": {
+          "Budgets": 0.2,
+          "Backup Report": 0.1,
+          "Cost Visibility-UI": 78.4,
+          "Cost Optimization-Usage": 4.2,
+          "Inventory Visibility": 5.8,
+          "RI Visibility": 0.5,
+          "Guardrails": 0.1,
+          "BillOps": 0.2,
+          "Cost Visibility-Reports": 0.3,
+          "Cost Allocation": 0.1,
+          "CloudOps Reports": 0.1,
+          "Customizations": 10.0,
+          "Workload Creation": 0.1
+        }
+      },
+      "dec": {
+        "time": 2263,
+        "visitors": 4,
+        "trend": "neutral",
+        "change": 56,
+        "features": {
+          "Cost Visibility-Reports": 39.2,
+          "Budgets": 5.9,
+          "Anomaly": 1.4,
+          "Cost Visibility-UI": 11.5,
+          "Cost Optimization-Usage": 20.2,
+          "Inventory Visibility": 18.5,
+          "Guardrails": 2.0,
+          "Threats": 0.3,
+          "Tagging Governance": 1.1
+        }
+      },
+      "jan": {
+        "time": 2833,
+        "visitors": 5,
+        "trend": "up",
+        "change": 570,
+        "features": {
+          "Cost Visibility-Reports": 35.3,
+          "Budgets": 2.7,
+          "Standards": 0.1,
+          "Anomaly": 0.1,
+          "Cost Visibility-UI": 2.7,
+          "Cost Optimization-Usage": 15.6,
+          "Inventory Visibility": 42.8,
+          "Guardrails": 0.3,
+          "Tagging Governance": 0.4
+        }
+      },
+      "feb": {
+        "time": 4616,
+        "visitors": 8,
+        "trend": "up",
+        "change": 1783,
+        "features": {
+          "Monitoring-Alerts": 0.2,
+          "Cost Visibility-Reports": 8.1,
+          "Budgets": 0.5,
+          "Standards": 0.1,
+          "Anomaly": 0.1,
+          "Cost Visibility-UI": 5.2,
+          "Cost Optimization-Usage": 20.3,
+          "Inventory Visibility": 6.2,
+          "Guardrails": 2.5,
+          "Backup Report": 0.0,
+          "Tagging Governance": 0.2
+        }
+      },
+      "mar": {
+        "time": 6699,
+        "visitors": 15,
+        "trend": "up",
+        "change": 2083,
+        "features": {
+          "Cost Visibility-Reports": 3.4,
+          "Vulnerabilities": 0.0,
+          "Budgets": 0.3,
+          "Standards": 0.0,
+          "Anomaly": 0.2,
+          "Cost Visibility-UI": 2.7,
+          "Cost Optimization-Usage": 21.8,
+          "Inventory Visibility": 5.3,
+          "Monitoring-Alerts": 0.1,
+          "Guardrails": 4.0,
+          "Threats": 0.1,
+          "Workload Creation": 0.0,
+          "Tagging Governance": 0.6
+        }
+      },
+      "apr": {
+        "time": 5403,
+        "visitors": 27,
+        "trend": "down",
+        "change": -1296,
+        "features": {}
+      }
+    },
+    "comment": "Sales driven account not handed over to CSM. PS focused account with more than 30+ accounts delivered as a replacement for CloudHealth."
+  },
+  {
+    "name": "Cloud_Kinetics",
+    "product": "CloudOps, FinOps",
+    "segment": "MSP",
+    "region": "APAC",
+    "history": {
+      "nov": {
+        "time": 3313,
+        "visitors": 18,
+        "trend": "up",
+        "change": 799,
+        "features": {
+          "Budgets": 0.1,
+          "Threats": 0.1,
+          "Template Schedules": 84.5,
+          "Monitoring-Alerts": 0.2,
+          "Cost Visibility-UI": 7.2,
+          "Standards": 0.3,
+          "Anomaly": 0.3,
+          "Inventory Visibility": 2.9,
+          "Cost Optimization-Usage": 0.5,
+          "Guardrails": 1.1,
+          "Customizations": 0.7,
+          "SecOps Reports": 2.0,
+          "Tagging Governance": 0.1
+        }
+      },
+      "dec": {
+        "time": 3607,
+        "visitors": 17,
+        "trend": "neutral",
+        "change": 294,
+        "features": {
+          "Monitoring-Alerts": 1.5,
+          "Cost Visibility-Reports": 6.0,
+          "Vulnerabilities": 0.3,
+          "Threats": 2.6,
+          "Template Schedules": 83.2,
+          "Standards": 0.5,
+          "Anomaly": 0.2,
+          "Cost Visibility-UI": 0.6,
+          "Cost Optimization-Usage": 3.2,
+          "Inventory Visibility": 1.2,
+          "Guardrails": 0.3,
+          "Custom Assessment": 0.4,
+          "Workload Creation": 0.1
+        }
+      },
+      "jan": {
+        "time": 1268,
+        "visitors": 18,
+        "trend": "down",
+        "change": -2339,
+        "features": {
+          "Monitoring-Alerts": 1.6,
+          "Cost Visibility-Reports": 6.9,
+          "Template Schedules": 81.9,
+          "Budgets": 0.1,
+          "Standards": 0.8,
+          "Cost Visibility-UI": 0.5,
+          "Inventory Visibility": 2.9,
+          "Cost Optimization-Usage": 2.3,
+          "Guardrails": 0.2,
+          "Threats": 2.9,
+          "Custom Assessment": 0.1
+        }
+      },
+      "feb": {
+        "time": 2032,
+        "visitors": 18,
+        "trend": "up",
+        "change": 764,
+        "features": {
+          "Monitoring-Alerts": 1.4,
+          "Cost Visibility-Reports": 4.7,
+          "Threats": 1.3,
+          "Template Schedules": 77.8,
+          "Budgets": 2.3,
+          "Standards": 1.2,
+          "Anomaly": 0.2,
+          "Cost Visibility-UI": 0.2,
+          "Cost Optimization-Usage": 3.1,
+          "Inventory Visibility": 4.5,
+          "Guardrails": 0.5
+        }
+      },
+      "mar": {
+        "time": 2211,
+        "visitors": 15,
+        "trend": "neutral",
+        "change": 179,
+        "features": {
+          "Monitoring-Alerts": 0.8,
+          "Cost Visibility-Reports": 1.7,
+          "Vulnerabilities": 0.3,
+          "Template Schedules": 56.9,
+          "Standards": 0.5,
+          "Cost Visibility-UI": 0.4,
+          "Inventory Visibility": 11.2,
+          "Cost Optimization-Usage": 1.9,
+          "Backup Report": 0.1,
+          "Threats": 3.6,
+          "Tagging Governance": 0.3
+        }
+      },
+      "apr": {
+        "time": 2167,
+        "visitors": 22,
+        "trend": "neutral",
+        "change": -44,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "BlueMantis",
+    "product": "FinOps",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 1788,
+        "visitors": 20,
+        "trend": "down",
+        "change": -432,
+        "features": {
+          "Budgets": 0.7,
+          "Monitoring-Alerts": 0.3,
+          "Cost Visibility-UI": 56.0,
+          "Standards": 0.1,
+          "Anomaly": 2.1,
+          "Cost Optimization-Usage": 28.8,
+          "RI Visibility": 8.8,
+          "Guardrails": 0.1,
+          "Customizations": 1.1,
+          "SecOps Reports": 2.0,
+          "Custom Assessment": 0.1
+        }
+      },
+      "dec": {
+        "time": 3112,
+        "visitors": 19,
+        "trend": "up",
+        "change": 1324,
+        "features": {
+          "Monitoring-Alerts": 0.5,
+          "Cost Visibility-Reports": 9.8,
+          "Budgets": 1.6,
+          "Anomaly": 3.5,
+          "Cost Visibility-UI": 12.1,
+          "Cost Optimization-Usage": 70.5,
+          "Inventory Visibility": 0.9,
+          "Guardrails": 0.1,
+          "Threats": 0.8,
+          "Custom Assessment": 0.1
+        }
+      },
+      "jan": {
+        "time": 2269,
+        "visitors": 24,
+        "trend": "down",
+        "change": -843,
+        "features": {
+          "Monitoring-Alerts": 0.6,
+          "Cost Visibility-Reports": 8.6,
+          "Budgets": 2.6,
+          "Standards": 0.4,
+          "Anomaly": 1.8,
+          "Cost Visibility-UI": 6.6,
+          "Cost Optimization-Usage": 76.2,
+          "Inventory Visibility": 1.6,
+          "Guardrails": 0.5,
+          "Threats": 1.1
+        }
+      },
+      "feb": {
+        "time": 2641,
+        "visitors": 28,
+        "trend": "up",
+        "change": 372,
+        "features": {
+          "Monitoring-Alerts": 0.7,
+          "Cost Visibility-Reports": 4.4,
+          "Budgets": 2.3,
+          "Standards": 0.1,
+          "Anomaly": 0.8,
+          "Cost Visibility-UI": 7.3,
+          "Cost Optimization-Usage": 40.3,
+          "Inventory Visibility": 2.8,
+          "Guardrails": 0.2,
+          "Threats": 0.5,
+          "Template Schedules": 0.0
+        }
+      },
+      "mar": {
+        "time": 4280,
+        "visitors": 40,
+        "trend": "up",
+        "change": 1639,
+        "features": {
+          "Monitoring-Alerts": 0.5,
+          "Vulnerabilities": 0.1,
+          "Cost Visibility-Reports": 2.8,
+          "Budgets": 0.5,
+          "Standards": 0.2,
+          "Anomaly": 1.4,
+          "Cost Visibility-UI": 6.7,
+          "Cost Optimization-Usage": 29.0,
+          "Inventory Visibility": 2.5,
+          "Guardrails": 0.1,
+          "Threats": 0.6,
+          "Custom Assessment": 0.1,
+          "Workload Creation": 0.2,
+          "Tagging Governance": 0.0
+        }
+      },
+      "apr": {
+        "time": 3246,
+        "visitors": 36,
+        "trend": "down",
+        "change": -1034,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Cloudelligent",
+    "product": "FinOps, Assessments",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 3451,
+        "visitors": 20,
+        "trend": "up",
+        "change": 1663,
+        "features": {
+          "Budgets": 0.4,
+          "Cost Visibility-Reports": 8.5,
+          "Monitoring-Alerts": 0.2,
+          "Cost Visibility-UI": 12.4,
+          "Standards": 1.6,
+          "Cost Optimization-Usage": 21.5,
+          "Inventory Visibility": 6.9,
+          "RI Visibility": 1.2,
+          "Guardrails": 0.2,
+          "CloudOps Reports": 0.1,
+          "Customizations": 7.9,
+          "Assessment Reports": 3.9,
+          "SecOps Reports": 1.0,
+          "Custom Assessment": 0.9,
+          "Workload Creation": 33.4
+        }
+      },
+      "dec": {
+        "time": 926,
+        "visitors": 13,
+        "trend": "down",
+        "change": -2525,
+        "features": {
+          "Cost Visibility-Reports": 17.7,
+          "Budgets": 1.4,
+          "Standards": 2.4,
+          "Cost Visibility-UI": 2.4,
+          "Inventory Visibility": 13.9,
+          "Cost Optimization-Usage": 51.4,
+          "Custom Assessment": 0.6,
+          "Workload Creation": 10.3
+        }
+      },
+      "jan": {
+        "time": 506,
+        "visitors": 11,
+        "trend": "down",
+        "change": -420,
+        "features": {
+          "Cost Visibility-Reports": 23.0,
+          "Monitoring-Alerts": 0.2,
+          "Inventory Visibility": 15.7,
+          "Cost Optimization-Usage": 61.1
+        }
+      },
+      "feb": {
+        "time": 1321,
+        "visitors": 19,
+        "trend": "up",
+        "change": 815,
+        "features": {
+          "Monitoring-Alerts": 0.2,
+          "Cost Visibility-Reports": 11.8,
+          "Budgets": 0.5,
+          "Standards": 0.2,
+          "Anomaly": 0.2,
+          "Cost Visibility-UI": 1.5,
+          "Inventory Visibility": 13.6,
+          "Cost Optimization-Usage": 70.4,
+          "Guardrails": 0.1,
+          "Workload Creation": 0.2,
+          "Template Schedules": 0.1
+        }
+      },
+      "mar": {
+        "time": 2705,
+        "visitors": 30,
+        "trend": "up",
+        "change": 1384,
+        "features": {
+          "Monitoring-Alerts": 0.3,
+          "Cost Visibility-Reports": 3.2,
+          "Budgets": 0.1,
+          "Standards": 3.7,
+          "Anomaly": 0.1,
+          "Cost Visibility-UI": 0.9,
+          "Cost Optimization-Usage": 28.1,
+          "Inventory Visibility": 8.9,
+          "Guardrails": 0.0,
+          "Threats": 2.0,
+          "Custom Assessment": 1.3,
+          "Workload Creation": 6.1,
+          "Tagging Governance": 0.1
+        }
+      },
+      "apr": {
+        "time": 2760,
+        "visitors": 31,
+        "trend": "neutral",
+        "change": 55,
+        "features": {}
+      }
+    },
+    "comment": "CSM driven account. Assessment adoption primary - runs it for end customers and started FinOps as well."
+  },
+  {
+    "name": "Synoptek",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 1420,
+        "visitors": 16,
+        "trend": "neutral",
+        "change": 20,
+        "features": {
+          "Cost Visibility-Reports": 3.3,
+          "Budgets": 0.4,
+          "Cost Visibility-UI": 23.2,
+          "Inventory Visibility": 25.3,
+          "Cost Optimization-Usage": 1.3,
+          "BillOps": 24.0,
+          "Customizations": 22.5
+        }
+      },
+      "dec": {
+        "time": 1528,
+        "visitors": 20,
+        "trend": "neutral",
+        "change": 108,
+        "features": {
+          "Monitoring-Alerts": 0.3,
+          "Cost Visibility-Reports": 60.1,
+          "Threats": 3.0,
+          "Budgets": 0.1,
+          "Standards": 9.4,
+          "Anomaly": 0.6,
+          "Cost Optimization-Usage": 0.7,
+          "Cost Visibility-UI": 1.1,
+          "Inventory Visibility": 23.1,
+          "Guardrails": 0.3,
+          "Vulnerabilities": 0.7,
+          "Custom Assessment": 0.7
+        }
+      },
+      "jan": {
+        "time": 732,
+        "visitors": 14,
+        "trend": "down",
+        "change": -796,
+        "features": {
+          "Monitoring-Alerts": 0.4,
+          "Cost Visibility-Reports": 64.8,
+          "Budgets": 0.6,
+          "Standards": 5.2,
+          "Cost Visibility-UI": 0.9,
+          "Inventory Visibility": 27.1,
+          "Cost Optimization-Usage": 0.9,
+          "Vulnerabilities": 0.1
+        }
+      },
+      "feb": {
+        "time": 676,
+        "visitors": 16,
+        "trend": "neutral",
+        "change": -56,
+        "features": {
+          "Cost Visibility-Reports": 38.3,
+          "Budgets": 0.3,
+          "Standards": 1.6,
+          "Cost Visibility-UI": 0.4,
+          "Inventory Visibility": 40.7,
+          "Monitoring-Alerts": 0.4,
+          "Template Schedules": 0.1
+        }
+      },
+      "mar": {
+        "time": 1789,
+        "visitors": 21,
+        "trend": "up",
+        "change": 1113,
+        "features": {
+          "Monitoring-Alerts": 0.6,
+          "Cost Visibility-Reports": 31.2,
+          "Backup Report": 0.2,
+          "Budgets": 0.1,
+          "Standards": 1.6,
+          "Cost Optimization-Usage": 1.3,
+          "Cost Visibility-UI": 1.9,
+          "Inventory Visibility": 14.0,
+          "Guardrails": 1.2,
+          "Threats": 0.3,
+          "Custom Assessment": 0.2,
+          "Template Schedules": 4.9
+        }
+      },
+      "apr": {
+        "time": 1469,
+        "visitors": 21,
+        "trend": "down",
+        "change": -320,
+        "features": {}
+      }
+    },
+    "comment": "CSM driven account focused on FinOps primarily. MSP billing - end customer using CoreStack."
+  },
+  {
+    "name": "Lifelabs",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 1210,
+        "visitors": 4,
+        "trend": "up",
+        "change": 1210,
+        "features": {
+          "Monitoring-Alerts": 0.2,
+          "Cost Visibility-Reports": 6.4,
+          "Budgets": 4.4,
+          "Anomaly": 2.1,
+          "Cost Visibility-UI": 4.9,
+          "Cost Optimization-Usage": 11.7,
+          "Threats": 0.2,
+          "Tagging Governance": 0.5
+        }
+      },
+      "mar": {
+        "time": 4366,
+        "visitors": 5,
+        "trend": "up",
+        "change": 3156,
+        "features": {
+          "Vulnerabilities": 0.0,
+          "Tagging Governance": 9.7,
+          "CloudOps Reports": 0.7,
+          "Template Schedules": 0.0,
+          "Budgets": 4.2,
+          "Anomaly": 1.3,
+          "Cost Visibility-Reports": 7.1,
+          "Cost Visibility-UI": 3.1,
+          "Cost Optimization-Usage": 10.3,
+          "Inventory Visibility": 14.3,
+          "Monitoring-Alerts": 0.2,
+          "Guardrails": 0.2,
+          "Threats": 0.1,
+          "Workload Creation": 0.0
+        }
+      },
+      "apr": {
+        "time": 1951,
+        "visitors": 7,
+        "trend": "down",
+        "change": -2415,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Getronics",
+    "product": "FinOps, CloudOps, SecOps",
+    "segment": "MSP",
+    "region": "EU",
+    "history": {
+      "nov": {
+        "time": 297,
+        "visitors": 7,
+        "trend": "down",
+        "change": -128,
+        "features": {
+          "Template Schedules": 3.4,
+          "Cost Visibility-UI": 49.7,
+          "Cost Optimization-Usage": 2.8,
+          "Guardrails": 12.8,
+          "Cost Visibility-Reports": 5.6,
+          "Customizations": 21.2,
+          "BillOps": 2.8,
+          "SecOps Reports": 1.7
+        }
+      },
+      "dec": {
+        "time": 1081,
+        "visitors": 11,
+        "trend": "up",
+        "change": 784,
+        "features": {
+          "Monitoring-Alerts": 1.5,
+          "Template Schedules": 27.7,
+          "Backup Report": 0.4,
+          "Cost Visibility-Reports": 20.6,
+          "Budgets": 20.0,
+          "Standards": 2.1,
+          "Anomaly": 1.3,
+          "Cost Visibility-UI": 1.7,
+          "Inventory Visibility": 0.1,
+          "Cost Optimization-Usage": 12.1,
+          "Guardrails": 2.2,
+          "Threats": 7.1,
+          "Custom Assessment": 0.6,
+          "Workload Creation": 2.2,
+          "Tagging Governance": 0.2
+        }
+      },
+      "jan": {
+        "time": 333,
+        "visitors": 6,
+        "trend": "down",
+        "change": -748,
+        "features": {
+          "Monitoring-Alerts": 1.2,
+          "Backup Report": 1.2,
+          "Cost Visibility-Reports": 19.3,
+          "Budgets": 0.9,
+          "Standards": 48.1,
+          "Inventory Visibility": 0.6,
+          "Cost Optimization-Usage": 4.3,
+          "Guardrails": 10.4,
+          "Vulnerabilities": 2.3,
+          "Threats": 8.6,
+          "Custom Assessment": 0.6,
+          "Template Schedules": 2.6
+        }
+      },
+      "feb": {
+        "time": 837,
+        "visitors": 14,
+        "trend": "up",
+        "change": 504,
+        "features": {
+          "Monitoring-Alerts": 3.9,
+          "Cost Visibility-Reports": 20.2,
+          "Template Schedules": 10.8,
+          "Budgets": 4.5,
+          "Standards": 26.4,
+          "Anomaly": 0.8,
+          "Cost Visibility-UI": 1.8,
+          "Cost Optimization-Usage": 9.6,
+          "Inventory Visibility": 3.5,
+          "Guardrails": 3.7,
+          "Threats": 3.0,
+          "Workload Creation": 0.1,
+          "Tagging Governance": 0.4
+        }
+      },
+      "mar": {
+        "time": 1660,
+        "visitors": 14,
+        "trend": "up",
+        "change": 823,
+        "features": {
+          "Monitoring-Alerts": 0.4,
+          "Cost Visibility-Reports": 14.2,
+          "Budgets": 2.6,
+          "Standards": 4.7,
+          "Anomaly": 1.9,
+          "Cost Visibility-UI": 3.7,
+          "Cost Optimization-Usage": 12.2,
+          "Inventory Visibility": 1.2,
+          "Guardrails": 1.7,
+          "Threats": 0.5,
+          "Custom Assessment": 0.1,
+          "Template Schedules": 1.7,
+          "Tagging Governance": 1.5
+        }
+      },
+      "apr": {
+        "time": 2025,
+        "visitors": 19,
+        "trend": "up",
+        "change": 365,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "SHILocuz",
+    "product": "FinOps, CloudOps, SecOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 1773,
+        "visitors": 35,
+        "trend": "up",
+        "change": 1773,
+        "features": {
+          "Monitoring-Alerts": 7.1,
+          "Cost Visibility-Reports": 17.1,
+          "Threats": 6.9,
+          "Vulnerabilities": 1.1,
+          "CloudOps Reports": 2.0,
+          "Template Schedules": 0.7,
+          "Budgets": 1.8,
+          "Standards": 7.6,
+          "Anomaly": 0.5,
+          "Cost Visibility-UI": 2.9,
+          "Cost Optimization-Usage": 19.2,
+          "Inventory Visibility": 14.9,
+          "Guardrails": 3.0
+        }
+      },
+      "mar": {
+        "time": 2223,
+        "visitors": 31,
+        "trend": "up",
+        "change": 450,
+        "features": {
+          "Monitoring-Alerts": 4.7,
+          "Cost Visibility-Reports": 17.9,
+          "Vulnerabilities": 0.8,
+          "Threats": 10.8,
+          "CloudOps Reports": 3.6,
+          "Template Schedules": 0.3,
+          "Budgets": 0.9,
+          "Standards": 4.8,
+          "Anomaly": 0.4,
+          "Cost Visibility-UI": 2.3,
+          "Cost Optimization-Usage": 12.1,
+          "Inventory Visibility": 28.7,
+          "Guardrails": 1.0,
+          "Custom Assessment": 0.0,
+          "Workload Creation": 0.0
+        }
+      },
+      "apr": {
+        "time": 937,
+        "visitors": 26,
+        "trend": "down",
+        "change": -1286,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Globallogic",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 9,
+        "visitors": 1,
+        "trend": "neutral",
+        "change": 1,
+        "features": {
+          "Standards": 20.0,
+          "Customizations": 40.0,
+          "Cost Visibility-UI": 20.0,
+          "SecOps Reports": 20.0
+        }
+      },
+      "dec": {
+        "time": 15,
+        "visitors": 2,
+        "trend": "up",
+        "change": 6,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "down",
+        "change": -15,
+        "features": {}
+      },
+      "feb": {
+        "time": 84,
+        "visitors": 5,
+        "trend": "up",
+        "change": 84,
+        "features": {
+          "Budgets": 2.4,
+          "Anomaly": 2.4,
+          "Cost Visibility-UI": 7.1,
+          "Cost Optimization-Usage": 8.3,
+          "Cost Visibility-Reports": 7.1
+        }
+      },
+      "mar": {
+        "time": 111,
+        "visitors": 6,
+        "trend": "up",
+        "change": 27,
+        "features": {
+          "Standards": 0.9,
+          "Anomaly": 2.7,
+          "Cost Visibility-UI": 7.2,
+          "Cost Optimization-Usage": 0.9,
+          "Cost Visibility-Reports": 0.9,
+          "Threats": 1.8
+        }
+      },
+      "apr": {
+        "time": 1448,
+        "visitors": 5,
+        "trend": "up",
+        "change": 1337,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "TrustedTech",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "EU",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 336,
+        "visitors": 6,
+        "trend": "up",
+        "change": 336,
+        "features": {
+          "CloudOps Reports": 0.9,
+          "Cost Optimization-Usage": 8.9,
+          "ITSM": 0.3,
+          "Inventory Visibility": 0.3,
+          "Guardrails": 0.6,
+          "Cost Visibility-Reports": 20.8
+        }
+      },
+      "mar": {
+        "time": 775,
+        "visitors": 7,
+        "trend": "up",
+        "change": 439,
+        "features": {
+          "CloudOps Reports": 0.3,
+          "Budgets": 2.1,
+          "Standards": 1.2,
+          "Anomaly": 1.5,
+          "Cost Visibility-UI": 4.0,
+          "Cost Optimization-Usage": 7.7,
+          "Inventory Visibility": 0.4,
+          "Monitoring-Alerts": 0.1,
+          "Guardrails": 0.1,
+          "Cost Visibility-Reports": 7.4,
+          "Threats": 2.5,
+          "Custom Assessment": 0.1
+        }
+      },
+      "apr": {
+        "time": 1683,
+        "visitors": 9,
+        "trend": "up",
+        "change": 908,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Virtusa",
+    "product": "CloudOps, FinOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 1677,
+        "visitors": 11,
+        "trend": "up",
+        "change": 962,
+        "features": {
+          "Budgets": 21.7,
+          "Template Schedules": 12.3,
+          "Monitoring-Alerts": 0.4,
+          "Cost Visibility-UI": 31.9,
+          "Standards": 0.1,
+          "Anomaly": 0.9,
+          "Cost Optimization-Usage": 6.2,
+          "Inventory Visibility": 4.5,
+          "Guardrails": 0.2,
+          "Customizations": 6.7,
+          "Cost Visibility-Reports": 0.1,
+          "Custom Assessment": 5.4,
+          "Workload Creation": 8.8,
+          "Tagging Governance": 0.7
+        }
+      },
+      "dec": {
+        "time": 1548,
+        "visitors": 11,
+        "trend": "neutral",
+        "change": -129,
+        "features": {
+          "Monitoring-Alerts": 15.8,
+          "Cost Visibility-Reports": 18.1,
+          "Vulnerabilities": 0.3,
+          "Template Schedules": 22.0,
+          "CloudOps Reports": 2.8,
+          "Budgets": 1.1,
+          "Standards": 1.3,
+          "Cost Visibility-UI": 1.6,
+          "Cost Optimization-Usage": 29.8,
+          "Inventory Visibility": 2.5,
+          "Guardrails": 0.3,
+          "Threats": 2.7,
+          "Custom Assessment": 0.3,
+          "Workload Creation": 0.3,
+          "Tagging Governance": 1.3
+        }
+      },
+      "jan": {
+        "time": 576,
+        "visitors": 10,
+        "trend": "down",
+        "change": -972,
+        "features": {
+          "Monitoring-Alerts": 10.1,
+          "Template Schedules": 21.2,
+          "Budgets": 4.0,
+          "Standards": 4.8,
+          "Anomaly": 0.6,
+          "Cost Visibility-UI": 2.0,
+          "Cost Optimization-Usage": 45.4,
+          "Inventory Visibility": 0.8,
+          "Cost Visibility-Reports": 6.7,
+          "Threats": 4.4
+        }
+      },
+      "feb": {
+        "time": 276,
+        "visitors": 7,
+        "trend": "down",
+        "change": -300,
+        "features": {
+          "Monitoring-Alerts": 6.5,
+          "Template Schedules": 38.4,
+          "Budgets": 0.4,
+          "Cost Optimization-Usage": 18.1,
+          "Inventory Visibility": 1.1,
+          "Guardrails": 0.4,
+          "Cost Visibility-Reports": 4.0,
+          "Cost Visibility-UI": 1.4,
+          "Threats": 0.7
+        }
+      },
+      "mar": {
+        "time": 725,
+        "visitors": 14,
+        "trend": "up",
+        "change": 449,
+        "features": {
+          "Monitoring-Alerts": 6.8,
+          "Cost Visibility-Reports": 18.2,
+          "CloudOps Reports": 0.8,
+          "Template Schedules": 20.6,
+          "Budgets": 0.7,
+          "Cost Visibility-UI": 0.3,
+          "Cost Optimization-Usage": 28.0,
+          "Inventory Visibility": 2.2,
+          "Threats": 0.3,
+          "Tagging Governance": 0.4
+        }
+      },
+      "apr": {
+        "time": 754,
+        "visitors": 7,
+        "trend": "neutral",
+        "change": 29,
+        "features": {}
+      }
+    },
+    "comment": "CSM driven account focused on FinOps primarily. FinOps and CloudOps adoption."
+  },
+  {
+    "name": "Aliando",
+    "product": "FinOps, Assessments",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 621,
+        "visitors": 10,
+        "trend": "down",
+        "change": -500,
+        "features": {
+          "Budgets": 3.6,
+          "Anomaly": 0.9,
+          "Cost Visibility-UI": 51.6,
+          "Inventory Visibility": 2.2,
+          "Cost Optimization-Usage": 30.5,
+          "RI Visibility": 4.9,
+          "SecOps Reports": 0.9,
+          "Workload Creation": 5.4
+        }
+      },
+      "dec": {
+        "time": 1130,
+        "visitors": 12,
+        "trend": "up",
+        "change": 509,
+        "features": {
+          "Monitoring-Alerts": 0.4,
+          "Threats": 12.6,
+          "Budgets": 2.0,
+          "Standards": 0.4,
+          "Anomaly": 2.0,
+          "Cost Visibility-Reports": 8.2,
+          "Cost Visibility-UI": 7.5,
+          "Cost Optimization-Usage": 53.4,
+          "Inventory Visibility": 2.4,
+          "Guardrails": 1.6,
+          "Custom Assessment": 1.3,
+          "Workload Creation": 6.7,
+          "Tagging Governance": 1.3
+        }
+      },
+      "jan": {
+        "time": 243,
+        "visitors": 6,
+        "trend": "down",
+        "change": -887,
+        "features": {
+          "Budgets": 5.1,
+          "Cost Visibility-UI": 13.6,
+          "Cost Optimization-Usage": 32.2,
+          "Cost Visibility-Reports": 23.7,
+          "Vulnerabilities": 6.8,
+          "Threats": 18.6
+        }
+      },
+      "feb": {
+        "time": 866,
+        "visitors": 14,
+        "trend": "up",
+        "change": 623,
+        "features": {
+          "Monitoring-Alerts": 1.3,
+          "Backup Report": 0.1,
+          "Inventory Visibility": 4.2,
+          "Threats": 2.9,
+          "CloudOps Reports": 0.2,
+          "Cost Visibility-Reports": 18.8,
+          "Template Schedules": 0.7,
+          "Budgets": 0.5,
+          "Standards": 1.2,
+          "Anomaly": 0.1,
+          "Cost Visibility-UI": 0.7,
+          "Cost Optimization-Usage": 18.4,
+          "Guardrails": 0.6,
+          "Vulnerabilities": 0.2,
+          "Workload Creation": 0.1
+        }
+      },
+      "mar": {
+        "time": 2585,
+        "visitors": 18,
+        "trend": "up",
+        "change": 1719,
+        "features": {
+          "Monitoring-Alerts": 0.4,
+          "Budgets": 0.3,
+          "Standards": 0.5,
+          "Anomaly": 2.2,
+          "Cost Visibility-Reports": 4.0,
+          "Cost Visibility-UI": 1.5,
+          "Cost Optimization-Usage": 16.6,
+          "Inventory Visibility": 3.2,
+          "Guardrails": 0.4,
+          "Threats": 1.1,
+          "Custom Assessment": 0.3,
+          "Workload Creation": 1.7,
+          "Tagging Governance": 5.3
+        }
+      },
+      "apr": {
+        "time": 1323,
+        "visitors": 10,
+        "trend": "down",
+        "change": -1262,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Logicalis",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "APAC",
+    "history": {
+      "nov": {
+        "time": 1529,
+        "visitors": 31,
+        "trend": "down",
+        "change": -338,
+        "features": {
+          "Budgets": 0.9,
+          "Monitoring-Alerts": 0.1,
+          "Cost Visibility-UI": 65.3,
+          "Standards": 0.2,
+          "Anomaly": 0.7,
+          "Cost Visibility-Reports": 7.3,
+          "Cost Optimization-Usage": 11.3,
+          "Inventory Visibility": 0.3,
+          "RI Visibility": 0.8,
+          "Customizations": 10.1,
+          "BillOps": 0.5,
+          "SecOps Reports": 0.9,
+          "Custom Assessment": 0.1,
+          "Template Schedules": 1.5
+        }
+      },
+      "dec": {
+        "time": 1273,
+        "visitors": 31,
+        "trend": "down",
+        "change": -256,
+        "features": {
+          "Vulnerabilities": 0.1,
+          "Template Schedules": 20.5,
+          "Budgets": 0.4,
+          "Monitoring-Alerts": 0.5,
+          "Standards": 0.7,
+          "Anomaly": 0.5,
+          "Cost Visibility-Reports": 32.5,
+          "Cost Visibility-UI": 11.1,
+          "Cost Optimization-Usage": 31.4,
+          "Inventory Visibility": 0.7,
+          "Threats": 1.1,
+          "Custom Assessment": 0.1,
+          "Workload Creation": 0.4
+        }
+      },
+      "jan": {
+        "time": 934,
+        "visitors": 23,
+        "trend": "down",
+        "change": -339,
+        "features": {
+          "Budgets": 1.9,
+          "Standards": 0.8,
+          "Cost Visibility-Reports": 35.5,
+          "Cost Visibility-UI": 0.9,
+          "Cost Optimization-Usage": 42.3,
+          "Inventory Visibility": 2.1,
+          "Monitoring-Alerts": 0.6,
+          "Guardrails": 0.2,
+          "Threats": 0.8,
+          "Template Schedules": 15.0
+        }
+      },
+      "feb": {
+        "time": 882,
+        "visitors": 23,
+        "trend": "neutral",
+        "change": -52,
+        "features": {
+          "Cost Visibility-Reports": 18.3,
+          "Budgets": 0.3,
+          "Cost Visibility-UI": 0.8,
+          "Cost Optimization-Usage": 21.7,
+          "Inventory Visibility": 0.1,
+          "Template Schedules": 9.4
+        }
+      },
+      "mar": {
+        "time": 1301,
+        "visitors": 27,
+        "trend": "up",
+        "change": 419,
+        "features": {
+          "Cost Visibility-Reports": 21.7,
+          "Budgets": 0.3,
+          "Anomaly": 0.6,
+          "Cost Visibility-UI": 0.8,
+          "Cost Optimization-Usage": 11.7,
+          "Inventory Visibility": 0.4,
+          "CloudOps Reports": 0.2,
+          "Template Schedules": 4.2
+        }
+      },
+      "apr": {
+        "time": 1070,
+        "visitors": 22,
+        "trend": "down",
+        "change": -231,
+        "features": {}
+      }
+    },
+    "comment": "CSM driven account. MSP reports and API usage of CoreStack - has custom dashboard built using it."
+  },
+  {
+    "name": "SoundHound",
+    "product": "FinOps, CloudOps, SecOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "mar": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "apr": {
+        "time": 947,
+        "visitors": 2,
+        "trend": "up",
+        "change": 947,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "GE_VERNOVA",
+    "product": "CloudOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 538,
+        "visitors": 17,
+        "trend": "up",
+        "change": 261,
+        "features": {
+          "Cost Visibility-UI": 55.0,
+          "Cost Optimization-Usage": 25.0,
+          "Customizations": 12.0,
+          "Cost Visibility-Reports": 8.0
+        }
+      },
+      "dec": {
+        "time": 417,
+        "visitors": 16,
+        "trend": "down",
+        "change": -121,
+        "features": {
+          "Anomaly": 0.7,
+          "Cost Visibility-UI": 41.0,
+          "Tagging Governance": 1.4,
+          "VM Agent Dashboard": 39.6,
+          "VM Utilization Dashboard": 17.4
+        }
+      },
+      "jan": {
+        "time": 222,
+        "visitors": 11,
+        "trend": "down",
+        "change": -195,
+        "features": {
+          "Anomaly": 4.2,
+          "Cost Visibility-UI": 70.5,
+          "VM Agent Dashboard": 4.2,
+          "VM Utilization Dashboard": 21.1
+        }
+      },
+      "feb": {
+        "time": 45,
+        "visitors": 5,
+        "trend": "down",
+        "change": -177,
+        "features": {}
+      },
+      "mar": {
+        "time": 14,
+        "visitors": 2,
+        "trend": "down",
+        "change": -31,
+        "features": {
+          "Cost Visibility-UI": 14.3
+        }
+      },
+      "apr": {
+        "time": 1082,
+        "visitors": 17,
+        "trend": "up",
+        "change": 1068,
+        "features": {}
+      }
+    },
+    "comment": "Enterprise CloudOps account. POV kickstarted in October with FinOps exploration. November saw full FinOps mode with workshop-style daily calls. Largely PS driven with customization in CloudOps modules."
+  },
+  {
+    "name": "Sonata",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "APAC",
+    "history": {
+      "nov": {
+        "time": 1160,
+        "visitors": 27,
+        "trend": "up",
+        "change": 780,
+        "features": {
+          "Budgets": 7.7,
+          "Monitoring-Alerts": 0.3,
+          "Anomaly": 1.3,
+          "Cost Visibility-UI": 56.6,
+          "BillOps": 1.0,
+          "Cost Visibility-Reports": 0.8,
+          "Inventory Visibility": 3.8,
+          "Cost Optimization-Usage": 7.7,
+          "RI Visibility": 0.6,
+          "Cost Allocation": 0.4,
+          "CloudOps Reports": 0.1,
+          "Customizations": 10.1,
+          "Workload Creation": 0.1,
+          "Template Schedules": 3.5,
+          "Tagging Governance": 6.0
+        }
+      },
+      "dec": {
+        "time": 1587,
+        "visitors": 19,
+        "trend": "up",
+        "change": 427,
+        "features": {
+          "Monitoring-Alerts": 0.7,
+          "Budgets": 8.5,
+          "Standards": 0.1,
+          "Anomaly": 1.6,
+          "Cost Visibility-Reports": 21.9,
+          "Cost Visibility-UI": 4.0,
+          "Cost Optimization-Usage": 3.2,
+          "Inventory Visibility": 2.6,
+          "Guardrails": 0.4,
+          "Custom Assessment": 0.3,
+          "Tagging Governance": 56.7
+        }
+      },
+      "jan": {
+        "time": 493,
+        "visitors": 15,
+        "trend": "down",
+        "change": -1094,
+        "features": {
+          "Backup Report": 10.1,
+          "Budgets": 16.3,
+          "Anomaly": 2.2,
+          "Cost Visibility-UI": 18.0,
+          "Inventory Visibility": 2.8,
+          "Monitoring-Alerts": 2.2,
+          "Cost Optimization-Usage": 8.4,
+          "Cost Visibility-Reports": 28.1,
+          "Workload Creation": 0.6,
+          "Template Schedules": 1.1,
+          "Tagging Governance": 10.1
+        }
+      },
+      "feb": {
+        "time": 830,
+        "visitors": 17,
+        "trend": "up",
+        "change": 337,
+        "features": {
+          "Monitoring-Alerts": 0.4,
+          "Budgets": 1.4,
+          "Anomaly": 1.7,
+          "Cost Visibility-Reports": 3.1,
+          "Cost Visibility-UI": 4.0,
+          "Inventory Visibility": 0.5,
+          "Cost Optimization-Usage": 19.6,
+          "Guardrails": 6.7,
+          "Threats": 0.8
+        }
+      },
+      "mar": {
+        "time": 1311,
+        "visitors": 21,
+        "trend": "up",
+        "change": 481,
+        "features": {
+          "Cost Visibility-Reports": 4.5,
+          "Budgets": 0.7,
+          "Anomaly": 1.0,
+          "Cost Visibility-UI": 3.8,
+          "Inventory Visibility": 2.3,
+          "Monitoring-Alerts": 0.2,
+          "Cost Optimization-Usage": 9.7,
+          "Guardrails": 1.7,
+          "Workload Creation": 0.9,
+          "Tagging Governance": 6.9
+        }
+      },
+      "apr": {
+        "time": 1612,
+        "visitors": 25,
+        "trend": "up",
+        "change": 301,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "ACME_Service",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 581,
+        "visitors": 15,
+        "trend": "up",
+        "change": 581,
+        "features": {
+          "Monitoring-Alerts": 4.3,
+          "Template Schedules": 2.6,
+          "Budgets": 7.1,
+          "Standards": 8.8,
+          "Anomaly": 1.2,
+          "Cost Visibility-UI": 6.7,
+          "Cost Optimization-Usage": 26.5,
+          "Inventory Visibility": 1.4,
+          "Guardrails": 4.8,
+          "Cost Visibility-Reports": 6.4,
+          "Threats": 5.3,
+          "Custom Assessment": 1.0
+        }
+      },
+      "mar": {
+        "time": 382,
+        "visitors": 13,
+        "trend": "down",
+        "change": -199,
+        "features": {
+          "Monitoring-Alerts": 4.2,
+          "Cost Visibility-Reports": 5.5,
+          "Template Schedules": 5.5,
+          "CloudOps Reports": 0.3,
+          "Budgets": 5.5,
+          "Standards": 0.8,
+          "Anomaly": 5.8,
+          "Cost Visibility-UI": 5.8,
+          "Inventory Visibility": 1.0,
+          "Cost Optimization-Usage": 11.0,
+          "Guardrails": 4.7,
+          "Threats": 3.1,
+          "Custom Assessment": 1.6,
+          "Workload Creation": 0.8,
+          "Tagging Governance": 8.4
+        }
+      },
+      "apr": {
+        "time": 529,
+        "visitors": 12,
+        "trend": "up",
+        "change": 147,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Converge",
+    "product": "FinOps, Assessments",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 185,
+        "visitors": 2,
+        "trend": "neutral",
+        "change": 48,
+        "features": {
+          "Budgets": 1.1,
+          "Anomaly": 8.5,
+          "Cost Visibility-Reports": 10.7,
+          "Cost Visibility-UI": 42.9,
+          "Cost Optimization-Usage": 15.3,
+          "RI Visibility": 2.8,
+          "Customizations": 10.2,
+          "BillOps": 7.9,
+          "SecOps Reports": 0.6
+        }
+      },
+      "dec": {
+        "time": 199,
+        "visitors": 1,
+        "trend": "neutral",
+        "change": 14,
+        "features": {
+          "Anomaly": 27.1,
+          "Cost Optimization-Usage": 72.9
+        }
+      },
+      "jan": {
+        "time": 122,
+        "visitors": 2,
+        "trend": "down",
+        "change": -77,
+        "features": {
+          "Budgets": 1.9,
+          "Anomaly": 11.3,
+          "Cost Optimization-Usage": 86.8
+        }
+      },
+      "feb": {
+        "time": 349,
+        "visitors": 1,
+        "trend": "up",
+        "change": 227,
+        "features": {
+          "Budgets": 1.1,
+          "Standards": 4.0,
+          "Anomaly": 0.6,
+          "Cost Optimization-Usage": 12.0,
+          "Cost Visibility-Reports": 12.6
+        }
+      },
+      "mar": {
+        "time": 754,
+        "visitors": 2,
+        "trend": "up",
+        "change": 405,
+        "features": {
+          "Budgets": 0.8,
+          "Anomaly": 3.3,
+          "Cost Visibility-UI": 3.4,
+          "Cost Optimization-Usage": 25.1,
+          "Inventory Visibility": 0.8,
+          "Monitoring-Alerts": 0.8,
+          "Cost Visibility-Reports": 4.2,
+          "Tagging Governance": 11.8
+        }
+      },
+      "apr": {
+        "time": 448,
+        "visitors": 6,
+        "trend": "down",
+        "change": -306,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Bechtle",
+    "product": "FinOps, CloudOps, SecOps",
+    "segment": "MSP",
+    "region": "EU",
+    "history": {
+      "nov": {
+        "time": 764,
+        "visitors": 15,
+        "trend": "down",
+        "change": -155,
+        "features": {
+          "Budgets": 6.2,
+          "Monitoring-Alerts": 0.5,
+          "Cost Visibility-UI": 41.6,
+          "Standards": 2.7,
+          "Anomaly": 4.2,
+          "Cost Visibility-Reports": 4.4,
+          "Cost Optimization-Usage": 14.4,
+          "RI Visibility": 5.3,
+          "Guardrails": 0.8,
+          "Customizations": 12.4,
+          "BillOps": 0.3,
+          "Assessment Reports": 0.1,
+          "SecOps Reports": 7.0
+        }
+      },
+      "dec": {
+        "time": 662,
+        "visitors": 8,
+        "trend": "down",
+        "change": -102,
+        "features": {
+          "Monitoring-Alerts": 1.6,
+          "Budgets": 3.7,
+          "Standards": 6.6,
+          "Anomaly": 0.8,
+          "Cost Visibility-UI": 30.3,
+          "Cost Optimization-Usage": 37.7,
+          "Guardrails": 2.0,
+          "Cost Visibility-Reports": 9.0,
+          "Threats": 7.4,
+          "Custom Assessment": 0.8
+        }
+      },
+      "jan": {
+        "time": 216,
+        "visitors": 6,
+        "trend": "down",
+        "change": -446,
+        "features": {
+          "Monitoring-Alerts": 14.4,
+          "Backup Report": 1.1,
+          "Inventory Visibility": 18.2,
+          "CloudOps Reports": 2.1,
+          "Template Schedules": 9.1,
+          "Budgets": 3.2,
+          "Standards": 9.1,
+          "Cost Visibility-UI": 6.4,
+          "Cost Optimization-Usage": 14.4,
+          "Guardrails": 2.1,
+          "Cost Visibility-Reports": 15.0,
+          "Threats": 4.8
+        }
+      },
+      "feb": {
+        "time": 242,
+        "visitors": 6,
+        "trend": "up",
+        "change": 26,
+        "features": {
+          "Monitoring-Alerts": 5.8,
+          "Cost Visibility-Reports": 22.3,
+          "Budgets": 2.1,
+          "Standards": 10.3,
+          "Anomaly": 1.7,
+          "Cost Visibility-UI": 5.0,
+          "Inventory Visibility": 4.1,
+          "Cost Optimization-Usage": 13.2,
+          "Guardrails": 7.0,
+          "Threats": 9.1
+        }
+      },
+      "mar": {
+        "time": 464,
+        "visitors": 7,
+        "trend": "up",
+        "change": 222,
+        "features": {
+          "Monitoring-Alerts": 3.4,
+          "Vulnerabilities": 0.4,
+          "Template Schedules": 2.2,
+          "Budgets": 4.7,
+          "Standards": 15.1,
+          "Anomaly": 3.7,
+          "Cost Visibility-UI": 7.5,
+          "Cost Optimization-Usage": 9.9,
+          "Inventory Visibility": 3.9,
+          "Guardrails": 1.3,
+          "Cost Visibility-Reports": 3.2,
+          "Threats": 14.2,
+          "Custom Assessment": 1.5,
+          "Workload Creation": 0.6,
+          "Tagging Governance": 0.9
+        }
+      },
+      "apr": {
+        "time": 364,
+        "visitors": 9,
+        "trend": "down",
+        "change": -100,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Synopsys",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 562,
+        "visitors": 8,
+        "trend": "down",
+        "change": -376,
+        "features": {
+          "Budgets": 2.9,
+          "Cost Visibility-Reports": 8.3,
+          "Template Schedules": 1.1,
+          "Anomaly": 0.2,
+          "Cost Visibility-UI": 55.1,
+          "Inventory Visibility": 1.5,
+          "Cost Optimization-Usage": 11.2,
+          "Guardrails": 1.2,
+          "Customizations": 6.2,
+          "BillOps": 9.7,
+          "SecOps Reports": 0.3,
+          "Custom Assessment": 0.2,
+          "Tagging Governance": 2.1
+        }
+      },
+      "dec": {
+        "time": 1516,
+        "visitors": 8,
+        "trend": "up",
+        "change": 954,
+        "features": {
+          "Budgets": 1.3,
+          "Anomaly": 0.8,
+          "Cost Visibility-UI": 0.4,
+          "Cost Optimization-Usage": 6.0,
+          "Inventory Visibility": 0.2,
+          "Monitoring-Alerts": 0.2,
+          "Guardrails": 1.0,
+          "Cost Visibility-Reports": 1.8,
+          "Custom Assessment": 0.2,
+          "Workload Creation": 0.8,
+          "Tagging Governance": 87.4
+        }
+      },
+      "jan": {
+        "time": 1659,
+        "visitors": 8,
+        "trend": "neutral",
+        "change": 143,
+        "features": {
+          "Cost Visibility-Reports": 18.4,
+          "Budgets": 47.2,
+          "Anomaly": 0.6,
+          "Cost Visibility-UI": 2.8,
+          "Cost Optimization-Usage": 18.8,
+          "Inventory Visibility": 1.5,
+          "Monitoring-Alerts": 1.5,
+          "Guardrails": 6.6,
+          "Standards": 0.4,
+          "Tagging Governance": 2.1
+        }
+      },
+      "feb": {
+        "time": 1367,
+        "visitors": 7,
+        "trend": "down",
+        "change": -292,
+        "features": {
+          "Cost Visibility-Reports": 6.6,
+          "Budgets": 6.7,
+          "Cost Optimization-Usage": 6.4,
+          "Cost Visibility-UI": 1.9,
+          "Inventory Visibility": 2.6,
+          "Template Schedules": 0.1,
+          "Tagging Governance": 6.6
+        }
+      },
+      "mar": {
+        "time": 2722,
+        "visitors": 11,
+        "trend": "up",
+        "change": 1355,
+        "features": {
+          "Budgets": 0.4,
+          "Cost Visibility-UI": 0.4,
+          "Cost Optimization-Usage": 1.5,
+          "Cost Visibility-Reports": 1.0,
+          "Inventory Visibility": 0.1,
+          "Threats": 0.0,
+          "Workload Creation": 0.3,
+          "Tagging Governance": 78.5
+        }
+      },
+      "apr": {
+        "time": 2710,
+        "visitors": 13,
+        "trend": "neutral",
+        "change": -12,
+        "features": {}
+      }
+    },
+    "comment": "CSM driven account. Dashboard for multi-cloud and tagging governance. Planning to integrate with ServiceNow."
+  },
+  {
+    "name": "Flatiron",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "US3",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 630,
+        "visitors": 2,
+        "trend": "up",
+        "change": 630,
+        "features": {}
+      },
+      "mar": {
+        "time": 2621,
+        "visitors": 3,
+        "trend": "up",
+        "change": 1991,
+        "features": {
+          "Anomaly": 0.5,
+          "Cost Visibility-UI": 0.0,
+          "Tagging Governance": 1.3
+        }
+      },
+      "apr": {
+        "time": 1497,
+        "visitors": 5,
+        "trend": "down",
+        "change": -1124,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "TAQA",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "MEA",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "mar": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "apr": {
+        "time": 1357,
+        "visitors": 5,
+        "trend": "up",
+        "change": 1357,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Redington",
+    "product": "FinOps",
+    "segment": "Distri-MSP",
+    "region": "MEA",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "mar": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "apr": {
+        "time": 271,
+        "visitors": 7,
+        "trend": "up",
+        "change": 271,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "ConRes",
+    "product": "FinOps",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 1042,
+        "visitors": 14,
+        "trend": "down",
+        "change": -919,
+        "features": {
+          "Budgets": 10.4,
+          "Cost Visibility-UI": 48.0,
+          "Standards": 4.0,
+          "RI Visibility": 8.2,
+          "Cost Optimization-Usage": 12.7,
+          "Guardrails": 2.4,
+          "Customizations": 0.5,
+          "SecOps Reports": 10.8,
+          "Custom Assessment": 1.9,
+          "Workload Creation": 1.1
+        }
+      },
+      "dec": {
+        "time": 489,
+        "visitors": 9,
+        "trend": "down",
+        "change": -553,
+        "features": {
+          "Threats": 35.4,
+          "Budgets": 18.4,
+          "Standards": 7.5,
+          "Cost Visibility-UI": 2.0,
+          "Cost Optimization-Usage": 24.5,
+          "Monitoring-Alerts": 1.4,
+          "Guardrails": 1.4,
+          "Cost Visibility-Reports": 8.2,
+          "Custom Assessment": 1.4
+        }
+      },
+      "jan": {
+        "time": 254,
+        "visitors": 10,
+        "trend": "down",
+        "change": -235,
+        "features": {
+          "Budgets": 24.0,
+          "Standards": 1.0,
+          "Anomaly": 1.0,
+          "Cost Visibility-Reports": 27.1,
+          "Cost Visibility-UI": 8.3,
+          "Cost Optimization-Usage": 27.1,
+          "Guardrails": 2.1,
+          "Threats": 7.3,
+          "Template Schedules": 2.1
+        }
+      },
+      "feb": {
+        "time": 282,
+        "visitors": 8,
+        "trend": "up",
+        "change": 28,
+        "features": {
+          "Cost Visibility-Reports": 5.0,
+          "Budgets": 2.8,
+          "Monitoring-Alerts": 0.4,
+          "Standards": 2.8,
+          "Anomaly": 0.7,
+          "Cost Visibility-UI": 1.1,
+          "Cost Optimization-Usage": 14.5,
+          "Threats": 0.7,
+          "Custom Assessment": 0.4
+        }
+      },
+      "mar": {
+        "time": 347,
+        "visitors": 13,
+        "trend": "up",
+        "change": 65,
+        "features": {
+          "Budgets": 0.3,
+          "Monitoring-Alerts": 0.6,
+          "Standards": 2.3,
+          "Anomaly": 2.0,
+          "Cost Visibility-Reports": 2.3,
+          "Cost Visibility-UI": 6.1,
+          "Cost Optimization-Usage": 13.8,
+          "Inventory Visibility": 0.6,
+          "Guardrails": 0.9,
+          "Threats": 3.7,
+          "Custom Assessment": 0.3
+        }
+      },
+      "apr": {
+        "time": 421,
+        "visitors": 8,
+        "trend": "up",
+        "change": 74,
+        "features": {}
+      }
+    },
+    "comment": "CSM driven account. Strong advocate of CoreStack with FinOps consumption."
+  },
+  {
+    "name": "Roblox",
+    "product": "FinOps, CloudOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "mar": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "apr": {
+        "time": 1807,
+        "visitors": 10,
+        "trend": "up",
+        "change": 1807,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "EGroup",
+    "product": "Assessments",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 317,
+        "visitors": 12,
+        "trend": "neutral",
+        "change": 23,
+        "features": {
+          "Budgets": 3.3,
+          "Monitoring-Alerts": 0.7,
+          "Cost Visibility-UI": 43.7,
+          "Standards": 1.5,
+          "Anomaly": 5.6,
+          "Inventory Visibility": 6.7,
+          "Cost Optimization-Usage": 22.2,
+          "RI Visibility": 5.6,
+          "Guardrails": 2.2,
+          "Customizations": 3.0,
+          "SecOps Reports": 2.2,
+          "Custom Assessment": 2.6,
+          "Workload Creation": 0.4,
+          "Tagging Governance": 0.4
+        }
+      },
+      "dec": {
+        "time": 57,
+        "visitors": 6,
+        "trend": "down",
+        "change": -260,
+        "features": {
+          "Standards": 14.3,
+          "Cost Visibility-UI": 28.6,
+          "Cost Optimization-Usage": 28.6,
+          "Custom Assessment": 28.6
+        }
+      },
+      "jan": {
+        "time": 33,
+        "visitors": 5,
+        "trend": "down",
+        "change": -24,
+        "features": {
+          "Anomaly": 20.0,
+          "Cost Visibility-UI": 60.0,
+          "Cost Optimization-Usage": 20.0
+        }
+      },
+      "feb": {
+        "time": 124,
+        "visitors": 5,
+        "trend": "up",
+        "change": 91,
+        "features": {
+          "Budgets": 2.4,
+          "Standards": 0.8,
+          "Cost Optimization-Usage": 17.7,
+          "Monitoring-Alerts": 1.6,
+          "Cost Visibility-Reports": 3.2
+        }
+      },
+      "mar": {
+        "time": 236,
+        "visitors": 12,
+        "trend": "up",
+        "change": 112,
+        "features": {
+          "Monitoring-Alerts": 1.7,
+          "Cost Visibility-Reports": 10.2,
+          "Budgets": 1.7,
+          "Anomaly": 0.8,
+          "Cost Visibility-UI": 2.5,
+          "Cost Optimization-Usage": 6.8,
+          "Threats": 3.4,
+          "Custom Assessment": 0.8
+        }
+      },
+      "apr": {
+        "time": 370,
+        "visitors": 11,
+        "trend": "up",
+        "change": 134,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Microland",
+    "product": "FinOps",
+    "segment": "SI",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 646,
+        "visitors": 5,
+        "trend": "up",
+        "change": 222,
+        "features": {
+          "Budgets": 19.6,
+          "Cost Visibility-UI": 21.7,
+          "Anomaly": 0.8,
+          "Cost Visibility-Reports": 2.1,
+          "Cost Optimization-Usage": 9.9,
+          "Inventory Visibility": 17.7,
+          "RI Visibility": 4.2,
+          "Guardrails": 0.4,
+          "Customizations": 8.4,
+          "BillOps": 0.6,
+          "SecOps Reports": 0.6,
+          "Tagging Governance": 13.9
+        }
+      },
+      "dec": {
+        "time": 346,
+        "visitors": 6,
+        "trend": "down",
+        "change": -300,
+        "features": {
+          "Budgets": 17.7,
+          "Standards": 36.3,
+          "Cost Visibility-UI": 1.7,
+          "Inventory Visibility": 19.0,
+          "Cost Optimization-Usage": 2.5,
+          "Guardrails": 0.8,
+          "Cost Visibility-Reports": 10.5,
+          "Threats": 2.5,
+          "Tagging Governance": 8.9
+        }
+      },
+      "jan": {
+        "time": 211,
+        "visitors": 4,
+        "trend": "down",
+        "change": -135,
+        "features": {
+          "Monitoring-Alerts": 4.7,
+          "Budgets": 10.7,
+          "Standards": 23.8,
+          "Inventory Visibility": 57.9,
+          "Cost Visibility-Reports": 2.8
+        }
+      },
+      "feb": {
+        "time": 162,
+        "visitors": 5,
+        "trend": "down",
+        "change": -49,
+        "features": {
+          "Monitoring-Alerts": 4.9,
+          "Budgets": 3.7,
+          "Standards": 57.4,
+          "Cost Optimization-Usage": 8.6,
+          "Inventory Visibility": 13.0,
+          "Cost Visibility-Reports": 9.9,
+          "Template Schedules": 7.4
+        }
+      },
+      "mar": {
+        "time": 198,
+        "visitors": 5,
+        "trend": "up",
+        "change": 36,
+        "features": {
+          "Budgets": 5.1,
+          "Standards": 7.1,
+          "Cost Optimization-Usage": 7.6,
+          "Inventory Visibility": 18.2,
+          "Cost Visibility-Reports": 3.5,
+          "Threats": 1.0,
+          "Workload Creation": 5.1,
+          "Tagging Governance": 11.1
+        }
+      },
+      "apr": {
+        "time": 256,
+        "visitors": 7,
+        "trend": "up",
+        "change": 58,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Blackstone",
+    "product": "FinOps, CloudOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "mar": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "apr": {
+        "time": 168,
+        "visitors": 14,
+        "trend": "up",
+        "change": 168,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "LTTS",
+    "product": "FinOps, CloudOps, SecOps",
+    "segment": "Enterprise",
+    "region": "APAC",
+    "history": {
+      "nov": {
+        "time": 574,
+        "visitors": 11,
+        "trend": "up",
+        "change": 146,
+        "features": {
+          "Budgets": 4.6,
+          "Monitoring-Alerts": 0.2,
+          "Anomaly": 0.7,
+          "Cost Visibility-UI": 92.0,
+          "Inventory Visibility": 0.3,
+          "Cost Optimization-Usage": 1.1,
+          "RI Visibility": 0.3,
+          "Guardrails": 0.2,
+          "Customizations": 0.3,
+          "SecOps Reports": 0.3
+        }
+      },
+      "dec": {
+        "time": 29,
+        "visitors": 4,
+        "trend": "down",
+        "change": -545,
+        "features": {}
+      },
+      "jan": {
+        "time": 114,
+        "visitors": 4,
+        "trend": "up",
+        "change": 85,
+        "features": {
+          "Monitoring-Alerts": 5.3,
+          "Budgets": 7.4,
+          "Standards": 6.4,
+          "Cost Optimization-Usage": 48.9,
+          "Vulnerabilities": 1.1,
+          "Cost Visibility-Reports": 30.9
+        }
+      },
+      "feb": {
+        "time": 4,
+        "visitors": 1,
+        "trend": "down",
+        "change": -110,
+        "features": {}
+      },
+      "mar": {
+        "time": 104,
+        "visitors": 5,
+        "trend": "up",
+        "change": 100,
+        "features": {
+          "Monitoring-Alerts": 1.0,
+          "Budgets": 5.8,
+          "Anomaly": 1.0
+        }
+      },
+      "apr": {
+        "time": 276,
+        "visitors": 5,
+        "trend": "up",
+        "change": 172,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "IT1",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 450,
+        "visitors": 7,
+        "trend": "neutral",
+        "change": 46,
+        "features": {
+          "Budgets": 0.5,
+          "Anomaly": 1.6,
+          "Cost Visibility-UI": 27.0,
+          "Cost Optimization-Usage": 56.9,
+          "RI Visibility": 9.6,
+          "Customizations": 1.4,
+          "SecOps Reports": 3.0
+        }
+      },
+      "dec": {
+        "time": 571,
+        "visitors": 12,
+        "trend": "up",
+        "change": 121,
+        "features": {
+          "Monitoring-Alerts": 3.9,
+          "Budgets": 3.5,
+          "Standards": 4.3,
+          "Anomaly": 3.9,
+          "Cost Visibility-UI": 10.0,
+          "Inventory Visibility": 0.9,
+          "Cost Optimization-Usage": 56.3,
+          "Cost Visibility-Reports": 10.4,
+          "Threats": 3.9,
+          "Custom Assessment": 0.9,
+          "Workload Creation": 1.7,
+          "Tagging Governance": 0.4
+        }
+      },
+      "jan": {
+        "time": 587,
+        "visitors": 9,
+        "trend": "neutral",
+        "change": 16,
+        "features": {
+          "Monitoring-Alerts": 1.1,
+          "Tagging Governance": 0.9,
+          "Cost Visibility-Reports": 10.6,
+          "Budgets": 0.6,
+          "Standards": 1.7,
+          "Anomaly": 0.3,
+          "Cost Visibility-UI": 2.3,
+          "Inventory Visibility": 2.6,
+          "Cost Optimization-Usage": 76.6,
+          "Guardrails": 2.3,
+          "Threats": 1.1
+        }
+      },
+      "feb": {
+        "time": 377,
+        "visitors": 10,
+        "trend": "down",
+        "change": -210,
+        "features": {
+          "Monitoring-Alerts": 2.4,
+          "Budgets": 1.9,
+          "Standards": 1.3,
+          "Anomaly": 2.1,
+          "Cost Visibility-UI": 8.2,
+          "Inventory Visibility": 3.4,
+          "Cost Optimization-Usage": 43.5,
+          "Guardrails": 0.3,
+          "Cost Visibility-Reports": 2.9,
+          "Threats": 0.8,
+          "Tagging Governance": 1.1
+        }
+      },
+      "mar": {
+        "time": 917,
+        "visitors": 10,
+        "trend": "up",
+        "change": 540,
+        "features": {
+          "Budgets": 0.4,
+          "Anomaly": 2.2,
+          "Cost Visibility-UI": 0.7,
+          "Cost Optimization-Usage": 15.3,
+          "Cost Visibility-Reports": 1.3,
+          "Threats": 0.1,
+          "Custom Assessment": 1.7,
+          "Workload Creation": 0.9,
+          "Tagging Governance": 0.2
+        }
+      },
+      "apr": {
+        "time": 415,
+        "visitors": 11,
+        "trend": "down",
+        "change": -502,
+        "features": {}
+      }
+    },
+    "comment": "Sales driven account with usage over dashboard and FinOps reports. Switching from retailer to MSP model."
+  },
+  {
+    "name": "New_Era_Technology",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 210,
+        "visitors": 6,
+        "trend": "down",
+        "change": -52,
+        "features": {
+          "Budgets": 1.4,
+          "Anomaly": 2.4,
+          "Cost Visibility-UI": 86.8,
+          "Cost Optimization-Usage": 3.3,
+          "Customizations": 1.4,
+          "SecOps Reports": 3.8,
+          "Custom Assessment": 0.9
+        }
+      },
+      "dec": {
+        "time": 38,
+        "visitors": 3,
+        "trend": "down",
+        "change": -172,
+        "features": {
+          "Budgets": 7.7,
+          "Anomaly": 92.3
+        }
+      },
+      "jan": {
+        "time": 4,
+        "visitors": 2,
+        "trend": "down",
+        "change": -34,
+        "features": {
+          "Monitoring-Alerts": 100.0
+        }
+      },
+      "feb": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "down",
+        "change": -4,
+        "features": {}
+      },
+      "mar": {
+        "time": 152,
+        "visitors": 1,
+        "trend": "up",
+        "change": 152,
+        "features": {
+          "Monitoring-Alerts": 3.3,
+          "Budgets": 0.7,
+          "Standards": 2.0,
+          "Anomaly": 0.7,
+          "Cost Visibility-UI": 4.6,
+          "Inventory Visibility": 0.7,
+          "Cost Optimization-Usage": 9.9,
+          "Threats": 3.3,
+          "Custom Assessment": 0.7
+        }
+      },
+      "apr": {
+        "time": 141,
+        "visitors": 5,
+        "trend": "neutral",
+        "change": -11,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Gotham",
+    "product": "FinOps, Assessments",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 122,
+        "visitors": 5,
+        "trend": "down",
+        "change": -70,
+        "features": {
+          "Vulnerabilities": 0.8,
+          "Threats": 1.6,
+          "Budgets": 1.6,
+          "Monitoring-Alerts": 1.6,
+          "Anomaly": 4.7,
+          "Cost Visibility-Reports": 3.9,
+          "Cost Visibility-UI": 57.0,
+          "Cost Optimization-Usage": 7.8,
+          "Inventory Visibility": 3.1,
+          "RI Visibility": 1.6,
+          "Customizations": 10.2,
+          "BillOps": 0.8,
+          "SecOps Reports": 3.1,
+          "Custom Assessment": 2.3
+        }
+      },
+      "dec": {
+        "time": 31,
+        "visitors": 3,
+        "trend": "down",
+        "change": -91,
+        "features": {
+          "Standards": 30.4,
+          "Anomaly": 8.7,
+          "Cost Visibility-UI": 8.7,
+          "Inventory Visibility": 13.0,
+          "Cost Optimization-Usage": 13.0,
+          "Threats": 8.7,
+          "Custom Assessment": 8.7,
+          "Template Schedules": 8.7
+        }
+      },
+      "jan": {
+        "time": 74,
+        "visitors": 5,
+        "trend": "up",
+        "change": 43,
+        "features": {
+          "Budgets": 3.1,
+          "Anomaly": 18.8,
+          "Cost Visibility-UI": 6.2,
+          "Cost Optimization-Usage": 43.8,
+          "Cost Visibility-Reports": 15.6,
+          "Threats": 12.5
+        }
+      },
+      "feb": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "down",
+        "change": -74,
+        "features": {}
+      },
+      "mar": {
+        "time": 83,
+        "visitors": 4,
+        "trend": "up",
+        "change": 83,
+        "features": {
+          "Budgets": 1.2,
+          "Anomaly": 9.6,
+          "Cost Visibility-UI": 6.0,
+          "Cost Optimization-Usage": 2.4,
+          "Cost Visibility-Reports": 12.0
+        }
+      },
+      "apr": {
+        "time": 85,
+        "visitors": 3,
+        "trend": "neutral",
+        "change": 2,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Hitachi",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "APAC",
+    "history": {
+      "nov": {
+        "time": 791,
+        "visitors": 5,
+        "trend": "up",
+        "change": 524,
+        "features": {
+          "Cost Visibility-Reports": 5.5,
+          "Budgets": 3.4,
+          "Cost Visibility-UI": 22.5,
+          "Inventory Visibility": 2.1,
+          "RI Visibility": 0.8,
+          "Cost Optimization-Usage": 35.6,
+          "Customizations": 26.7,
+          "BillOps": 3.0,
+          "Workload Creation": 0.4
+        }
+      },
+      "dec": {
+        "time": 295,
+        "visitors": 4,
+        "trend": "down",
+        "change": -496,
+        "features": {
+          "Cost Visibility-Reports": 51.4,
+          "Inventory Visibility": 1.9,
+          "Monitoring-Alerts": 1.0,
+          "Cost Optimization-Usage": 42.9,
+          "Template Schedules": 2.9
+        }
+      },
+      "jan": {
+        "time": 127,
+        "visitors": 3,
+        "trend": "down",
+        "change": -168,
+        "features": {
+          "Cost Visibility-Reports": 93.6,
+          "Monitoring-Alerts": 2.1,
+          "Cost Optimization-Usage": 4.3
+        }
+      },
+      "feb": {
+        "time": 22,
+        "visitors": 1,
+        "trend": "down",
+        "change": -105,
+        "features": {
+          "Budgets": 9.1,
+          "Cost Optimization-Usage": 40.9,
+          "Tagging Governance": 27.3
+        }
+      },
+      "mar": {
+        "time": 195,
+        "visitors": 4,
+        "trend": "up",
+        "change": 173,
+        "features": {
+          "Budgets": 0.5,
+          "Cost Visibility-UI": 0.5,
+          "Cost Optimization-Usage": 0.5,
+          "Cost Visibility-Reports": 15.9
+        }
+      },
+      "apr": {
+        "time": 135,
+        "visitors": 5,
+        "trend": "down",
+        "change": -60,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Taylor_Farms",
+    "product": "FinOps, CloudOps, SecOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 150,
+        "visitors": 5,
+        "trend": "down",
+        "change": -84,
+        "features": {
+          "Budgets": 0.9,
+          "Cost Visibility-UI": 84.1,
+          "Standards": 0.9,
+          "Cost Optimization-Usage": 5.6,
+          "RI Visibility": 0.4,
+          "Guardrails": 0.9,
+          "Customizations": 2.2,
+          "SecOps Reports": 5.2
+        }
+      },
+      "dec": {
+        "time": 229,
+        "visitors": 6,
+        "trend": "up",
+        "change": 79,
+        "features": {
+          "Monitoring-Alerts": 4.8,
+          "Vulnerabilities": 0.5,
+          "Budgets": 0.5,
+          "Standards": 44.6,
+          "Cost Visibility-UI": 4.8,
+          "Inventory Visibility": 1.1,
+          "Cost Optimization-Usage": 1.6,
+          "Guardrails": 5.9,
+          "Cost Visibility-Reports": 8.6,
+          "Threats": 11.3,
+          "Custom Assessment": 4.3,
+          "Template Schedules": 1.1,
+          "Tagging Governance": 10.8
+        }
+      },
+      "jan": {
+        "time": 78,
+        "visitors": 4,
+        "trend": "down",
+        "change": -151,
+        "features": {
+          "Budgets": 2.4,
+          "Standards": 46.3,
+          "Monitoring-Alerts": 7.3,
+          "Cost Optimization-Usage": 9.8,
+          "Cost Visibility-Reports": 7.3,
+          "Threats": 24.4,
+          "Tagging Governance": 2.4
+        }
+      },
+      "feb": {
+        "time": 25,
+        "visitors": 4,
+        "trend": "down",
+        "change": -53,
+        "features": {
+          "Standards": 52.0,
+          "Anomaly": 8.0,
+          "Cost Visibility-UI": 8.0,
+          "Cost Optimization-Usage": 4.0,
+          "Cost Visibility-Reports": 4.0,
+          "Threats": 12.0
+        }
+      },
+      "mar": {
+        "time": 121,
+        "visitors": 8,
+        "trend": "up",
+        "change": 96,
+        "features": {
+          "Budgets": 0.8,
+          "Monitoring-Alerts": 1.7,
+          "Standards": 3.3,
+          "Cost Visibility-UI": 0.8,
+          "Cost Optimization-Usage": 1.7,
+          "Cost Visibility-Reports": 6.6,
+          "Threats": 17.4
+        }
+      },
+      "apr": {
+        "time": 75,
+        "visitors": 3,
+        "trend": "down",
+        "change": -46,
+        "features": {}
+      }
+    },
+    "comment": "Sales driven, PS focused account with remediation on FinOps and Tagging Governance as key initiatives. SecOps and CloudOps are also parallelly tracked."
+  },
+  {
+    "name": "Damac",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "MEA",
+    "history": {
+      "nov": {
+        "time": 291,
+        "visitors": 6,
+        "trend": "up",
+        "change": 158,
+        "features": {
+          "Budgets": 1.3,
+          "Cost Visibility-Reports": 1.7,
+          "Anomaly": 0.4,
+          "Cost Visibility-UI": 20.3,
+          "Cost Optimization-Usage": 66.4,
+          "RI Visibility": 0.4,
+          "Customizations": 8.6,
+          "Template Schedules": 0.9
+        }
+      },
+      "dec": {
+        "time": 119,
+        "visitors": 6,
+        "trend": "down",
+        "change": -172,
+        "features": {
+          "Monitoring-Alerts": 10.9,
+          "Cost Visibility-Reports": 20.0,
+          "Budgets": 3.6,
+          "Anomaly": 3.6,
+          "Cost Visibility-UI": 5.5,
+          "Cost Optimization-Usage": 56.4
+        }
+      },
+      "jan": {
+        "time": 28,
+        "visitors": 3,
+        "trend": "down",
+        "change": -91,
+        "features": {
+          "Budgets": 41.7,
+          "Cost Visibility-Reports": 58.3
+        }
+      },
+      "feb": {
+        "time": 42,
+        "visitors": 2,
+        "trend": "up",
+        "change": 14,
+        "features": {
+          "Monitoring-Alerts": 11.9,
+          "Budgets": 16.7,
+          "Cost Optimization-Usage": 31.0,
+          "Cost Visibility-Reports": 11.9
+        }
+      },
+      "mar": {
+        "time": 13,
+        "visitors": 1,
+        "trend": "down",
+        "change": -29,
+        "features": {
+          "Cost Visibility-UI": 23.1,
+          "Cost Optimization-Usage": 15.4,
+          "Cost Visibility-Reports": 53.8
+        }
+      },
+      "apr": {
+        "time": 112,
+        "visitors": 3,
+        "trend": "up",
+        "change": 99,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Newrealm",
+    "product": "FinOps, CloudOps, SecOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 251,
+        "visitors": 12,
+        "trend": "up",
+        "change": 251,
+        "features": {
+          "Monitoring-Alerts": 2.8,
+          "Budgets": 2.4,
+          "Standards": 9.6,
+          "Anomaly": 1.6,
+          "Cost Visibility-UI": 4.8,
+          "Inventory Visibility": 2.4,
+          "Cost Optimization-Usage": 6.8,
+          "Guardrails": 6.0,
+          "Cost Visibility-Reports": 8.4,
+          "Threats": 4.0,
+          "Custom Assessment": 1.2,
+          "Template Schedules": 0.4
+        }
+      },
+      "mar": {
+        "time": 1120,
+        "visitors": 14,
+        "trend": "up",
+        "change": 869,
+        "features": {
+          "Monitoring-Alerts": 5.4,
+          "Template Schedules": 1.2,
+          "Backup Report": 0.1,
+          "Budgets": 1.2,
+          "Standards": 4.6,
+          "Anomaly": 1.2,
+          "Cost Visibility-UI": 5.4,
+          "Cost Optimization-Usage": 2.1,
+          "Inventory Visibility": 3.3,
+          "Guardrails": 6.4,
+          "Cost Visibility-Reports": 3.2,
+          "Threats": 15.1,
+          "Custom Assessment": 0.3,
+          "Workload Creation": 0.2,
+          "Tagging Governance": 0.6
+        }
+      },
+      "apr": {
+        "time": 938,
+        "visitors": 16,
+        "trend": "down",
+        "change": -182,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "OXXO_Kyndryl",
+    "product": "CloudOps",
+    "segment": "SI",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 32,
+        "visitors": 3,
+        "trend": "neutral",
+        "change": 29,
+        "features": {
+          "Inventory Visibility": 47.1,
+          "Customizations": 47.1,
+          "Template Schedules": 5.9
+        }
+      },
+      "dec": {
+        "time": 5,
+        "visitors": 3,
+        "trend": "down",
+        "change": -27,
+        "features": {}
+      },
+      "jan": {
+        "time": 5,
+        "visitors": 1,
+        "trend": "neutral",
+        "change": 0,
+        "features": {
+          "Cost Visibility-Reports": 50.0,
+          "Inventory Visibility": 50.0
+        }
+      },
+      "feb": {
+        "time": 467,
+        "visitors": 8,
+        "trend": "up",
+        "change": 462,
+        "features": {
+          "Monitoring-Alerts": 14.6,
+          "Cost Visibility-Reports": 30.0,
+          "Vulnerabilities": 0.9,
+          "CloudOps Reports": 2.8,
+          "Backup Report": 3.6,
+          "Inventory Visibility": 17.1,
+          "Tagging Governance": 1.5,
+          "Budgets": 0.4,
+          "Standards": 12.4,
+          "Cost Visibility-UI": 1.5,
+          "Cost Optimization-Usage": 3.6,
+          "Guardrails": 0.2,
+          "Threats": 3.6
+        }
+      },
+      "mar": {
+        "time": 215,
+        "visitors": 6,
+        "trend": "down",
+        "change": -252,
+        "features": {
+          "Monitoring-Alerts": 10.7,
+          "Vulnerabilities": 1.4,
+          "Standards": 28.8,
+          "Cost Visibility-UI": 4.2,
+          "Inventory Visibility": 33.0,
+          "Cost Optimization-Usage": 0.9,
+          "Cost Visibility-Reports": 10.2,
+          "Threats": 2.8
+        }
+      },
+      "apr": {
+        "time": 42,
+        "visitors": 4,
+        "trend": "down",
+        "change": -173,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Comport",
+    "product": "FinOps",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 3,
+        "visitors": 1,
+        "trend": "neutral",
+        "change": 1,
+        "features": {}
+      },
+      "dec": {
+        "time": 4,
+        "visitors": 2,
+        "trend": "up",
+        "change": 1,
+        "features": {}
+      },
+      "jan": {
+        "time": 19,
+        "visitors": 1,
+        "trend": "up",
+        "change": 15,
+        "features": {
+          "Template Schedules": 15.0,
+          "Standards": 15.0,
+          "Cost Optimization-Usage": 40.0,
+          "Guardrails": 10.0,
+          "Cost Visibility-UI": 5.0,
+          "Threats": 15.0
+        }
+      },
+      "feb": {
+        "time": 3,
+        "visitors": 1,
+        "trend": "down",
+        "change": -16,
+        "features": {}
+      },
+      "mar": {
+        "time": 50,
+        "visitors": 2,
+        "trend": "up",
+        "change": 47,
+        "features": {
+          "Guardrails": 4.0,
+          "Threats": 26.0
+        }
+      },
+      "apr": {
+        "time": 37,
+        "visitors": 3,
+        "trend": "down",
+        "change": -13,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "TheMutualGroup",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 174,
+        "visitors": 4,
+        "trend": "up",
+        "change": 174,
+        "features": {
+          "Cost Visibility-Reports": 44.8,
+          "Budgets": 2.9,
+          "Standards": 0.6,
+          "Inventory Visibility": 9.2,
+          "Monitoring-Alerts": 0.6,
+          "Cost Optimization-Usage": 4.0,
+          "Guardrails": 2.9,
+          "Cost Visibility-UI": 0.6,
+          "Threats": 16.1
+        }
+      },
+      "mar": {
+        "time": 137,
+        "visitors": 6,
+        "trend": "down",
+        "change": -37,
+        "features": {
+          "Monitoring-Alerts": 2.2,
+          "Cost Visibility-Reports": 5.8,
+          "Template Schedules": 0.7,
+          "Cost Visibility-UI": 9.5,
+          "Cost Optimization-Usage": 26.3,
+          "Inventory Visibility": 15.3,
+          "Threats": 8.0,
+          "Custom Assessment": 3.6
+        }
+      },
+      "apr": {
+        "time": 45,
+        "visitors": 3,
+        "trend": "down",
+        "change": -92,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "V_Valley",
+    "product": "FinOps",
+    "segment": "Distri-MSP",
+    "region": "EU",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 465,
+        "visitors": 6,
+        "trend": "up",
+        "change": 465,
+        "features": {
+          "Budgets": 1.5,
+          "Anomaly": 1.1,
+          "Cost Visibility-UI": 0.9,
+          "Cost Optimization-Usage": 3.9,
+          "Inventory Visibility": 0.2,
+          "Cost Visibility-Reports": 4.7
+        }
+      },
+      "mar": {
+        "time": 613,
+        "visitors": 5,
+        "trend": "up",
+        "change": 148,
+        "features": {
+          "Budgets": 1.1,
+          "Anomaly": 0.7,
+          "Cost Visibility-Reports": 4.4,
+          "Cost Visibility-UI": 0.5,
+          "Inventory Visibility": 0.7,
+          "Cost Optimization-Usage": 0.5,
+          "Guardrails": 0.3,
+          "Template Schedules": 0.5
+        }
+      },
+      "apr": {
+        "time": 282,
+        "visitors": 5,
+        "trend": "down",
+        "change": -331,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "E360",
+    "product": "FinOps",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 44,
+        "visitors": 4,
+        "trend": "down",
+        "change": -80,
+        "features": {
+          "Cost Visibility-UI": 95.2,
+          "Custom Assessment": 4.8
+        }
+      },
+      "dec": {
+        "time": 97,
+        "visitors": 3,
+        "trend": "up",
+        "change": 53,
+        "features": {
+          "Budgets": 33.3,
+          "Cost Visibility-Reports": 33.3,
+          "Cost Visibility-UI": 14.3,
+          "Cost Optimization-Usage": 19.0
+        }
+      },
+      "jan": {
+        "time": 34,
+        "visitors": 1,
+        "trend": "down",
+        "change": -63,
+        "features": {}
+      },
+      "feb": {
+        "time": 5,
+        "visitors": 2,
+        "trend": "down",
+        "change": -29,
+        "features": {}
+      },
+      "mar": {
+        "time": 38,
+        "visitors": 4,
+        "trend": "up",
+        "change": 33,
+        "features": {
+          "Anomaly": 5.3
+        }
+      },
+      "apr": {
+        "time": 65,
+        "visitors": 3,
+        "trend": "up",
+        "change": 27,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Hexaware",
+    "product": "Assessments",
+    "segment": "SI",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 10,
+        "visitors": 2,
+        "trend": "down",
+        "change": -321,
+        "features": {
+          "Workload Creation": 100.0
+        }
+      },
+      "dec": {
+        "time": 3,
+        "visitors": 1,
+        "trend": "down",
+        "change": -7,
+        "features": {
+          "Threats": 100.0
+        }
+      },
+      "jan": {
+        "time": 3,
+        "visitors": 1,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 1,
+        "visitors": 1,
+        "trend": "down",
+        "change": -2,
+        "features": {}
+      },
+      "mar": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "down",
+        "change": -1,
+        "features": {}
+      },
+      "apr": {
+        "time": 32,
+        "visitors": 3,
+        "trend": "up",
+        "change": 32,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Persistent_Systems",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 52,
+        "visitors": 5,
+        "trend": "neutral",
+        "change": 29,
+        "features": {
+          "Anomaly": 6.2,
+          "Cost Visibility-UI": 86.2,
+          "Cost Visibility-Reports": 1.5,
+          "Customizations": 6.2
+        }
+      },
+      "dec": {
+        "time": 22,
+        "visitors": 3,
+        "trend": "down",
+        "change": -30,
+        "features": {
+          "Cost Visibility-UI": 40.0,
+          "Cost Optimization-Usage": 60.0
+        }
+      },
+      "jan": {
+        "time": 24,
+        "visitors": 4,
+        "trend": "neutral",
+        "change": 2,
+        "features": {
+          "Budgets": 100.0
+        }
+      },
+      "feb": {
+        "time": 109,
+        "visitors": 3,
+        "trend": "up",
+        "change": 85,
+        "features": {
+          "Anomaly": 3.7,
+          "Cost Optimization-Usage": 8.3,
+          "Cost Visibility-Reports": 35.8,
+          "Threats": 0.9
+        }
+      },
+      "mar": {
+        "time": 43,
+        "visitors": 4,
+        "trend": "down",
+        "change": -66,
+        "features": {
+          "Cost Visibility-Reports": 4.7,
+          "Tagging Governance": 4.7
+        }
+      },
+      "apr": {
+        "time": 81,
+        "visitors": 5,
+        "trend": "up",
+        "change": 38,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Tigloo",
+    "product": "Assessments",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 60,
+        "visitors": 3,
+        "trend": "down",
+        "change": -101,
+        "features": {
+          "Budgets": 1.6,
+          "Anomaly": 1.6,
+          "Cost Visibility-UI": 38.7,
+          "Cost Optimization-Usage": 29.0,
+          "RI Visibility": 3.2,
+          "Cost Visibility-Reports": 6.5,
+          "Customizations": 11.3,
+          "SecOps Reports": 8.1
+        }
+      },
+      "dec": {
+        "time": 9,
+        "visitors": 3,
+        "trend": "down",
+        "change": -51,
+        "features": {
+          "Cost Visibility-UI": 33.3,
+          "Cost Visibility-Reports": 66.7
+        }
+      },
+      "jan": {
+        "time": 1,
+        "visitors": 1,
+        "trend": "down",
+        "change": -8,
+        "features": {
+          "Cost Visibility-Reports": 100.0
+        }
+      },
+      "feb": {
+        "time": 4,
+        "visitors": 1,
+        "trend": "up",
+        "change": 3,
+        "features": {
+          "Cost Visibility-Reports": 175.0
+        }
+      },
+      "mar": {
+        "time": 7,
+        "visitors": 1,
+        "trend": "up",
+        "change": 3,
+        "features": {
+          "Cost Visibility-Reports": 85.7
+        }
+      },
+      "apr": {
+        "time": 21,
+        "visitors": 3,
+        "trend": "up",
+        "change": 14,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "ClickIT",
+    "product": "Assessments",
+    "segment": "Distri-MSP",
+    "region": "EU",
+    "history": {
+      "nov": {
+        "time": 75,
+        "visitors": 2,
+        "trend": "up",
+        "change": 72,
+        "features": {
+          "Anomaly": 3.6,
+          "Cost Visibility-UI": 28.6,
+          "Cost Optimization-Usage": 67.9
+        }
+      },
+      "dec": {
+        "time": 3,
+        "visitors": 1,
+        "trend": "down",
+        "change": -72,
+        "features": {}
+      },
+      "jan": {
+        "time": 34,
+        "visitors": 2,
+        "trend": "up",
+        "change": 31,
+        "features": {
+          "Budgets": 66.7,
+          "Cost Visibility-UI": 16.7,
+          "Cost Visibility-Reports": 16.7
+        }
+      },
+      "feb": {
+        "time": 5,
+        "visitors": 1,
+        "trend": "down",
+        "change": -29,
+        "features": {
+          "Cost Visibility-Reports": 200.0
+        }
+      },
+      "mar": {
+        "time": 11,
+        "visitors": 1,
+        "trend": "up",
+        "change": 6,
+        "features": {
+          "Cost Visibility-Reports": 100.0
+        }
+      },
+      "apr": {
+        "time": 12,
+        "visitors": 1,
+        "trend": "neutral",
+        "change": 1,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "NBF",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "MEA",
+    "history": {
+      "nov": {
+        "time": 127,
+        "visitors": 2,
+        "trend": "up",
+        "change": 109,
+        "features": {
+          "Budgets": 5.6,
+          "Customizations": 94.4
+        }
+      },
+      "dec": {
+        "time": 71,
+        "visitors": 3,
+        "trend": "down",
+        "change": -56,
+        "features": {
+          "Monitoring-Alerts": 8.6,
+          "Standards": 2.9,
+          "Inventory Visibility": 2.9,
+          "Cost Optimization-Usage": 2.9,
+          "Cost Visibility-Reports": 22.9,
+          "Cost Visibility-UI": 14.3,
+          "Tagging Governance": 45.7
+        }
+      },
+      "jan": {
+        "time": 63,
+        "visitors": 2,
+        "trend": "down",
+        "change": -8,
+        "features": {
+          "Budgets": 6.2,
+          "Cost Visibility-UI": 6.2,
+          "Cost Visibility-Reports": 87.5
+        }
+      },
+      "feb": {
+        "time": 128,
+        "visitors": 3,
+        "trend": "up",
+        "change": 65,
+        "features": {
+          "Monitoring-Alerts": 1.6,
+          "Cost Optimization-Usage": 5.5,
+          "Cost Visibility-Reports": 10.2
+        }
+      },
+      "mar": {
+        "time": 19,
+        "visitors": 2,
+        "trend": "down",
+        "change": -109,
+        "features": {
+          "Cost Visibility-Reports": 10.5
+        }
+      },
+      "apr": {
+        "time": 41,
+        "visitors": 2,
+        "trend": "up",
+        "change": 22,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "NTT",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "APAC",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 6,
+        "visitors": 1,
+        "trend": "up",
+        "change": 6,
+        "features": {}
+      },
+      "jan": {
+        "time": 11,
+        "visitors": 1,
+        "trend": "up",
+        "change": 5,
+        "features": {}
+      },
+      "feb": {
+        "time": 2,
+        "visitors": 1,
+        "trend": "down",
+        "change": -9,
+        "features": {}
+      },
+      "mar": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "down",
+        "change": -2,
+        "features": {}
+      },
+      "apr": {
+        "time": 17,
+        "visitors": 1,
+        "trend": "up",
+        "change": 17,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Pragma",
+    "product": "FinOps, Assessments",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 8,
+        "visitors": 1,
+        "trend": "neutral",
+        "change": 4,
+        "features": {
+          "Cost Visibility-UI": 100.0
+        }
+      },
+      "dec": {
+        "time": 3,
+        "visitors": 1,
+        "trend": "down",
+        "change": -5,
+        "features": {}
+      },
+      "jan": {
+        "time": 126,
+        "visitors": 3,
+        "trend": "up",
+        "change": 123,
+        "features": {
+          "Cost Visibility-Reports": 96.5,
+          "Budgets": 3.5
+        }
+      },
+      "feb": {
+        "time": 2,
+        "visitors": 1,
+        "trend": "down",
+        "change": -124,
+        "features": {}
+      },
+      "mar": {
+        "time": 48,
+        "visitors": 1,
+        "trend": "up",
+        "change": 46,
+        "features": {}
+      },
+      "apr": {
+        "time": 11,
+        "visitors": 2,
+        "trend": "down",
+        "change": -37,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Interwor",
+    "product": "Assessments",
+    "segment": "Distri-MSP",
+    "region": "EU",
+    "history": {
+      "nov": {
+        "time": 8,
+        "visitors": 1,
+        "trend": "neutral",
+        "change": 6,
+        "features": {
+          "Cost Visibility-UI": 100.0
+        }
+      },
+      "dec": {
+        "time": 1312,
+        "visitors": 18,
+        "trend": "up",
+        "change": 1304,
+        "features": {
+          "Threats": 6.2,
+          "Budgets": 8.8,
+          "Monitoring-Alerts": 1.3,
+          "Standards": 0.8,
+          "Anomaly": 2.3,
+          "Cost Visibility-Reports": 53.3,
+          "Cost Visibility-UI": 18.4,
+          "Inventory Visibility": 2.1,
+          "Cost Optimization-Usage": 5.3,
+          "Guardrails": 0.2,
+          "Vulnerabilities": 0.4,
+          "Custom Assessment": 0.2,
+          "Template Schedules": 0.9
+        }
+      },
+      "jan": {
+        "time": 31,
+        "visitors": 3,
+        "trend": "down",
+        "change": -1281,
+        "features": {
+          "Monitoring-Alerts": 12.5,
+          "Inventory Visibility": 25.0,
+          "Cost Visibility-Reports": 25.0,
+          "Cost Visibility-UI": 25.0,
+          "Threats": 12.5
+        }
+      },
+      "feb": {
+        "time": 3,
+        "visitors": 1,
+        "trend": "down",
+        "change": -28,
+        "features": {}
+      },
+      "mar": {
+        "time": 18,
+        "visitors": 2,
+        "trend": "up",
+        "change": 15,
+        "features": {
+          "Inventory Visibility": 22.2
+        }
+      },
+      "apr": {
+        "time": 13,
+        "visitors": 3,
+        "trend": "down",
+        "change": -5,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "ValueMomentum",
+    "product": "FinOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 26,
+        "visitors": 3,
+        "trend": "neutral",
+        "change": 21,
+        "features": {}
+      },
+      "dec": {
+        "time": 47,
+        "visitors": 6,
+        "trend": "up",
+        "change": 21,
+        "features": {
+          "Monitoring-Alerts": 20.7,
+          "Template Schedules": 17.2,
+          "Budgets": 3.4,
+          "Standards": 6.9,
+          "Cost Visibility-UI": 6.9,
+          "Cost Optimization-Usage": 6.9,
+          "Cost Visibility-Reports": 24.1,
+          "Threats": 13.8
+        }
+      },
+      "jan": {
+        "time": 48,
+        "visitors": 4,
+        "trend": "neutral",
+        "change": 1,
+        "features": {
+          "VM Agent Dashboard": 4.4,
+          "Standards": 35.6,
+          "Cost Visibility-UI": 4.4,
+          "Cost Optimization-Usage": 4.4,
+          "Guardrails": 6.7,
+          "Cost Visibility-Reports": 26.7,
+          "Threats": 13.3,
+          "Tagging Governance": 4.4
+        }
+      },
+      "feb": {
+        "time": 10,
+        "visitors": 2,
+        "trend": "down",
+        "change": -38,
+        "features": {
+          "Standards": 30.0,
+          "Cost Visibility-Reports": 50.0
+        }
+      },
+      "mar": {
+        "time": 125,
+        "visitors": 12,
+        "trend": "up",
+        "change": 115,
+        "features": {
+          "Budgets": 2.4,
+          "Standards": 4.8,
+          "Inventory Visibility": 1.6,
+          "Monitoring-Alerts": 4.0,
+          "Cost Visibility-Reports": 8.8
+        }
+      },
+      "apr": {
+        "time": 3,
+        "visitors": 1,
+        "trend": "down",
+        "change": -122,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Trace3",
+    "product": "FinOps",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 241,
+        "visitors": 6,
+        "trend": "neutral",
+        "change": -7,
+        "features": {
+          "Budgets": 0.4,
+          "Cost Visibility-UI": 72.8,
+          "RI Visibility": 12.7,
+          "Cost Optimization-Usage": 3.5,
+          "Customizations": 7.0,
+          "Cost Visibility-Reports": 3.5
+        }
+      },
+      "dec": {
+        "time": 140,
+        "visitors": 6,
+        "trend": "down",
+        "change": -101,
+        "features": {
+          "Anomaly": 3.6,
+          "Cost Visibility-UI": 10.7,
+          "Cost Optimization-Usage": 82.1,
+          "Cost Visibility-Reports": 3.6
+        }
+      },
+      "jan": {
+        "time": 221,
+        "visitors": 5,
+        "trend": "up",
+        "change": 81,
+        "features": {
+          "Cost Visibility-UI": 100.0
+        }
+      },
+      "feb": {
+        "time": 52,
+        "visitors": 4,
+        "trend": "down",
+        "change": -169,
+        "features": {
+          "Budgets": 3.8,
+          "Cost Visibility-Reports": 7.7
+        }
+      },
+      "mar": {
+        "time": 29,
+        "visitors": 3,
+        "trend": "down",
+        "change": -23,
+        "features": {}
+      },
+      "apr": {
+        "time": 3,
+        "visitors": 2,
+        "trend": "down",
+        "change": -26,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "TCL",
+    "product": "CloudOps, FinOps",
+    "segment": "GSI",
+    "region": "APAC",
+    "history": {
+      "nov": {
+        "time": 223,
+        "visitors": 14,
+        "trend": "up",
+        "change": 62,
+        "features": {
+          "Budgets": 39.3,
+          "Monitoring-Alerts": 3.7,
+          "Cost Visibility-UI": 41.1,
+          "Inventory Visibility": 7.5,
+          "Guardrails": 0.9,
+          "Customizations": 3.7,
+          "SecOps Reports": 3.7
+        }
+      },
+      "dec": {
+        "time": 296,
+        "visitors": 7,
+        "trend": "up",
+        "change": 73,
+        "features": {
+          "Monitoring-Alerts": 26.7,
+          "Budgets": 1.9,
+          "Cost Visibility-UI": 34.2,
+          "Inventory Visibility": 14.9,
+          "Guardrails": 5.0,
+          "Cost Visibility-Reports": 4.3,
+          "Tagging Governance": 13.0
+        }
+      },
+      "jan": {
+        "time": 99,
+        "visitors": 7,
+        "trend": "down",
+        "change": -197,
+        "features": {
+          "Cost Visibility-UI": 100.0
+        }
+      },
+      "feb": {
+        "time": 125,
+        "visitors": 13,
+        "trend": "up",
+        "change": 26,
+        "features": {
+          "Anomaly": 0.8,
+          "Cost Visibility-UI": 8.0
+        }
+      },
+      "mar": {
+        "time": 158,
+        "visitors": 8,
+        "trend": "up",
+        "change": 33,
+        "features": {
+          "Anomaly": 3.2,
+          "Cost Visibility-UI": 8.2,
+          "Threats": 1.3
+        }
+      },
+      "apr": {
+        "time": 129,
+        "visitors": 7,
+        "trend": "down",
+        "change": -29,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Clicko",
+    "product": "Assessments",
+    "segment": "Distri-MSP",
+    "region": "EU",
+    "history": {
+      "nov": {
+        "time": 13,
+        "visitors": 1,
+        "trend": "neutral",
+        "change": 5,
+        "features": {
+          "Budgets": 4.0,
+          "Cost Visibility-UI": 88.0,
+          "Customizations": 8.0
+        }
+      },
+      "dec": {
+        "time": 4,
+        "visitors": 1,
+        "trend": "down",
+        "change": -9,
+        "features": {
+          "Cost Visibility-UI": 100.0
+        }
+      },
+      "jan": {
+        "time": 6,
+        "visitors": 1,
+        "trend": "up",
+        "change": 2,
+        "features": {}
+      },
+      "feb": {
+        "time": 4,
+        "visitors": 1,
+        "trend": "down",
+        "change": -2,
+        "features": {}
+      },
+      "mar": {
+        "time": 9,
+        "visitors": 1,
+        "trend": "up",
+        "change": 5,
+        "features": {}
+      },
+      "apr": {
+        "time": 4,
+        "visitors": 1,
+        "trend": "down",
+        "change": -5,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Terilogy",
+    "product": "SecOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 121,
+        "visitors": 3,
+        "trend": "up",
+        "change": 67,
+        "features": {
+          "Threats": 4.3,
+          "Cost Visibility-UI": 14.5,
+          "Standards": 72.5,
+          "Customizations": 2.9,
+          "SecOps Reports": 5.8
+        }
+      },
+      "dec": {
+        "time": 16,
+        "visitors": 1,
+        "trend": "down",
+        "change": -105,
+        "features": {
+          "Threats": 46.2,
+          "Standards": 30.8,
+          "Cost Visibility-Reports": 23.1
+        }
+      },
+      "jan": {
+        "time": 25,
+        "visitors": 2,
+        "trend": "up",
+        "change": 9,
+        "features": {
+          "Threats": 27.3,
+          "Standards": 39.4,
+          "Inventory Visibility": 3.0,
+          "Cost Visibility-Reports": 30.3
+        }
+      },
+      "feb": {
+        "time": 7,
+        "visitors": 1,
+        "trend": "down",
+        "change": -18,
+        "features": {
+          "Inventory Visibility": 100.0
+        }
+      },
+      "mar": {
+        "time": 2,
+        "visitors": 1,
+        "trend": "down",
+        "change": -5,
+        "features": {}
+      },
+      "apr": {
+        "time": 4,
+        "visitors": 1,
+        "trend": "up",
+        "change": 2,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Syntax",
+    "product": "FinOps, CloudOps, SecOps",
+    "segment": "MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 21,
+        "visitors": 3,
+        "trend": "neutral",
+        "change": 14,
+        "features": {}
+      },
+      "dec": {
+        "time": 8,
+        "visitors": 1,
+        "trend": "down",
+        "change": -13,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "down",
+        "change": -8,
+        "features": {}
+      },
+      "feb": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "mar": {
+        "time": 45,
+        "visitors": 1,
+        "trend": "up",
+        "change": 45,
+        "features": {}
+      },
+      "apr": {
+        "time": 2,
+        "visitors": 1,
+        "trend": "down",
+        "change": -43,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Myriad360",
+    "product": "FinOps",
+    "segment": "Distri-MSP",
+    "region": "US",
+    "history": {
+      "nov": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "dec": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "jan": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "feb": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "mar": {
+        "time": 0,
+        "visitors": 0,
+        "trend": "neutral",
+        "change": 0,
+        "features": {}
+      },
+      "apr": {
+        "time": 54,
+        "visitors": 4,
+        "trend": "up",
+        "change": 54,
+        "features": {}
+      }
+    },
+    "comment": ""
+  },
+  {
+    "name": "Okta",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "US3",
+    "history": {
+      "nov": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "dec": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "jan": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "feb": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "mar": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "apr": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}}
+    },
+    "comment": ""
+  },
+  {
+    "name": "Clickup",
+    "product": "FinOps",
+    "segment": "Enterprise",
+    "region": "US3",
+    "history": {
+      "nov": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "dec": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "jan": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "feb": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "mar": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}},
+      "apr": {"time": 0,"visitors": 0,"trend": "neutral","change": 0,"features": {}}
+    },
+    "comment": ""
+  }
+];
+    customers.forEach(c => { c.tier = tierAssignments[c.name] || 'Bronze'; c.comment = customerComments[c.name] || c.comment || ''; });
+    const tierPriority = {'Platinum':0,'Gold':1,'Silver':2,'Bronze':3};
+    customers.sort((a,b) => { return b.history['apr'].time - a.history['apr'].time; });
+
+    const monthNames = {"nov": "Nov", "dec": "Dec", "jan": "Jan", "feb": "Feb", "mar": "Mar", "apr": "Apr"};
+    const monthOrder = ["nov", "dec", "jan", "feb", "mar", "apr"];
+    const currentMonth = 'apr';
+
+    function getSubscribedProducts(p) { const r=[]; const l=p.toLowerCase(); if(l.includes('finops')||l.includes('fiops'))r.push('FinOps'); if(l.includes('cloudops'))r.push('CloudOps'); if(l.includes('secops'))r.push('SecOps'); if(l.includes('assessment'))r.push('Assessments'); return r; }
+    function getFeatureProduct(f) { return featureProductMap[f]||'Other'; }
+
+    function renderCustomerList() {
+        const container = document.getElementById('customerList'); container.innerHTML = '';
+        customers.forEach((c, idx) => {
+            const row = document.createElement('div'); row.className = 'customer-row'; row.dataset.index = idx; row.onclick = () => selectCustomer(idx);
+            const h = c.history[currentMonth]; const trendClass = h.trend;
+            const trendSymbol = trendClass==='up'?'↑':trendClass==='down'?'↓':'→';
+            const prods = getSubscribedProducts(c.product);
+            const prodTags = prods.map(p => `<span class="product-tag ${p.toLowerCase()}">${p}</span>`).join(' ');
+            const segmentClass = c.segment.toLowerCase().replace(/-/g, '-');
+            row.innerHTML = `<div class="customer-name">${c.name}</div><div><span class="tier-badge ${c.tier.toLowerCase()}">${c.tier}</span></div><div><span class="segment-text ${segmentClass}">${c.segment}</span></div><div><span class="region-text">${c.region}</span></div><div class="time-cell">${h.time.toLocaleString()}m</div><div style="color:#7c3aed;font-weight:600;">${h.visitors}</div><div><span class="trend ${trendClass}">${trendSymbol}</span></div><div style="display:flex;gap:4px;flex-wrap:wrap;">${prodTags}</div>`;
+            container.appendChild(row);
+        }); updateVisibleCount();
+    }
+
+    function selectCustomer(idx) {
+        document.querySelectorAll('.customer-row').forEach(r => r.classList.remove('active'));
+        document.querySelector(`.customer-row[data-index="${idx}"]`)?.classList.add('active');
+        const c = customers[idx]; const subscribedProducts = getSubscribedProducts(c.product);
+        const segmentClass = c.segment.toLowerCase().replace(/-/g, '-');
+        document.getElementById('detailTitle').innerHTML = `${c.name} <span class="tier-badge ${c.tier.toLowerCase()}">${c.tier}</span>`;
+        document.getElementById('detailMeta').innerHTML = `<span class="segment-text ${segmentClass}">${c.segment}</span><span class="region-text">${c.region}</span>`;
+        document.getElementById('detailProducts').innerHTML = subscribedProducts.map(p => `<span class="product-tag ${p.toLowerCase()}">${p}</span>`).join('');
+
+        const maxTime = Math.max(...monthOrder.map(m => c.history[m].time), 1);
+        document.getElementById('timeChart').innerHTML = monthOrder.map(m => {
+            const h = c.history[m]; const height = Math.max((h.time/maxTime)*115, 2);
+            const ts = h.trend==='up'?'↑':h.trend==='down'?'↓':'';
+            return `<div class="bar-group"><div class="bar-trend ${h.trend}">${ts}</div><div class="bar-value">${h.time}m</div><div class="bar" style="height:${height}px"></div><div class="bar-label">${monthNames[m]}</div></div>`;
+        }).join('');
+
+        const maxV = Math.max(...monthOrder.map(m => c.history[m].visitors), 1);
+        document.getElementById('visitorsChart').innerHTML = monthOrder.map(m => {
+            const h = c.history[m]; const height = Math.max((h.visitors/maxV)*115, 2);
+            return `<div class="bar-group"><div class="bar-value" style="color:#7c3aed;">${h.visitors}</div><div class="bar visitors" style="height:${height}px"></div><div class="bar-label">${monthNames[m]}</div></div>`;
+        }).join('');
+
+        const allFeatures = new Map();
+        monthOrder.forEach(m => {
+            const features = c.history[m].features || {};
+            Object.keys(features).forEach(f => {
+                if(!allFeatures.has(f)) { const init={}; monthOrder.forEach(mo => init[mo]=0); allFeatures.set(f, init); }
+                allFeatures.get(f)[m] = features[f];
+            });
+        });
+        const sortedFeatures = [...allFeatures.entries()].sort((a,b) => (b[1][currentMonth]||0)-(a[1][currentMonth]||0));
+
+        document.getElementById('featureTrends').innerHTML = sortedFeatures.length ? sortedFeatures.map(([name, data]) => {
+            const product = getFeatureProduct(name); const isSubscribed = subscribedProducts.includes(product);
+            const productClass = isSubscribed ? product.toLowerCase() : 'unsubscribed';
+            const maxVal = Math.max(...Object.values(data), 1);
+            const avg = (Object.values(data).reduce((a,b)=>a+b,0)/monthOrder.length).toFixed(1);
+            const curVal = data[currentMonth]||0;
+            const barsHtml = monthOrder.map(m => {
+                const val = data[m]||0; const height = Math.max((val/maxVal)*50, val>0?3:0);
+                return `<div class="feature-mini-bar ${productClass}" style="height:${height}px" title="${monthNames[m]}: ${val}%"></div>`;
+            }).join('');
+            return `<div class="feature-card"><div class="feature-card-header"><span class="feature-card-name">${name}</span><span class="feature-card-product ${productClass}">${isSubscribed?product:'⚠️ '+product}</span></div><div class="feature-mini-chart">${barsHtml}</div><div class="feature-mini-labels">${monthOrder.map(m=>`<span>${monthNames[m]}</span>`).join('')}</div><div class="feature-avg">${monthNames[currentMonth]}: <strong>${curVal}%</strong> | Avg: ${avg}%</div></div>`;
+        }).join('') : '<div style="color:#999;font-style:italic;padding:20px;text-align:center;grid-column:span 3;">No feature usage data available</div>';
+
+        document.getElementById('commentInput').value = c.comment || '';
+        document.getElementById('detailPanel').classList.add('active');
+        document.getElementById('detailPanel').scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+
+    function closeDetail() { document.getElementById('detailPanel').classList.remove('active'); document.querySelectorAll('.customer-row').forEach(r => r.classList.remove('active')); }
+    function filterCustomers() {
+        const tf=document.getElementById('tierFilter').value, sf=document.getElementById('segmentFilter').value, rf=document.getElementById('regionFilter').value, pf=document.getElementById('productFilter').value, st=document.getElementById('searchBox').value.toLowerCase();
+        document.querySelectorAll('.customer-row:not(.header-row)').forEach(row => {
+            const idx=parseInt(row.dataset.index), c=customers[idx];
+            const ok=(tf==='all'||c.tier===tf)&&(sf==='all'||c.segment===sf)&&(rf==='all'||c.region===rf)&&(pf==='all'||c.product.toLowerCase().includes(pf.toLowerCase()))&&c.name.toLowerCase().includes(st);
+            row.style.display=ok?'':'none';
+        }); updateVisibleCount();
+    }
+    function updateVisibleCount() { document.getElementById('visibleCount').textContent = document.querySelectorAll('.customer-row:not(.header-row):not([style*="display: none"])').length; }
+    renderCustomerList();
+    </script>
+</body>
+</html>
