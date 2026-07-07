@@ -1,0 +1,46 @@
+##############################################
+# Sample OpenVPN client configuration        #
+# Replace with your actual .ovpn file        #
+##############################################
+
+client
+dev tun
+proto udp
+remote your-vpn-server.example.com 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+
+# Certificate Authority
+<ca>
+-----BEGIN CERTIFICATE-----
+PASTE_YOUR_CA_CERTIFICATE_HERE
+-----END CERTIFICATE-----
+</ca>
+
+# Client Certificate
+<cert>
+-----BEGIN CERTIFICATE-----
+PASTE_YOUR_CLIENT_CERTIFICATE_HERE
+-----END CERTIFICATE-----
+</cert>
+
+# Client Private Key
+<key>
+-----BEGIN PRIVATE KEY-----
+PASTE_YOUR_CLIENT_PRIVATE_KEY_HERE
+-----END PRIVATE KEY-----
+</key>
+
+# TLS Auth (if your VPN uses it)
+# <tls-auth>
+# -----BEGIN OpenVPN Static key V1-----
+# PASTE_YOUR_TLS_KEY_HERE
+# -----END OpenVPN Static key V1-----
+# </tls-auth>
+# key-direction 1
+
+cipher AES-256-GCM
+auth SHA256
+verb 3
