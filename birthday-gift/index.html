@@ -167,6 +167,103 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
 .loveNote{margin-top:28px;text-align:center;padding:0 20px}
 .loveNote p{color:rgba(255,255,255,.2);font-size:12px;line-height:1.8;font-weight:300;letter-spacing:.5px}
 .loveNote .sig{color:#f9a8d4;font-size:14px;margin-top:8px;font-weight:400}
+
+/* ═══ POST-QUIZ INTERACTIVE PAGES ═══ */
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600;700&display=swap');
+
+.postPage{position:fixed;top:0;left:0;width:100%;height:100%;z-index:27;display:none;
+  flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.postPage.show{display:flex}
+
+/* ── CAKE PAGE ── */
+#cakeUI{background:linear-gradient(180deg,#0a0020,#1a0a35,#0d0618)}
+#cakeUI::before{content:'';position:absolute;width:100%;height:100%;
+  background:radial-gradient(2px 2px at 20% 30%,#fff,transparent),
+  radial-gradient(2px 2px at 40% 70%,#e0c3fc,transparent),
+  radial-gradient(1px 1px at 60% 20%,#f9a8d4,transparent),
+  radial-gradient(1px 1px at 80% 60%,#fff,transparent),
+  radial-gradient(2px 2px at 10% 80%,#c084fc,transparent),
+  radial-gradient(1px 1px at 70% 40%,#fcd34d,transparent),
+  radial-gradient(1px 1px at 90% 10%,#f9a8d4,transparent),
+  radial-gradient(2px 2px at 50% 90%,#e0c3fc,transparent);
+  animation:twinkle 4s ease-in-out infinite alternate}
+@keyframes twinkle{0%{opacity:.4}100%{opacity:1}}
+.cakeTitle{color:#fcd34d;font-family:'Dancing Script',cursive;font-size:clamp(28px,7vw,42px);
+  font-weight:700;margin-bottom:8px;z-index:2;text-shadow:0 0 30px rgba(252,211,77,.3);
+  opacity:0;animation:fadeIn 1.5s ease .3s forwards}
+.cakeSubtitle{color:rgba(255,255,255,.4);font-size:13px;letter-spacing:3px;z-index:2;
+  opacity:0;animation:fadeIn 1.5s ease .8s forwards;margin-bottom:20px}
+.cakeWrap{position:relative;z-index:2;width:280px;height:280px;margin:10px 0 24px}
+.cakeCanvas{width:100%;height:100%}
+.blowBtn{z-index:2;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;color:#fff;
+  padding:16px 40px;border-radius:50px;font-size:16px;cursor:pointer;font-weight:600;
+  letter-spacing:1px;box-shadow:0 4px 24px rgba(124,58,237,.4);transition:all .3s;
+  opacity:0;animation:fadeIn 1s ease 1.5s forwards}
+.blowBtn:hover{transform:scale(1.05);box-shadow:0 6px 30px rgba(124,58,237,.5)}
+.blowBtn.blown{background:linear-gradient(135deg,#10b981,#34d399);pointer-events:none}
+
+/* ── ROSE BOUQUET PAGE ── */
+#roseUI{background:linear-gradient(180deg,#fff0f5,#fce4ec,#fce7f3)}
+.roseTitle{font-family:'Dancing Script',cursive;font-size:clamp(26px,6.5vw,36px);color:#e91e63;
+  font-weight:700;z-index:2;margin-bottom:4px;opacity:0;animation:fadeIn 1s ease .3s forwards}
+.roseEmoji{font-size:28px;z-index:2;opacity:0;animation:fadeIn 1s ease .5s forwards}
+.roseBouquet{position:relative;z-index:2;width:90%;max-width:380px;height:400px;margin:16px 0}
+.roseCanvas{width:100%;height:100%}
+.loveBubble{position:absolute;padding:10px 16px;background:rgba(255,255,255,.85);
+  border-radius:20px;font-size:13px;color:#880e4f;box-shadow:0 4px 16px rgba(233,30,99,.12);
+  white-space:nowrap;opacity:0;animation:bubbleIn .8s ease forwards;z-index:3}
+@keyframes bubbleIn{0%{opacity:0;transform:scale(.7) translateY(10px)}
+  100%{opacity:1;transform:scale(1) translateY(0)}}
+.lb1{top:5%;left:5%;animation-delay:.5s}.lb2{top:5%;right:5%;animation-delay:.8s}
+.lb3{top:40%;left:-2%;animation-delay:1.1s}.lb4{top:40%;right:-2%;animation-delay:1.4s}
+.heartTree{position:absolute;bottom:0;z-index:1}
+.heartTree.left{left:8%}.heartTree.right{right:8%}
+.roseContinue{z-index:3;margin-top:8px;background:linear-gradient(135deg,#ec4899,#f43f5e);
+  border:none;color:#fff;padding:14px 36px;border-radius:50px;font-size:15px;cursor:pointer;
+  font-weight:600;box-shadow:0 4px 20px rgba(236,72,153,.3);
+  opacity:0;animation:fadeIn 1s ease 2s forwards;transition:transform .2s}
+.roseContinue:hover{transform:scale(1.04)}
+
+/* ── LOVE LETTER PAGE ── */
+#letterUI{background:linear-gradient(180deg,#1a0a2e,#2d1040,#1a0a2e)}
+.letterTitle{font-family:'Dancing Script',cursive;font-size:clamp(24px,6vw,34px);color:#f472b6;
+  font-weight:700;z-index:2;margin-bottom:4px;opacity:0;animation:fadeIn 1.2s ease .3s forwards}
+.letterHeart{font-size:22px;z-index:2;margin-bottom:16px;opacity:0;animation:fadeIn 1s ease .6s forwards}
+.letterCard{z-index:2;width:88%;max-width:380px;background:linear-gradient(175deg,#fefce8,#fffbeb,#fef3c7);
+  border-radius:16px;padding:28px 24px;box-shadow:0 12px 40px rgba(0,0,0,.3);
+  opacity:0;transform:translateY(30px) rotate(-1deg);
+  animation:letterSlide 1.2s cubic-bezier(.22,1,.36,1) .8s forwards;position:relative;overflow:hidden}
+@keyframes letterSlide{to{opacity:1;transform:translateY(0) rotate(-1deg)}}
+.letterCard::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+  background:repeating-linear-gradient(transparent,transparent 27px,rgba(200,180,160,.2) 27px,rgba(200,180,160,.2) 28px);
+  pointer-events:none}
+.letterCard .dear{font-family:'Dancing Script',cursive;font-size:20px;color:#6b4423;margin-bottom:12px;font-weight:600}
+.letterCard .body{font-family:'Dancing Script',cursive;font-size:17px;color:#5d4037;line-height:1.85;font-weight:400}
+.letterCard .bunny{position:absolute;bottom:10px;right:14px;font-size:36px;opacity:.7}
+.letterContinue{z-index:2;margin-top:24px;background:linear-gradient(135deg,#a855f7,#ec4899);
+  border:none;color:#fff;padding:14px 36px;border-radius:50px;font-size:15px;cursor:pointer;
+  font-weight:600;box-shadow:0 4px 20px rgba(168,85,247,.3);
+  opacity:0;animation:fadeIn 1s ease 2.5s forwards;transition:transform .2s}
+.letterContinue:hover{transform:scale(1.04)}
+
+/* ── TAP THE GIFT PAGE ── */
+#tapGiftUI{background:linear-gradient(180deg,#fce4ec,#f8bbd0,#fce4ec)}
+.tapTitle{font-family:'Dancing Script',cursive;font-size:clamp(26px,6.5vw,36px);color:#c2185b;
+  font-weight:700;z-index:2;opacity:0;animation:fadeIn 1.2s ease .5s forwards}
+.tapSub{font-family:'Dancing Script',cursive;font-size:18px;color:#e91e63;z-index:2;margin-top:4px;
+  opacity:0;animation:fadeIn 1s ease .8s forwards}
+.giftBoxWrap{position:relative;z-index:2;margin-top:40px;cursor:pointer;
+  opacity:0;animation:giftDrop 1s cubic-bezier(.22,1,.36,1) 1.2s forwards}
+@keyframes giftDrop{0%{opacity:0;transform:translateY(-60px) scale(.5)}
+  70%{transform:translateY(5px) scale(1.02)}100%{opacity:1;transform:translateY(0) scale(1)}}
+.giftBoxWrap:hover{transform:scale(1.05)}
+.giftBoxWrap .badge{position:absolute;top:-8px;right:-8px;width:28px;height:28px;
+  background:#e91e63;border-radius:50%;color:#fff;font-size:14px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(233,30,99,.4);animation:badgePulse 1.5s ease-in-out infinite}
+@keyframes badgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.giftCanvas{width:120px;height:120px}
+.floatingHearts{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
 </style>
 </head>
 <body>
@@ -176,11 +273,15 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
   <p>tap to begin</p>
 </div>
 <canvas id="c"></canvas>
-<div id="ytWrap" style="display:none;position:fixed;bottom:8px;right:8px;z-index:9999;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.4);opacity:.75;transition:opacity .3s;">
-<iframe id="ytFrame" width="200" height="60" allow="autoplay;encrypted-media" frameborder="0" style="display:block;margin-bottom:-8px;"></iframe>
-</div>
 <button id="skipBtn" onclick="skipToQuiz()">SKIP ›</button>
 <div id="quizUI"></div>
+
+<!-- Post-quiz interactive pages -->
+<div id="cakeUI" class="postPage"></div>
+<div id="roseUI" class="postPage"></div>
+<div id="letterUI" class="postPage"></div>
+<div id="tapGiftUI" class="postPage"></div>
+
 <div id="giftUI"></div>
 
 <script>
@@ -202,29 +303,47 @@ const EIB=t=>{const s=1.5;return 1+(--t)*t*((s+1)*t+s)};
 const prog=(e,s,d)=>clamp((e-s)/d,0,1);
 
 // ─── MUSIC (Web Audio API) ───
-let audioCtx=null,bdayPlaying=false,romanticPlaying=false,romanticGain=null,romanticTimer=null,ytPlayer=null;
+let audioCtx=null,bdayPlaying=false,romanticPlaying=false,romanticGain=null,romanticTimer=null;
 function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
 
 function playRomanticMelody(){
   if(romanticPlaying)return;romanticPlaying=true;
-  const wrap=document.getElementById('ytWrap');
-  const fr=document.getElementById('ytFrame');
-  wrap.style.display='block';
-  if(fr.src&&fr.src.indexOf('youtube')>-1){
-    try{fr.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}','*');}catch(e){}
-    return;
+  initAudio();
+  const master=audioCtx.createGain();master.gain.value=0;master.connect(audioCtx.destination);
+  master.gain.linearRampToValueAtTime(.13,audioCtx.currentTime+1.5);
+  romanticGain=master;
+  const n=(f,s,d,v)=>{
+    if(!f)return;
+    const o=audioCtx.createOscillator();o.type='sine';o.frequency.value=f;
+    const g=audioCtx.createGain();g.gain.setValueAtTime(.001,s);
+    g.gain.linearRampToValueAtTime(v*.5,s+d*.12);
+    g.gain.setValueAtTime(v*.5,s+d*.6);
+    g.gain.exponentialRampToValueAtTime(.001,s+d*.97);
+    o.connect(g);g.connect(master);o.start(s);o.stop(s+d);
+    const o2=audioCtx.createOscillator();o2.type='triangle';o2.frequency.value=f*2;
+    const g2=audioCtx.createGain();g2.gain.setValueAtTime(.001,s);
+    g2.gain.linearRampToValueAtTime(v*.08,s+d*.15);
+    g2.gain.exponentialRampToValueAtTime(.001,s+d*.8);
+    o2.connect(g2);g2.connect(master);o2.start(s);o2.stop(s+d);
+  };
+  function loop(){
+    const C=261.63,D=293.66,E=329.63,F=349.23,G=392,A=440,B=493.88,C5=523.25,D5=587.33,E5=659.25,F5=698.46,G5=783.99;
+    let t=audioCtx.currentTime+.2;const b=.52;
+    const mel=[[E,b*2],[G,b*1.8],[A,b*1.5],[G,b*2.5],[0,b],[C5,b*2],[D5,b*1.5],[E5,b*2.5],[D5,b*1.2],[C5,b*1.5],[E5,b*3],[0,b*.8],
+      [G5,b*2],[F5,b*1.2],[E5,b*2],[D5,b*1],[E5,b*1.5],[G5,b*3.5],[0,b],[F5,b*1.5],[E5,b*1.2],[D5,b*1.5],[C5,b*2],[A,b*3],[0,b],
+      [E5,b*1.5],[F5,b*2],[E5,b*1.2],[D5,b*1.5],[C5,b*1],[E5,b*3.5],[0,b],[D5,b*1.5],[C5,b*1.2],[A,b*1.8],[G,b*1.5],[E,b*4],[0,b*2]];
+    mel.forEach(([f,d])=>{if(f)n(f,t,d,.5);t+=d;});
+    const dur=(t-audioCtx.currentTime)*1000;
+    romanticTimer=setTimeout(()=>{if(romanticPlaying)loop();},dur-500);
   }
-  fr.src='https://www.youtube.com/embed/Ry9mRnBqzHA?autoplay=1&loop=1&playlist=Ry9mRnBqzHA&enablejsapi=1&controls=1';
+  loop();
 }
 
 function stopRomanticMelody(){
   if(!romanticPlaying)return;
   romanticPlaying=false;
-  const wrap=document.getElementById('ytWrap');
-  const fr=document.getElementById('ytFrame');
-  try{fr.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');}catch(e){}
-  wrap.style.display='none';
   if(romanticTimer){clearTimeout(romanticTimer);romanticTimer=null;}
+  if(romanticGain){romanticGain.gain.linearRampToValueAtTime(0,audioCtx.currentTime+1.5);romanticGain=null;}
 }
 
 function playBdayTune(){
@@ -1540,12 +1659,275 @@ function endQuiz(){
     <h2 style="color:#f9a8d4;font-size:clamp(22px,5vw,28px);margin-bottom:12px;font-weight:300;letter-spacing:1px">Quiz Complete!</h2>
     <p style="color:rgba(255,255,255,.4);font-size:14px;line-height:1.6;margin-bottom:28px;letter-spacing:.5px">
       Let's see how you did...</p>
-    <button onclick="showGift()" style="background:linear-gradient(135deg,#a855f7,#ec4899);border:none;
+    <button onclick="showCake()" style="background:linear-gradient(135deg,#a855f7,#ec4899);border:none;
       color:#fff;padding:16px 40px;border-radius:50px;font-size:16px;cursor:pointer;font-weight:600;
       letter-spacing:.5px;box-shadow:0 4px 24px rgba(168,85,247,.3);transition:transform .2s">
-      Reveal Your Gift</button>
+      Continue</button>
   </div>`;
 }
+
+// ═══ POST-QUIZ INTERACTIVE PAGES ═══
+
+window.showCake=function(){
+  document.getElementById('quizUI').style.display='none';
+  const el=document.getElementById('cakeUI');
+  el.classList.add('show');
+  el.innerHTML=`
+    <div class="cakeTitle">Happy Birthday!</div>
+    <div class="cakeSubtitle">MAKE A WISH</div>
+    <div class="cakeWrap"><canvas class="cakeCanvas" id="cakeCanvas"></canvas></div>
+    <button class="blowBtn" onclick="blowCandles()">Blow the Candles</button>`;
+  drawCake();
+};
+
+function drawCake(){
+  const cv=document.getElementById('cakeCanvas');if(!cv)return;
+  const c=cv.getContext('2d');
+  cv.width=560;cv.height=560;
+  const w=280,h=280;
+  // Base tier
+  c.fillStyle='#1a1a4e';
+  c.beginPath();c.ellipse(w,h-40,100,25,0,0,Math.PI*2);c.fill();
+  c.fillRect(w-100,h-130,200,90);
+  c.beginPath();c.ellipse(w,h-130,100,25,0,0,Math.PI*2);c.fill();
+  // Top tier
+  c.fillStyle='#252566';
+  c.beginPath();c.ellipse(w,h-130,70,18,0,0,Math.PI*2);c.fill();
+  c.fillRect(w-70,h-200,140,70);
+  c.beginPath();c.ellipse(w,h-200,70,18,0,0,Math.PI*2);c.fill();
+  // Decorations — stars and moons
+  c.fillStyle='#fcd34d';
+  [[w-60,h-110,4],[w+50,h-100,3],[w-30,h-170,3],[w+20,h-180,4],[w-50,h-160,2],[w+40,h-155,2]].forEach(([x,y,r])=>{
+    c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();
+  });
+  // Frosting drips
+  c.fillStyle='#c084fc';
+  [[w-80,h-130,12,20],[w-40,h-130,10,28],[w,h-130,14,24],[w+40,h-130,10,18],[w+70,h-130,12,22]].forEach(([x,y,rr,hh])=>{
+    c.beginPath();c.moveTo(x-rr,y);c.lineTo(x-rr,y+hh);c.quadraticCurveTo(x,y+hh+12,x+rr,y+hh);c.lineTo(x+rr,y);c.fill();
+  });
+  // Candles
+  window._candlesLit=true;
+  const candles=[[w-40,h-200],[w-15,h-200],[w+10,h-200],[w+35,h-200]];
+  candles.forEach(([cx2,cy2])=>{
+    c.fillStyle='#f9a8d4';c.fillRect(cx2-3,cy2-35,6,35);
+  });
+  function animateFlames(){
+    if(!window._candlesLit)return;
+    candles.forEach(([cx2,cy2])=>{
+      c.clearRect(cx2-12,cy2-60,24,26);
+      const flicker=Math.sin(Date.now()/100+cx2)*3;
+      // Outer glow
+      const grd=c.createRadialGradient(cx2+flicker,cy2-42,2,cx2+flicker,cy2-42,14);
+      grd.addColorStop(0,'rgba(252,211,77,.6)');grd.addColorStop(1,'transparent');
+      c.fillStyle=grd;c.fillRect(cx2-14,cy2-56,28,28);
+      // Flame
+      c.fillStyle='#fcd34d';c.beginPath();
+      c.moveTo(cx2+flicker,cy2-52);
+      c.quadraticCurveTo(cx2+6+flicker,cy2-42,cx2+flicker,cy2-35);
+      c.quadraticCurveTo(cx2-6+flicker,cy2-42,cx2+flicker,cy2-52);
+      c.fill();
+      c.fillStyle='#fff';c.beginPath();c.arc(cx2+flicker,cy2-42,2,0,Math.PI*2);c.fill();
+    });
+    requestAnimationFrame(animateFlames);
+  }
+  animateFlames();
+}
+
+window.blowCandles=function(){
+  window._candlesLit=false;
+  const cv=document.getElementById('cakeCanvas');if(!cv)return;
+  const c=cv.getContext('2d');
+  // Clear flames
+  [[140,200],[165,200],[190,200],[215,200]].forEach(([x,y])=>{
+    c.clearRect(x*2-24,y*2-120,48,52);
+  });
+  // Draw smoke wisps
+  c.strokeStyle='rgba(255,255,255,.3)';c.lineWidth=1.5;
+  [[280-40,280-200],[280-15,280-200],[280+10,280-200],[280+35,280-200]].forEach(([x,y])=>{
+    for(let i=0;i<3;i++){
+      c.beginPath();
+      const sx=x+(Math.random()-0.5)*6;
+      c.moveTo(sx,y-35);
+      c.bezierCurveTo(sx-5,y-50-i*8,sx+8,y-60-i*8,sx-3,y-75-i*8);
+      c.stroke();
+    }
+  });
+  const btn=document.querySelector('.blowBtn');
+  btn.textContent='Candles blown! ✨';btn.classList.add('blown');
+  // Confetti
+  confettiBurst();
+  setTimeout(()=>showRoseBouquet(),2500);
+};
+
+window.showRoseBouquet=function(){
+  document.getElementById('cakeUI').classList.remove('show');
+  const el=document.getElementById('roseUI');
+  el.classList.add('show');
+  el.innerHTML=`
+    <div class="roseTitle">Your Rose Bouquet</div>
+    <div class="roseEmoji">🌹</div>
+    <div class="roseBouquet">
+      <canvas class="roseCanvas" id="roseCanvas"></canvas>
+      <div class="loveBubble lb1">Forever yours 💕</div>
+      <div class="loveBubble lb2">You make my world beautiful</div>
+      <div class="loveBubble lb3">You are my sunshine ☀️</div>
+      <div class="loveBubble lb4">Happy Birthday Shree 💝</div>
+    </div>
+    <button class="roseContinue" onclick="showLoveLetter()">Continue</button>`;
+  drawRoseBouquet();
+  drawHeartTrees(el);
+};
+
+function drawRoseBouquet(){
+  const cv=document.getElementById('roseCanvas');if(!cv)return;
+  const c=cv.getContext('2d');
+  cv.width=760;cv.height=800;
+  const cx2=380,cy2=400;
+  // Stems
+  c.strokeStyle='#2e7d32';c.lineWidth=4;
+  [[-40,0],[0,-20],[30,10],[-20,15],[15,-10],[-10,-5],[25,5]].forEach(([ox,oy],i)=>{
+    c.beginPath();c.moveTo(cx2+ox,cy2+100);
+    c.quadraticCurveTo(cx2+ox+oy,cy2+40,cx2+ox*1.8,cy2-60-i*20+oy);c.stroke();
+  });
+  // Leaves
+  c.fillStyle='#388e3c';
+  [[cx2-50,cy2+30,-0.3],[cx2+40,cy2+10,0.4],[cx2-20,cy2+60,-0.5],[cx2+30,cy2+50,0.3]].forEach(([x,y,r])=>{
+    c.save();c.translate(x,y);c.rotate(r);
+    c.beginPath();c.ellipse(0,0,18,8,0,0,Math.PI*2);c.fill();c.restore();
+  });
+  // Roses
+  c.lineWidth=1;
+  const rosePositions=[[cx2,cy2-100],[cx2-50,cy2-60],[cx2+45,cy2-70],[cx2-25,cy2-130],[cx2+20,cy2-140],
+    [cx2-60,cy2-110],[cx2+55,cy2-100],[cx2,cy2-40],[cx2-35,cy2-10],[cx2+30,cy2-20]];
+  rosePositions.forEach(([rx,ry])=>{
+    // Rose petals
+    for(let layer=3;layer>=0;layer--){
+      const rad=16-layer*3;
+      const hue=Math.random()>.3?'#e53935':'#c62828';
+      c.fillStyle=layer===0?'#b71c1c':hue;
+      for(let p=0;p<5+layer;p++){
+        const angle=(Math.PI*2/(5+layer))*p+layer*.3;
+        const px=rx+Math.cos(angle)*rad;
+        const py=ry+Math.sin(angle)*rad;
+        c.beginPath();c.ellipse(px,py,8-layer,10-layer*1.5,angle,0,Math.PI*2);c.fill();
+      }
+    }
+    c.fillStyle='#ffcdd2';c.beginPath();c.arc(rx,ry,4,0,Math.PI*2);c.fill();
+  });
+  // Ribbon bow
+  c.fillStyle='#d32f2f';
+  c.beginPath();c.ellipse(cx2-20,cy2+90,25,12,-0.3,0,Math.PI*2);c.fill();
+  c.beginPath();c.ellipse(cx2+20,cy2+90,25,12,0.3,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(cx2,cy2+90,8,0,Math.PI*2);c.fill();
+  // Ribbon tails
+  c.strokeStyle='#d32f2f';c.lineWidth=5;
+  c.beginPath();c.moveTo(cx2-5,cy2+95);c.quadraticCurveTo(cx2-15,cy2+130,cx2-25,cy2+150);c.stroke();
+  c.beginPath();c.moveTo(cx2+5,cy2+95);c.quadraticCurveTo(cx2+15,cy2+130,cx2+25,cy2+150);c.stroke();
+}
+
+function drawHeartTrees(container){
+  const bouquet=container.querySelector('.roseBouquet');
+  ['left','right'].forEach(side=>{
+    const cvt=document.createElement('canvas');
+    cvt.width=160;cvt.height=300;cvt.className='heartTree '+side;
+    cvt.style.cssText='position:absolute;bottom:0;width:80px;height:150px;'+(side==='left'?'left:4%':'right:4%');
+    bouquet.appendChild(cvt);
+    const c=cvt.getContext('2d');
+    // Trunk
+    c.fillStyle='#8d6e63';c.fillRect(72,180,16,120);
+    // Branches
+    c.strokeStyle='#795548';c.lineWidth=4;
+    [[80,180,40,120],[80,160,120,100],[80,140,50,80],[80,120,110,70]].forEach(([x1,y1,x2,y2])=>{
+      c.beginPath();c.moveTo(x1,y1);c.quadraticCurveTo((x1+x2)/2,y1-20,x2,y2);c.stroke();
+    });
+    // Heart-shaped leaves
+    const hearts=[[60,100],[100,90],[40,130],[120,110],[80,70],[50,60],[110,55],[70,40],[90,120],[65,150]];
+    hearts.forEach(([hx,hy])=>{
+      c.fillStyle=`hsl(${340+Math.random()*20},${70+Math.random()*20}%,${55+Math.random()*15}%)`;
+      c.beginPath();
+      const s=5+Math.random()*4;
+      c.moveTo(hx,hy+s);
+      c.bezierCurveTo(hx-s,hy,hx-s,hy-s*.8,hx,hy-s*.4);
+      c.bezierCurveTo(hx+s,hy-s*.8,hx+s,hy,hx,hy+s);
+      c.fill();
+    });
+  });
+}
+
+window.showLoveLetter=function(){
+  document.getElementById('roseUI').classList.remove('show');
+  const el=document.getElementById('letterUI');
+  el.classList.add('show');
+  el.innerHTML=`
+    <div class="letterTitle">A Message From My Heart</div>
+    <div class="letterHeart">❤️</div>
+    <div class="letterCard">
+      <div class="dear">Dear Shree,</div>
+      <div class="body">
+        Happy Birthday to someone truly special! 🎂<br><br>
+        You are Sweet, Loyal, My rock, and I'm so grateful to have you in my life.<br><br>
+        You bring so much warmth and sweetness into my life. Every moment with you is precious.<br><br>
+        On your special day, I wish you all the happiness in the world!
+      </div>
+      <div class="bunny">🐰🐰</div>
+    </div>
+    <button class="letterContinue" onclick="showTapGift()">Continue</button>`;
+};
+
+window.showTapGift=function(){
+  document.getElementById('letterUI').classList.remove('show');
+  const el=document.getElementById('tapGiftUI');
+  el.classList.add('show');
+  // Floating hearts background
+  let heartsHtml='';
+  for(let i=0;i<15;i++){
+    const x=Math.random()*100,d=3+Math.random()*5,del=Math.random()*4,sz=12+Math.random()*16;
+    heartsHtml+=`<div style="position:absolute;left:${x}%;bottom:-20px;font-size:${sz}px;
+      animation:floatUp ${d}s ease-in-out ${del}s infinite;opacity:.3">💕</div>`;
+  }
+  el.innerHTML=`
+    <style>@keyframes floatUp{0%{transform:translateY(0);opacity:.3}50%{opacity:.5}100%{transform:translateY(-100vh);opacity:0}}</style>
+    <div class="floatingHearts">${heartsHtml}</div>
+    <div class="tapTitle">One Last Thing...</div>
+    <div class="tapSub">Tap the gift</div>
+    <div class="giftBoxWrap" onclick="revealFinalGift()">
+      <canvas class="giftCanvas" id="giftBoxCanvas"></canvas>
+      <div class="badge">1</div>
+    </div>`;
+  drawGiftBox();
+};
+
+function drawGiftBox(){
+  const cv=document.getElementById('giftBoxCanvas');if(!cv)return;
+  const c=cv.getContext('2d');
+  cv.width=240;cv.height=240;
+  const cx2=120,cy2=130;
+  // Box body
+  c.fillStyle='#f8bbd0';
+  c.fillRect(cx2-55,cy2-20,110,70);
+  // Box lid
+  c.fillStyle='#f48fb1';
+  c.fillRect(cx2-60,cy2-35,120,20);
+  // Ribbon vertical
+  c.fillStyle='#e91e63';
+  c.fillRect(cx2-6,cy2-35,12,90);
+  // Ribbon horizontal
+  c.fillRect(cx2-60,cy2-28,120,8);
+  // Bow
+  c.fillStyle='#e91e63';
+  c.beginPath();c.ellipse(cx2-18,cy2-40,20,10,-0.3,0,Math.PI*2);c.fill();
+  c.beginPath();c.ellipse(cx2+18,cy2-40,20,10,0.3,0,Math.PI*2);c.fill();
+  c.beginPath();c.arc(cx2,cy2-40,7,0,Math.PI*2);c.fill();
+  // Bow tails
+  c.strokeStyle='#e91e63';c.lineWidth=3;
+  c.beginPath();c.moveTo(cx2-4,cy2-35);c.quadraticCurveTo(cx2-15,cy2-55,cx2-22,cy2-65);c.stroke();
+  c.beginPath();c.moveTo(cx2+4,cy2-35);c.quadraticCurveTo(cx2+15,cy2-55,cx2+22,cy2-65);c.stroke();
+}
+
+window.revealFinalGift=function(){
+  document.getElementById('tapGiftUI').classList.remove('show');
+  showGift();
+};
 
 window.showGift=function(){
   playBdayTune();
