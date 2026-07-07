@@ -199,8 +199,90 @@ const EIB=t=>{const s=1.5;return 1+(--t)*t*((s+1)*t+s)};
 const prog=(e,s,d)=>clamp((e-s)/d,0,1);
 
 // ─── MUSIC (Web Audio API) ───
-let audioCtx=null,bdayPlaying=false;
+let audioCtx=null,bdayPlaying=false,romanticPlaying=false,romanticGain=null,romanticTimer=null;
 function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+
+function playRomanticMelody(){
+  if(romanticPlaying)return;romanticPlaying=true;
+  initAudio();
+  const vol=audioCtx.createGain();vol.gain.value=0;vol.connect(audioCtx.destination);
+  vol.gain.linearRampToValueAtTime(.09,audioCtx.currentTime+1.5);
+  romanticGain=vol;
+
+  const E4=329.63,Fs4=369.99,Gs4=415.30,A4=440,B4=493.88,Cs5=554.37,D5=587.33,E5=659.25,Fs5=739.99,Gs5=830.61,A5=880;
+
+  function scheduleLoop(){
+    const phrases=[
+      // Gentle rising — "falling in love"
+      [{f:E4,d:.7},{f:Fs4,d:.5},{f:Gs4,d:.9},{f:A4,d:.6},{f:B4,d:1.1},{f:0,d:.4}],
+      // Tender call — "longing"
+      [{f:Cs5,d:.6},{f:B4,d:.5},{f:A4,d:.8},{f:Gs4,d:.5},{f:A4,d:.6},{f:B4,d:1.2},{f:0,d:.5}],
+      // Soaring — "meeting"
+      [{f:E5,d:.5},{f:D5,d:.4},{f:Cs5,d:.7},{f:B4,d:.5},{f:Cs5,d:.6},{f:E5,d:1.0},{f:0,d:.4}],
+      // Warm descent — "together"
+      [{f:Fs5,d:.6},{f:E5,d:.5},{f:Cs5,d:.7},{f:B4,d:.6},{f:A4,d:.8},{f:Gs4,d:1.3},{f:0,d:.6}],
+      // Dreamy high — "love deepens"
+      [{f:A4,d:.5},{f:Cs5,d:.6},{f:E5,d:.7},{f:Fs5,d:.5},{f:Gs5,d:1.0},{f:Fs5,d:.7},{f:E5,d:1.1},{f:0,d:.5}],
+      // Gentle resolve — "commitment"
+      [{f:Cs5,d:.6},{f:B4,d:.4},{f:A4,d:.7},{f:Gs4,d:.5},{f:Fs4,d:.6},{f:E4,d:1.5},{f:0,d:.8}],
+      // Soft reprise — "warmth"
+      [{f:A4,d:.5},{f:B4,d:.5},{f:Cs5,d:.8},{f:E5,d:.6},{f:D5,d:.5},{f:Cs5,d:.5},{f:B4,d:1.2},{f:0,d:.6}],
+      // Closing lullaby
+      [{f:Gs4,d:.6},{f:A4,d:.5},{f:B4,d:.8},{f:A4,d:.7},{f:E4,d:1.6},{f:0,d:1.0}]
+    ];
+
+    let time=audioCtx.currentTime+.2;
+    phrases.forEach(phrase=>{
+      phrase.forEach(n=>{
+        if(n.f===0){time+=n.d;return;}
+        // Warm sine pad
+        const osc=audioCtx.createOscillator();
+        osc.type='sine';osc.frequency.value=n.f;
+        const ng=audioCtx.createGain();
+        ng.gain.setValueAtTime(.001,time);
+        ng.gain.exponentialRampToValueAtTime(.55,time+.12);
+        ng.gain.exponentialRampToValueAtTime(.01,time+n.d*.92);
+        osc.connect(ng);ng.connect(vol);
+        osc.start(time);osc.stop(time+n.d);
+
+        // Soft triangle an octave higher — shimmer
+        const osc2=audioCtx.createOscillator();
+        osc2.type='triangle';osc2.frequency.value=n.f*2;
+        const ng2=audioCtx.createGain();
+        ng2.gain.setValueAtTime(.001,time);
+        ng2.gain.exponentialRampToValueAtTime(.12,time+.15);
+        ng2.gain.exponentialRampToValueAtTime(.01,time+n.d*.7);
+        osc2.connect(ng2);ng2.connect(vol);
+        osc2.start(time);osc2.stop(time+n.d);
+
+        // Sub-bass foundation (one octave down, very quiet)
+        const osc3=audioCtx.createOscillator();
+        osc3.type='sine';osc3.frequency.value=n.f/2;
+        const ng3=audioCtx.createGain();
+        ng3.gain.setValueAtTime(.001,time);
+        ng3.gain.exponentialRampToValueAtTime(.08,time+.1);
+        ng3.gain.exponentialRampToValueAtTime(.01,time+n.d*.8);
+        osc3.connect(ng3);ng3.connect(vol);
+        osc3.start(time);osc3.stop(time+n.d);
+
+        time+=n.d*.85;
+      });
+    });
+    const loopDur=(time-audioCtx.currentTime)*1000;
+    romanticTimer=setTimeout(()=>{if(romanticPlaying)scheduleLoop();},loopDur-500);
+  }
+  scheduleLoop();
+}
+
+function stopRomanticMelody(){
+  if(!romanticPlaying)return;
+  romanticPlaying=false;
+  if(romanticTimer){clearTimeout(romanticTimer);romanticTimer=null;}
+  if(romanticGain){
+    romanticGain.gain.linearRampToValueAtTime(0,audioCtx.currentTime+1.5);
+    romanticGain=null;
+  }
+}
 
 function playBdayTune(){
   if(bdayPlaying)return;bdayPlaying=true;
@@ -1320,7 +1402,8 @@ function playScene(idx){
     return;
   }
   curScene=idx;sceneStart=performance.now();parts=[];
-  if(idx===7)playBdayTune();
+  if(idx===0)playRomanticMelody();
+  if(idx===7){stopRomanticMelody();playBdayTune();}
   timers.push(setTimeout(()=>playScene(idx+1),DURS[idx]*1000));
 }
 
@@ -1349,7 +1432,7 @@ function begin(){
 }
 
 function skipToQuiz(){
-  clearT();curScene=-1;
+  clearT();curScene=-1;stopRomanticMelody();
   document.getElementById('skipBtn').style.display='none';
   startQuiz();
 }
