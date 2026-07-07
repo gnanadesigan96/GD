@@ -175,6 +175,43 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
   flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
 .postPage.show{display:flex}
 
+/* ── EXCITED PAGE ── */
+#excitedUI{background:linear-gradient(135deg,#1a0a2e,#2d0a1e,#1a0a2e);
+  background-size:400% 400%;animation:gradShift 8s ease infinite}
+.excitedWrap{z-index:2;text-align:center;max-width:400px;padding:20px}
+.excitedEmoji{font-size:60px;margin-bottom:16px;animation:bounce 1s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}
+.excitedTitle{font-family:'Dancing Script',cursive;font-size:clamp(28px,7vw,40px);
+  color:#f9a8d4;font-weight:700;margin-bottom:8px}
+.excitedSub{color:rgba(255,255,255,.5);font-size:15px;margin-bottom:36px;letter-spacing:1px}
+.excitedBtns{display:flex;gap:20px;justify-content:center;align-items:center;position:relative;min-height:60px}
+.yesBtn{background:linear-gradient(135deg,#ec4899,#a855f7);border:none;color:#fff;
+  padding:16px 48px;border-radius:50px;font-size:18px;cursor:pointer;font-weight:700;
+  letter-spacing:1px;box-shadow:0 4px 24px rgba(236,72,153,.4);transition:all .3s}
+.yesBtn:hover{transform:scale(1.08);box-shadow:0 6px 30px rgba(236,72,153,.5)}
+.noBtn{background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);
+  padding:14px 36px;border-radius:50px;font-size:16px;cursor:pointer;font-weight:600;
+  transition:all .15s;position:absolute}
+
+/* ── BALLOON PAGE ── */
+#balloonUI{background:linear-gradient(180deg,#e8f5e9,#f3e5f5,#fce4ec)}
+.balloonTitle{font-family:'Dancing Script',cursive;font-size:clamp(26px,6.5vw,38px);
+  color:#7b1fa2;font-weight:700;z-index:2;margin-bottom:4px;
+  opacity:0;animation:fadeIn 1s ease .3s forwards}
+.balloonSub{color:rgba(100,50,100,.5);font-size:14px;letter-spacing:2px;z-index:2;margin-bottom:20px;
+  opacity:0;animation:fadeIn 1s ease .6s forwards}
+.balloonArea{position:relative;z-index:2;width:90%;max-width:400px;height:55vh;min-height:300px}
+.balloon{position:absolute;cursor:pointer;transition:transform .2s;animation:balloonFloat 3s ease-in-out infinite}
+.balloon:hover{transform:scale(1.1)!important}
+@keyframes balloonFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.balloon svg{filter:drop-shadow(0 4px 8px rgba(0,0,0,.12))}
+.popEffect{position:absolute;pointer-events:none;z-index:10}
+.popPiece{position:absolute;border-radius:50%;animation:popFly .6s ease-out forwards}
+@keyframes popFly{0%{opacity:1;transform:translate(0,0) scale(1)}
+  100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0)}}
+.balloonCounter{z-index:2;color:#7b1fa2;font-size:16px;font-weight:600;margin-top:12px;
+  opacity:0;animation:fadeIn 1s ease .9s forwards}
+
 /* ── CAKE PAGE ── */
 #cakeUI{background:linear-gradient(180deg,#0a0020,#1a0a35,#0d0618)}
 #cakeUI::before{content:'';position:absolute;width:100%;height:100%;
@@ -203,47 +240,73 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
 .blowBtn.blown{background:linear-gradient(135deg,#10b981,#34d399);pointer-events:none}
 
 /* ── ROSE BOUQUET PAGE ── */
-#roseUI{background:linear-gradient(180deg,#fff0f5,#fce4ec,#fce7f3)}
-.roseTitle{font-family:'Dancing Script',cursive;font-size:clamp(26px,6.5vw,36px);color:#e91e63;
+#roseUI{background:linear-gradient(180deg,#f5e6ea,#f0c4d0,#f5d5de)}
+.roseTitle{font-family:'Dancing Script',cursive;font-size:clamp(26px,6.5vw,36px);color:#c2185b;
   font-weight:700;z-index:2;margin-bottom:4px;opacity:0;animation:fadeIn 1s ease .3s forwards}
 .roseEmoji{font-size:28px;z-index:2;opacity:0;animation:fadeIn 1s ease .5s forwards}
-.roseBouquet{position:relative;z-index:2;width:90%;max-width:380px;height:400px;margin:16px 0}
-.roseCanvas{width:100%;height:100%}
-.loveBubble{position:absolute;padding:10px 16px;background:rgba(255,255,255,.85);
-  border-radius:20px;font-size:13px;color:#880e4f;box-shadow:0 4px 16px rgba(233,30,99,.12);
-  white-space:nowrap;opacity:0;animation:bubbleIn .8s ease forwards;z-index:3}
+.roseBouquet{position:relative;z-index:2;width:92%;max-width:400px;height:50vh;min-height:340px;margin:12px 0}
+.loveBubble{position:absolute;padding:10px 16px;background:rgba(255,255,255,.9);
+  border-radius:20px;font-size:12px;color:#880e4f;box-shadow:0 4px 16px rgba(233,30,99,.12);
+  opacity:0;animation:bubbleIn .8s ease forwards;z-index:3;max-width:140px;text-align:center;line-height:1.4}
 @keyframes bubbleIn{0%{opacity:0;transform:scale(.7) translateY(10px)}
   100%{opacity:1;transform:scale(1) translateY(0)}}
-.lb1{top:5%;left:5%;animation-delay:.5s}.lb2{top:5%;right:5%;animation-delay:.8s}
-.lb3{top:40%;left:-2%;animation-delay:1.1s}.lb4{top:40%;right:-2%;animation-delay:1.4s}
+.lb1{top:2%;left:2%;animation-delay:.5s}.lb2{top:2%;right:2%;animation-delay:.8s}
+.lb3{top:42%;left:-3%;animation-delay:1.1s}.lb4{top:42%;right:-3%;animation-delay:1.4s}
+.lb5{bottom:8%;left:5%;animation-delay:1.7s}.lb6{bottom:8%;right:5%;animation-delay:2s}
 .heartTree{position:absolute;bottom:0;z-index:1;width:80px;height:150px}
-.heartTree.left{left:4%}.heartTree.right{right:4%}
+.heartTree.left{left:2%}.heartTree.right{right:2%}
 .roseContinue{z-index:3;margin-top:8px;background:linear-gradient(135deg,#ec4899,#f43f5e);
   border:none;color:#fff;padding:14px 36px;border-radius:50px;font-size:15px;cursor:pointer;
   font-weight:600;box-shadow:0 4px 20px rgba(236,72,153,.3);
-  opacity:0;animation:fadeIn 1s ease 2s forwards;transition:transform .2s}
+  opacity:0;animation:fadeIn 1s ease 2.5s forwards;transition:transform .2s}
 .roseContinue:hover{transform:scale(1.04)}
 
-/* ── LOVE LETTER PAGE ── */
+/* ── LOVE LETTER PAGE (Envelope) ── */
 #letterUI{background:linear-gradient(180deg,#1a0a2e,#2d1040,#1a0a2e)}
 .letterTitle{font-family:'Dancing Script',cursive;font-size:clamp(24px,6vw,34px);color:#f472b6;
   font-weight:700;z-index:2;margin-bottom:4px;opacity:0;animation:fadeIn 1.2s ease .3s forwards}
 .letterHeart{font-size:22px;z-index:2;margin-bottom:16px;opacity:0;animation:fadeIn 1s ease .6s forwards}
-.letterCard{z-index:2;width:88%;max-width:380px;background:linear-gradient(175deg,#fefce8,#fffbeb,#fef3c7);
-  border-radius:16px;padding:28px 24px;box-shadow:0 12px 40px rgba(0,0,0,.3);
-  opacity:0;transform:translateY(30px) rotate(-1deg);
-  animation:letterSlide 1.2s cubic-bezier(.22,1,.36,1) .8s forwards;position:relative;overflow:hidden}
-@keyframes letterSlide{to{opacity:1;transform:translateY(0) rotate(-1deg)}}
+.envelopeWrap{z-index:2;perspective:800px;cursor:pointer;margin:10px 0 20px}
+.envelope{width:300px;height:200px;position:relative;margin:0 auto}
+.envBody{position:absolute;bottom:0;width:300px;height:160px;
+  background:linear-gradient(175deg,#f5e6d0,#eedcc0);border-radius:0 0 8px 8px;
+  box-shadow:0 8px 30px rgba(0,0,0,.25);z-index:2}
+.envBody::after{content:'';position:absolute;bottom:0;left:0;right:0;height:60%;
+  background:linear-gradient(180deg,transparent,rgba(0,0,0,.04))}
+.envFlap{position:absolute;top:0;left:0;width:0;height:0;
+  border-left:150px solid transparent;border-right:150px solid transparent;
+  border-top:110px solid #e8d4b8;z-index:3;transform-origin:top center;
+  transition:transform .8s cubic-bezier(.4,0,.2,1);filter:drop-shadow(0 2px 4px rgba(0,0,0,.1))}
+.envFlap.open{transform:rotateX(180deg)}
+.envFlapInner{position:absolute;top:0;left:0;width:0;height:0;
+  border-left:150px solid transparent;border-right:150px solid transparent;
+  border-top:110px solid #dcc8ac;z-index:1}
+.envSeal{position:absolute;top:75px;left:50%;transform:translateX(-50%);z-index:4;
+  width:50px;height:50px;background:linear-gradient(135deg,#e91e63,#c2185b);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  box-shadow:0 3px 12px rgba(233,30,99,.4);transition:all .5s}
+.envSeal.broken{opacity:0;transform:translateX(-50%) scale(2)}
+.envLabel{text-align:center;color:rgba(255,255,255,.4);font-size:13px;letter-spacing:2px;
+  margin-top:12px;opacity:0;animation:fadeIn 1s ease 1s forwards}
+.letterCard{z-index:5;width:280px;max-width:90%;background:linear-gradient(175deg,#fefce8,#fffbeb,#fef3c7);
+  border-radius:12px;padding:24px 20px;box-shadow:0 12px 40px rgba(0,0,0,.3);
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) translateY(80px);
+  opacity:0;transition:all 1s cubic-bezier(.22,1,.36,1);pointer-events:none}
+.letterCard.visible{opacity:1;transform:translate(-50%,-50%) translateY(0);pointer-events:auto}
 .letterCard::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
   background:repeating-linear-gradient(transparent,transparent 27px,rgba(200,180,160,.2) 27px,rgba(200,180,160,.2) 28px);
-  pointer-events:none}
+  pointer-events:none;border-radius:12px}
 .letterCard .dear{font-family:'Dancing Script',cursive;font-size:20px;color:#6b4423;margin-bottom:12px;font-weight:600}
-.letterCard .body{font-family:'Dancing Script',cursive;font-size:17px;color:#5d4037;line-height:1.85;font-weight:400}
-.letterCard .bunny{position:absolute;bottom:10px;right:14px;font-size:36px;opacity:.7}
-.letterContinue{z-index:2;margin-top:24px;background:linear-gradient(135deg,#a855f7,#ec4899);
+.letterCard .body{font-family:'Dancing Script',cursive;font-size:17px;color:#5d4037;line-height:1.85;font-weight:400;min-height:180px}
+.letterCard .bunny{position:absolute;bottom:10px;right:14px;font-size:30px;opacity:.7}
+.typeCursor{display:inline-block;width:2px;height:18px;background:#5d4037;margin-left:2px;
+  animation:blink .6s step-end infinite;vertical-align:text-bottom}
+@keyframes blink{50%{opacity:0}}
+.letterContinue{z-index:6;margin-top:24px;background:linear-gradient(135deg,#a855f7,#ec4899);
   border:none;color:#fff;padding:14px 36px;border-radius:50px;font-size:15px;cursor:pointer;
   font-weight:600;box-shadow:0 4px 20px rgba(168,85,247,.3);
-  opacity:0;animation:fadeIn 1s ease 2.5s forwards;transition:transform .2s}
+  opacity:0;transition:opacity .5s,transform .2s;pointer-events:none}
+.letterContinue.visible{opacity:1;pointer-events:auto}
 .letterContinue:hover{transform:scale(1.04)}
 
 /* ── TAP THE GIFT PAGE ── */
@@ -277,6 +340,8 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
 <div id="quizUI"></div>
 
 <!-- Post-quiz interactive pages -->
+<div id="excitedUI" class="postPage"></div>
+<div id="balloonUI" class="postPage"></div>
 <div id="cakeUI" class="postPage"></div>
 <div id="roseUI" class="postPage"></div>
 <div id="letterUI" class="postPage"></div>
@@ -1659,15 +1724,132 @@ function endQuiz(){
     <h2 style="color:#f9a8d4;font-size:clamp(22px,5vw,28px);margin-bottom:12px;font-weight:300;letter-spacing:1px">Quiz Complete!</h2>
     <p style="color:rgba(255,255,255,.4);font-size:14px;line-height:1.6;margin-bottom:28px;letter-spacing:.5px">
       Let's see how you did...</p>
-    <button onclick="showCake()" style="background:linear-gradient(135deg,#a855f7,#ec4899);border:none;
+    <button onclick="showExcited()" style="background:linear-gradient(135deg,#a855f7,#ec4899);border:none;
       color:#fff;padding:16px 40px;border-radius:50px;font-size:16px;cursor:pointer;font-weight:600;
       letter-spacing:.5px;box-shadow:0 4px 24px rgba(168,85,247,.3);transition:transform .2s">
       Continue</button>
   </div>`;
 }
 
-// ═══ POST-QUIZ INTERACTIVE PAGES (SVG-based premium illustrations) ═══
+// ═══ POST-QUIZ INTERACTIVE PAGES ═══
 
+// ── 1. "ARE YOU EXCITED?" with runaway No button ──
+window.showExcited=function(){
+  document.getElementById('quizUI').style.display='none';
+  const el=document.getElementById('excitedUI');
+  el.classList.add('show');
+  el.innerHTML=`
+    <div class="excitedWrap">
+      <div class="excitedEmoji">🎉</div>
+      <div class="excitedTitle">Are you excited for<br>what's next?</div>
+      <div class="excitedSub">Choose wisely...</div>
+      <div class="excitedBtns" id="excitedBtns">
+        <button class="yesBtn" onclick="onExcitedYes()">Yes!</button>
+        <button class="noBtn" id="noBtn" style="right:0">No</button>
+      </div>
+    </div>`;
+  const noBtn=document.getElementById('noBtn');
+  const container=document.getElementById('excitedBtns');
+  let dodgeCount=0;
+  function dodgeNo(e){
+    e.preventDefault();e.stopPropagation();
+    dodgeCount++;
+    const cw=container.offsetWidth||300,ch=container.offsetHeight||200;
+    const bw=noBtn.offsetWidth,bh=noBtn.offsetHeight;
+    const maxX=cw-bw-10,maxY=ch-bh-10;
+    let nx,ny;
+    do{
+      nx=Math.random()*maxX-maxX/2;
+      ny=Math.random()*maxY*2-maxY;
+    }while(Math.abs(nx)<60&&Math.abs(ny)<40);
+    noBtn.style.transform=`translate(${nx}px,${ny}px)`;
+    if(dodgeCount>=3)noBtn.textContent='😜 Nope!';
+    if(dodgeCount>=6)noBtn.textContent='Can\\'t catch me!';
+    if(dodgeCount>=9)noBtn.textContent='Just say Yes! 😂';
+  }
+  noBtn.addEventListener('mouseenter',dodgeNo);
+  noBtn.addEventListener('touchstart',dodgeNo,{passive:false});
+  noBtn.addEventListener('click',dodgeNo);
+};
+
+window.onExcitedYes=function(){
+  document.getElementById('excitedUI').classList.remove('show');
+  showBalloons();
+};
+
+// ── 2. POP THE BALLOONS ──
+function svgBalloon(color,shine){
+  return `<svg viewBox="0 0 80 110" width="80" height="110" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="bg${color.replace('#','')}" cx="35%" cy="30%"><stop offset="0%" stop-color="${shine}"/><stop offset="100%" stop-color="${color}"/></radialGradient>
+    </defs>
+    <ellipse cx="40" cy="42" rx="32" ry="38" fill="url(#bg${color.replace('#','')})" />
+    <ellipse cx="32" cy="28" rx="8" ry="12" fill="rgba(255,255,255,.25)" transform="rotate(-20,32,28)"/>
+    <polygon points="40,80 36,85 44,85" fill="${color}"/>
+    <line x1="40" y1="85" x2="40" y2="108" stroke="#aaa" stroke-width="1.5"/>
+  </svg>`;
+}
+
+window.showBalloons=function(){
+  const el=document.getElementById('balloonUI');
+  el.classList.add('show');
+  const colors=[
+    ['#e91e63','#f8bbd0'],['#9c27b0','#e1bee7'],['#2196f3','#bbdefb'],
+    ['#ff9800','#ffe0b2'],['#4caf50','#c8e6c9'],['#f44336','#ffcdd2'],
+    ['#00bcd4','#b2ebf2'],['#ff5722','#ffccbc'],['#673ab7','#d1c4e9']
+  ];
+  let popped=0;const total=9;
+  const positions=[[15,10],[50,5],[80,12],[10,38],[45,35],[78,40],[18,65],[52,62],[82,68]];
+  let balloonsHtml='';
+  positions.forEach(([lp,tp],i)=>{
+    const [c,s]=colors[i];
+    const delay=(Math.random()*2).toFixed(1);
+    balloonsHtml+=`<div class="balloon" id="bl${i}" style="left:${lp}%;top:${tp}%;animation-delay:${delay}s"
+      onclick="popBalloon(${i},'${c}')">${svgBalloon(c,s)}</div>`;
+  });
+  el.innerHTML=`
+    <div class="balloonTitle">Pop the Balloons!</div>
+    <div class="balloonSub">TAP EACH BALLOON</div>
+    <div class="balloonArea" id="balloonArea">${balloonsHtml}</div>
+    <div class="balloonCounter" id="balloonCount">0 / ${total} popped</div>`;
+  window._balloonPopped=0;window._balloonTotal=total;
+};
+
+window.popBalloon=function(idx,color){
+  const b=document.getElementById('bl'+idx);
+  if(!b||b.dataset.popped)return;
+  b.dataset.popped='1';
+  const rect=b.getBoundingClientRect();
+  const area=document.getElementById('balloonArea');
+  const aRect=area.getBoundingClientRect();
+  const cx=rect.left-aRect.left+rect.width/2;
+  const cy=rect.top-aRect.top+rect.height/2;
+  let pieces='';
+  for(let i=0;i<8;i++){
+    const ang=(Math.PI*2/8)*i;
+    const dist=30+Math.random()*40;
+    const tx=Math.cos(ang)*dist;const ty=Math.sin(ang)*dist;
+    const sz=4+Math.random()*6;
+    pieces+=`<div class="popPiece" style="left:${cx}px;top:${cy}px;width:${sz}px;height:${sz}px;
+      background:${color};--tx:${tx}px;--ty:${ty}px"></div>`;
+  }
+  area.insertAdjacentHTML('beforeend',`<div class="popEffect">${pieces}</div>`);
+  b.style.transform='scale(1.3)';b.style.opacity='0';b.style.transition='all .15s';
+  setTimeout(()=>b.style.display='none',200);
+  window._balloonPopped++;
+  document.getElementById('balloonCount').textContent=`${window._balloonPopped} / ${window._balloonTotal} popped`;
+  if(window._balloonPopped>=window._balloonTotal){
+    setTimeout(()=>{
+      confettiBurst();
+      setTimeout(()=>{
+        document.getElementById('balloonUI').classList.remove('show');
+        showCake();
+      },1500);
+    },500);
+  }
+};
+
+// ── 3. CAKE (SVG) ──
 function svgCake(lit){
   const flameClass=lit?'':'style="display:none"';
   const smokeClass=lit?'style="display:none"':'';
@@ -1683,56 +1865,40 @@ function svgCake(lit){
     <filter id="cShadow"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,.3)"/></filter>
     <filter id="candleGlow"><feGaussianBlur stdDeviation="4"/></filter>
   </defs>
-  <!-- Plate -->
   <ellipse cx="150" cy="290" rx="130" ry="18" fill="#f3e8ff" opacity=".15"/>
-  <!-- Bottom tier -->
   <rect x="50" y="200" width="200" height="80" rx="6" fill="url(#cBot)"/>
   <ellipse cx="150" cy="200" rx="100" ry="16" fill="#2a1f5e"/>
   <ellipse cx="150" cy="280" rx="100" ry="16" fill="#1a1248"/>
-  <!-- Bottom tier frosting drips -->
   <path d="M50,200 Q60,200 65,220 Q70,200 80,200" fill="url(#frost1)"/>
   <path d="M80,200 Q90,200 95,228 Q100,200 115,200" fill="url(#frost1)"/>
   <path d="M115,200 Q125,200 132,222 Q138,200 150,200" fill="url(#frost1)"/>
   <path d="M150,200 Q162,200 168,230 Q175,200 185,200" fill="url(#frost1)"/>
   <path d="M185,200 Q195,200 200,218 Q208,200 220,200" fill="url(#frost1)"/>
   <path d="M220,200 Q230,200 235,225 Q242,200 250,200" fill="url(#frost1)"/>
-  <!-- Bottom tier decorations -->
   <circle cx="80" cy="240" r="3" fill="#fcd34d" opacity=".9"><animate attributeName="opacity" values=".5;1;.5" dur="2s" repeatCount="indefinite"/></circle>
   <circle cx="120" cy="250" r="2" fill="#fcd34d" opacity=".7"><animate attributeName="opacity" values=".7;1;.7" dur="1.5s" repeatCount="indefinite"/></circle>
   <circle cx="180" cy="235" r="3.5" fill="#fcd34d" opacity=".8"><animate attributeName="opacity" values=".6;1;.6" dur="2.2s" repeatCount="indefinite"/></circle>
   <circle cx="220" cy="252" r="2.5" fill="#fcd34d" opacity=".6"><animate attributeName="opacity" values=".4;1;.4" dur="1.8s" repeatCount="indefinite"/></circle>
-  <!-- Moon on bottom tier -->
   <g transform="translate(200,230)"><path d="M0,-8 A8,8 0 1,1 0,8 A5,5 0 1,0 0,-8" fill="#fcd34d" opacity=".7"/></g>
-  <!-- Sparkle lines -->
-  <line x1="95" y1="225" x2="95" y2="233" stroke="#e0c3fc" stroke-width=".8" opacity=".4"/>
-  <line x1="160" y1="260" x2="160" y2="268" stroke="#e0c3fc" stroke-width=".8" opacity=".4"/>
-  <!-- Middle tier -->
   <rect x="80" y="140" width="140" height="60" rx="5" fill="url(#cTop)"/>
   <ellipse cx="150" cy="140" rx="70" ry="12" fill="#352878"/>
   <ellipse cx="150" cy="200" rx="70" ry="12" fill="#251a60"/>
-  <!-- Middle tier frosting -->
   <path d="M80,140 Q88,140 93,158 Q98,140 108,140" fill="url(#frost2)"/>
   <path d="M108,140 Q118,140 124,162 Q130,140 142,140" fill="url(#frost2)"/>
   <path d="M142,140 Q152,140 158,156 Q164,140 175,140" fill="url(#frost2)"/>
   <path d="M175,140 Q185,140 190,160 Q196,140 208,140" fill="url(#frost2)"/>
-  <path d="M208,140 Q215,140 218,155 Q222,140 220,140" fill="url(#frost2)"/>
-  <!-- Stars on middle tier -->
   <g transform="translate(105,165)" fill="#fcd34d" opacity=".85"><polygon points="0,-5 1.5,-1.5 5,-1.5 2.3,0.8 3.5,4.5 0,2.2 -3.5,4.5 -2.3,0.8 -5,-1.5 -1.5,-1.5"/></g>
   <g transform="translate(150,175)" fill="#fcd34d" opacity=".7"><polygon points="0,-4 1.2,-1.2 4,-1.2 1.8,0.6 2.8,3.6 0,1.8 -2.8,3.6 -1.8,0.6 -4,-1.2 -1.2,-1.2"/></g>
   <g transform="translate(195,162)" fill="#fcd34d" opacity=".9"><polygon points="0,-5 1.5,-1.5 5,-1.5 2.3,0.8 3.5,4.5 0,2.2 -3.5,4.5 -2.3,0.8 -5,-1.5 -1.5,-1.5"/></g>
-  <!-- Top tier -->
   <rect x="105" y="95" width="90" height="45" rx="4" fill="url(#cSmall)"/>
   <ellipse cx="150" cy="95" rx="45" ry="10" fill="#3d2f8a"/>
   <ellipse cx="150" cy="140" rx="45" ry="10" fill="#2e2070"/>
-  <!-- Top tier ribbon -->
   <rect x="105" y="112" width="90" height="6" rx="3" fill="url(#frost1)" opacity=".5"/>
-  <!-- Topper: heart -->
   <g transform="translate(150,68)">
     <path d="M0,8 C0,8 -12,-2 -12,-8 C-12,-14 -6,-16 0,-10 C6,-16 12,-14 12,-8 C12,-2 0,8 0,8Z" fill="#ec4899" filter="url(#cShadow)">
       <animate attributeName="d" values="M0,8 C0,8 -12,-2 -12,-8 C-12,-14 -6,-16 0,-10 C6,-16 12,-14 12,-8 C12,-2 0,8 0,8Z;M0,10 C0,10 -14,-2 -14,-9 C-14,-16 -7,-18 0,-11 C7,-18 14,-16 14,-9 C14,-2 0,10 0,10Z;M0,8 C0,8 -12,-2 -12,-8 C-12,-14 -6,-16 0,-10 C6,-16 12,-14 12,-8 C12,-2 0,8 0,8Z" dur="2s" repeatCount="indefinite"/>
     </path>
   </g>
-  <!-- Candles -->
   ${[115,135,150,165,185].map((cx,i)=>`
     <rect x="${cx-3}" y="62" width="6" height="32" rx="2" fill="${i%2===0?'#f9a8d4':'#c084fc'}"/>
     <rect x="${cx-1.5}" y="62" width="3" height="32" rx="1" fill="rgba(255,255,255,.15)"/>
@@ -1751,10 +1917,8 @@ function svgCake(lit){
       </line>
     </g>
   `).join('')}
-  <!-- Scattered sparkles around cake -->
   <circle cx="40" cy="180" r="1.5" fill="#e0c3fc" opacity=".6"><animate attributeName="opacity" values="0;1;0" dur="3s" repeatCount="indefinite"/></circle>
   <circle cx="260" cy="160" r="1.5" fill="#fcd34d" opacity=".5"><animate attributeName="opacity" values="0;1;0" dur="2.5s" begin=".5s" repeatCount="indefinite"/></circle>
-  <circle cx="30" cy="120" r="1" fill="#f9a8d4" opacity=".4"><animate attributeName="opacity" values="0;1;0" dur="2s" begin="1s" repeatCount="indefinite"/></circle>
   <circle cx="270" cy="230" r="1.2" fill="#c084fc" opacity=".5"><animate attributeName="opacity" values="0;1;0" dur="3.5s" begin=".3s" repeatCount="indefinite"/></circle>
   </svg>`;
 }
@@ -1781,84 +1945,83 @@ window.blowCandles=function(){
   setTimeout(()=>showRoseBouquet(),2500);
 };
 
+// ── 4. ROSE BOUQUET (premium SVG) ──
 function svgRose(cx,cy,size,hue){
-  const s=size||1;
-  const h=hue||0;
-  const colors=[`hsl(${350+h},75%,38%)`,`hsl(${348+h},78%,42%)`,`hsl(${345+h},80%,48%)`,`hsl(${342+h},82%,55%)`,`hsl(${340+h},85%,72%)`];
-  let petals='';
-  for(let layer=0;layer<4;layer++){
-    const r=14-layer*3;const n=6+layer;
-    for(let p=0;p<n;p++){
-      const a=(Math.PI*2/n)*p+layer*.5;
-      const px=Math.cos(a)*r*s;const py=Math.sin(a)*r*s;
-      const pr=(9-layer*1.5)*s;const pr2=(12-layer*2)*s;
-      petals+=`<ellipse cx="${cx+px}" cy="${cy+py}" rx="${pr}" ry="${pr2}" fill="${colors[layer]}" transform="rotate(${a*57.3},${cx+px},${cy+py})" opacity="${.85+layer*.04}"/>`;
+  const s=size||1;const h=hue||0;
+  const c1=`hsl(${350+h},78%,35%)`,c2=`hsl(${348+h},80%,40%)`,c3=`hsl(${345+h},82%,46%)`,c4=`hsl(${342+h},84%,54%)`,c5=`hsl(${340+h},86%,70%)`;
+  let p='';
+  for(let layer=0;layer<5;layer++){
+    const r=(16-layer*2.8)*s;const n=7+layer;
+    const col=[c1,c2,c3,c4,c5][layer];
+    for(let i=0;i<n;i++){
+      const a=(Math.PI*2/n)*i+layer*.4;
+      const px=Math.cos(a)*r;const py=Math.sin(a)*r;
+      const rx2=(10-layer*1.2)*s;const ry2=(14-layer*2)*s;
+      p+=`<ellipse cx="${cx+px}" cy="${cy+py}" rx="${rx2}" ry="${ry2}" fill="${col}" transform="rotate(${a*57.3},${cx+px},${cy+py})" opacity="${.8+layer*.04}"/>`;
     }
   }
-  petals+=`<circle cx="${cx}" cy="${cy}" r="${3*s}" fill="${colors[4]}"/>`;
-  petals+=`<circle cx="${cx-.5*s}" cy="${cy-.5*s}" r="${1.5*s}" fill="rgba(255,255,255,.25)"/>`;
-  return petals;
+  p+=`<circle cx="${cx}" cy="${cy}" r="${3.5*s}" fill="${c5}"/>`;
+  p+=`<circle cx="${cx-1*s}" cy="${cy-1*s}" r="${1.8*s}" fill="rgba(255,255,255,.3)"/>`;
+  return p;
 }
 
 function svgBouquet(){
-  let svg=`<svg viewBox="0 0 380 440" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;filter:drop-shadow(0 6px 20px rgba(0,0,0,.15))">
+  let svg=`<svg viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;filter:drop-shadow(0 8px 24px rgba(0,0,0,.18))">
   <defs>
     <linearGradient id="stem" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2e7d32"/><stop offset="50%" stop-color="#43a047"/><stop offset="100%" stop-color="#2e7d32"/></linearGradient>
     <linearGradient id="leafG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#43a047"/><stop offset="100%" stop-color="#2e7d32"/></linearGradient>
-    <linearGradient id="wrap" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f8bbd0"/><stop offset="100%" stop-color="#f48fb1"/></linearGradient>
-    <linearGradient id="wrap2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fce4ec"/><stop offset="100%" stop-color="#f8bbd0"/></linearGradient>
-    <linearGradient id="ribbon" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e91e63"/><stop offset="100%" stop-color="#c2185b"/></linearGradient>
-    <filter id="rSoft"><feGaussianBlur stdDeviation="1"/></filter>
+    <linearGradient id="wrapA" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#faf5ee"/><stop offset="100%" stop-color="#ede4d4"/></linearGradient>
+    <linearGradient id="wrapB" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f5ede0"/><stop offset="100%" stop-color="#e8dcc8"/></linearGradient>
+    <linearGradient id="ribbon" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d32f2f"/><stop offset="100%" stop-color="#b71c1c"/></linearGradient>
   </defs>
-  <!-- Wrapping paper (cone shape) -->
-  <path d="M100,250 Q90,260 130,410 L250,410 Q290,260 280,250 Z" fill="url(#wrap)" opacity=".95"/>
-  <path d="M105,255 Q95,265 133,408 L247,408 Q285,265 275,255 Z" fill="url(#wrap2)" opacity=".3"/>
-  <!-- Paper folds -->
-  <path d="M120,260 Q115,280 135,400" stroke="#f48fb1" stroke-width="1" fill="none" opacity=".3"/>
-  <path d="M260,260 Q265,280 245,400" stroke="#f48fb1" stroke-width="1" fill="none" opacity=".3"/>
-  <!-- Paper top ruffle -->
-  <path d="M95,255 Q110,240 130,255 Q150,240 170,255 Q190,238 210,255 Q230,240 250,255 Q270,240 285,255" fill="none" stroke="#f8bbd0" stroke-width="3"/>
-  <path d="M95,255 Q110,242 130,255 Q150,242 170,255 Q190,240 210,255 Q230,242 250,255 Q270,242 285,255" fill="url(#wrap)" opacity=".5"/>
+  <!-- Wrapping paper (cream/off-white tissue) -->
+  <path d="M95,270 Q80,285 125,460 L275,460 Q320,285 305,270 Z" fill="url(#wrapA)"/>
+  <path d="M100,275 Q88,290 128,455 L272,455 Q312,290 300,275 Z" fill="url(#wrapB)" opacity=".5"/>
+  <!-- Paper folds / creases -->
+  <path d="M130,280 Q125,320 142,450" stroke="rgba(180,165,140,.3)" stroke-width="1.5" fill="none"/>
+  <path d="M270,280 Q275,320 258,450" stroke="rgba(180,165,140,.3)" stroke-width="1.5" fill="none"/>
+  <path d="M200,290 Q198,360 195,455" stroke="rgba(180,165,140,.15)" stroke-width="1" fill="none"/>
+  <!-- Paper top ruffle (tissue paper edge) -->
+  <path d="M85,275 Q105,255 125,275 Q145,252 165,275 Q185,250 200,275 Q215,250 235,275 Q255,252 275,275 Q295,255 315,275" fill="url(#wrapA)" stroke="rgba(200,185,160,.4)" stroke-width="1"/>
   <!-- Stems -->`;
-  const stems=[[190,260,175,120],[190,260,210,100],[190,260,150,130],[190,260,230,135],
-    [190,260,165,85],[190,260,220,80],[190,260,140,105],[190,260,250,110],
-    [190,260,190,70],[190,260,195,145],[190,260,130,155],[190,260,255,145]];
+  const stems=[[200,290,185,130],[200,290,218,110],[200,290,155,145],[200,290,245,150],
+    [200,290,170,90],[200,290,230,85],[200,290,145,115],[200,290,260,120],
+    [200,290,200,72],[200,290,160,170],[200,290,240,165],[200,290,140,85],
+    [200,290,265,90],[200,290,200,160]];
   stems.forEach(([x1,y1,x2,y2])=>{
-    const cx=(x1+x2)/2+(Math.random()-.5)*20;
-    const cy=(y1+y2)/2-10;
-    svg+=`<path d="M${x1},${y1} Q${cx},${cy} ${x2},${y2}" stroke="url(#stem)" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+    const cpx=(x1+x2)/2+(Math.random()-.5)*15;
+    const cpy=(y1+y2)/2-10;
+    svg+=`<path d="M${x1},${y1} Q${cpx},${cpy} ${x2},${y2}" stroke="url(#stem)" stroke-width="3" fill="none" stroke-linecap="round"/>`;
   });
-  // Leaves
-  const leaves=[[140,200,-35],[245,195,30],[125,175,-50],[260,180,40],[155,230,-25],[235,225,20]];
+  const leaves=[[148,215,-35],[258,210,30],[130,190,-50],[275,195,40],[162,248,-20],[245,242,22],[180,265,-15],[225,260,15]];
   leaves.forEach(([lx,ly,rot])=>{
     svg+=`<g transform="translate(${lx},${ly}) rotate(${rot})">
-      <ellipse cx="0" cy="0" rx="22" ry="8" fill="url(#leafG)" opacity=".85"/>
-      <line x1="-18" y1="0" x2="18" y2="0" stroke="#2e7d32" stroke-width=".6" opacity=".5"/>
-      <line x1="-8" y1="0" x2="-14" y2="-3" stroke="#2e7d32" stroke-width=".4" opacity=".3"/>
-      <line x1="5" y1="0" x2="12" y2="-3" stroke="#2e7d32" stroke-width=".4" opacity=".3"/>
+      <path d="M0,0 Q-8,-6 -22,0 Q-8,6 0,0Z" fill="url(#leafG)" opacity=".85"/>
+      <line x1="0" y1="0" x2="-20" y2="0" stroke="#2e7d32" stroke-width=".5" opacity=".4"/>
     </g>`;
   });
-  // Roses
-  const roses=[[190,80,1.1,0],[160,100,1,-5],[225,95,1,5],[140,130,.95,-8],[245,125,.95,8],
-    [175,60,1,3],[210,65,.9,-3],[150,75,.85,-10],[240,80,.85,10],
-    [130,155,.8,-12],[255,148,.8,12],[190,145,.9,0]];
+  // Roses (more, denser arrangement)
+  const roses=[[200,82,1.2,0],[170,100,1.1,-4],[235,96,1.1,4],[148,128,1,-8],[258,125,1,7],
+    [182,62,1,2],[220,58,1,-2],[155,78,.95,-10],[248,75,.95,9],
+    [135,155,.9,-12],[268,150,.9,11],[200,150,1,0],[175,170,.85,3],[230,168,.85,-3]];
   roses.forEach(([rx,ry,rs,rh])=>{svg+=svgRose(rx,ry,rs,rh);});
-  // Baby's breath (small white flowers)
-  [[165,55],[220,55],[135,90],[255,90],[180,120],[210,125],[148,148],[240,140]].forEach(([bx,by])=>{
-    for(let i=0;i<3;i++){
-      const ox=(Math.random()-.5)*12,oy=(Math.random()-.5)*12;
-      svg+=`<circle cx="${bx+ox}" cy="${by+oy}" r="2.5" fill="#fff" opacity=".7"/>`;
-      svg+=`<circle cx="${bx+ox-.3}" cy="${by+oy-.3}" r="1" fill="rgba(255,255,255,.9)"/>`;
+  // Baby's breath
+  [[175,52],[228,48],[138,95],[268,92],[188,130],[215,135],[155,158],[250,152],[200,45],[145,60],[260,55]].forEach(([bx,by])=>{
+    for(let i=0;i<4;i++){
+      const ox=(Math.random()-.5)*14,oy=(Math.random()-.5)*14;
+      svg+=`<circle cx="${bx+ox}" cy="${by+oy}" r="${2+Math.random()*1.5}" fill="#fff" opacity="${.5+Math.random()*.3}"/>`;
     }
   });
   // Ribbon bow
-  svg+=`<g transform="translate(190,280)">
-    <path d="M0,0 Q-30,-18 -35,0 Q-30,18 0,0Z" fill="url(#ribbon)"/>
-    <path d="M0,0 Q30,-18 35,0 Q30,18 0,0Z" fill="url(#ribbon)"/>
-    <circle cx="0" cy="0" r="6" fill="#e91e63"/>
-    <circle cx="-1" cy="-1" r="2" fill="rgba(255,255,255,.2)"/>
-    <path d="M-4,5 Q-12,30 -20,45" stroke="#c2185b" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <path d="M4,5 Q12,30 20,45" stroke="#c2185b" stroke-width="3" fill="none" stroke-linecap="round"/>
+  svg+=`<g transform="translate(200,305)">
+    <path d="M0,0 Q-35,-22 -42,0 Q-35,22 0,0Z" fill="url(#ribbon)"/>
+    <path d="M0,0 Q35,-22 42,0 Q35,22 0,0Z" fill="url(#ribbon)"/>
+    <ellipse cx="-25" cy="-5" rx="10" ry="6" fill="rgba(255,255,255,.12)" transform="rotate(-15,-25,-5)"/>
+    <ellipse cx="25" cy="-5" rx="10" ry="6" fill="rgba(255,255,255,.12)" transform="rotate(15,25,-5)"/>
+    <circle cx="0" cy="0" r="7" fill="#c62828"/>
+    <circle cx="-1.5" cy="-1.5" r="2.5" fill="rgba(255,255,255,.2)"/>
+    <path d="M-5,6 Q-14,35 -24,52" stroke="#b71c1c" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    <path d="M5,6 Q14,35 24,52" stroke="#b71c1c" stroke-width="3.5" fill="none" stroke-linecap="round"/>
   </g>`;
   svg+=`</svg>`;
   return svg;
@@ -1888,20 +2051,22 @@ window.showRoseBouquet=function(){
   const el=document.getElementById('roseUI');
   el.classList.add('show');
   el.innerHTML=`
-    <div class="roseTitle">Your Rose Bouquet</div>
-    <div class="roseEmoji">🌹</div>
+    <div class="roseTitle">Your Rose Bouquet 🌹</div>
     <div class="roseBouquet">
       <div style="width:100%;height:100%">${svgBouquet()}</div>
       <div class="loveBubble lb1">Forever yours 💕</div>
       <div class="loveBubble lb2">You make my world beautiful</div>
       <div class="loveBubble lb3">You are my sunshine ☀️</div>
       <div class="loveBubble lb4">Happy Birthday Shree 💝</div>
+      <div class="loveBubble lb5">I'm lucky to have you</div>
+      <div class="loveBubble lb6">My favorite person 💖</div>
       <div class="heartTree left">${svgHeartTree(false)}</div>
       <div class="heartTree right">${svgHeartTree(true)}</div>
     </div>
     <button class="roseContinue" onclick="showLoveLetter()">Continue</button>`;
 };
 
+// ── 5. LOVE LETTER (Envelope opens → typewriter) ──
 window.showLoveLetter=function(){
   document.getElementById('roseUI').classList.remove('show');
   const el=document.getElementById('letterUI');
@@ -1909,19 +2074,78 @@ window.showLoveLetter=function(){
   el.innerHTML=`
     <div class="letterTitle">A Message From My Heart</div>
     <div class="letterHeart">❤️</div>
-    <div class="letterCard">
-      <div class="dear">Dear Shree,</div>
-      <div class="body">
-        Happy Birthday to someone truly special! 🎂<br><br>
-        You are Sweet, Loyal, My rock, and I'm so grateful to have you in my life.<br><br>
-        You bring so much warmth and sweetness into my life. Every moment with you is precious.<br><br>
-        On your special day, I wish you all the happiness in the world!
+    <div class="envelopeWrap" id="envelopeWrap" onclick="openEnvelope()">
+      <div class="envelope">
+        <div class="envFlapInner"></div>
+        <div class="envFlap" id="envFlap"></div>
+        <div class="envBody"></div>
+        <div class="envSeal" id="envSeal">💌</div>
       </div>
+      <div class="envLabel">Tap to open</div>
+    </div>
+    <div class="letterCard" id="letterCardEl">
+      <div class="dear" id="letterDear"></div>
+      <div class="body" id="letterBody"></div>
       <div class="bunny">🐰🐰</div>
     </div>
-    <button class="letterContinue" onclick="showTapGift()">Continue</button>`;
+    <button class="letterContinue" id="letterContinueBtn" onclick="showTapGift()">Continue</button>`;
 };
 
+window.openEnvelope=function(){
+  const flap=document.getElementById('envFlap');
+  const seal=document.getElementById('envSeal');
+  const wrap=document.getElementById('envelopeWrap');
+  if(!flap||flap.classList.contains('open'))return;
+  seal.classList.add('broken');
+  setTimeout(()=>{
+    flap.classList.add('open');
+  },300);
+  setTimeout(()=>{
+    wrap.style.transition='all 1s ease';
+    wrap.style.transform='translateY(-60px) scale(.7)';
+    wrap.style.opacity='.3';
+    const card=document.getElementById('letterCardEl');
+    card.classList.add('visible');
+    setTimeout(()=>typewriterLetter(),400);
+  },900);
+};
+
+function typewriterLetter(){
+  const dear='Dear Shree,';
+  const body='Happy Birthday to someone truly special! 🎂\n\nYou are Sweet, Loyal, My rock, and I\'m so grateful to have you in my life.\n\nYou bring so much warmth and sweetness into my life. Every moment with you is precious.\n\nOn your special day, I wish you all the happiness in the world!';
+  const dearEl=document.getElementById('letterDear');
+  const bodyEl=document.getElementById('letterBody');
+  let di=0,bi=0;
+  bodyEl.innerHTML='<span class="typeCursor"></span>';
+  function typeDear(){
+    if(di<dear.length){
+      dearEl.textContent=dear.slice(0,++di);
+      setTimeout(typeDear,60);
+    } else {
+      setTimeout(typeBody,300);
+    }
+  }
+  function typeBody(){
+    if(bi<body.length){
+      const ch=body[bi];
+      bi++;
+      if(ch==='\n'){
+        bodyEl.innerHTML=bodyEl.innerHTML.replace('<span class="typeCursor"></span>','')+'<br><span class="typeCursor"></span>';
+      } else {
+        const cursor=bodyEl.querySelector('.typeCursor');
+        if(cursor)cursor.insertAdjacentText('beforebegin',ch);
+      }
+      const delay=ch==='.'||ch==='!'||ch==='?'?120:ch===','?80:ch==='\n'?200:28;
+      setTimeout(typeBody,delay);
+    } else {
+      bodyEl.innerHTML=bodyEl.innerHTML.replace('<span class="typeCursor"></span>','');
+      document.getElementById('letterContinueBtn').classList.add('visible');
+    }
+  }
+  typeDear();
+}
+
+// ── 6. TAP THE GIFT (SVG gift box) ──
 function svgGiftBox(){
   return `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;filter:drop-shadow(0 6px 16px rgba(233,30,99,.3))">
   <defs>
@@ -1929,20 +2153,14 @@ function svgGiftBox(){
     <linearGradient id="gLid" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f48fb1"/><stop offset="100%" stop-color="#ec407a"/></linearGradient>
     <linearGradient id="gRib" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e91e63"/><stop offset="100%" stop-color="#c2185b"/></linearGradient>
   </defs>
-  <!-- Shadow -->
   <ellipse cx="80" cy="145" rx="55" ry="8" fill="rgba(0,0,0,.1)"/>
-  <!-- Box body -->
   <rect x="30" y="75" width="100" height="60" rx="4" fill="url(#gBox)"/>
   <rect x="33" y="78" width="94" height="54" rx="3" fill="rgba(255,255,255,.08)"/>
-  <!-- Box lid -->
   <rect x="25" y="58" width="110" height="22" rx="4" fill="url(#gLid)"/>
   <rect x="28" y="60" width="104" height="8" rx="2" fill="rgba(255,255,255,.1)"/>
-  <!-- Ribbon vertical -->
   <rect x="74" y="58" width="12" height="77" fill="url(#gRib)"/>
   <rect x="76" y="58" width="3" height="77" fill="rgba(255,255,255,.15)"/>
-  <!-- Ribbon horizontal -->
   <rect x="25" y="65" width="110" height="8" rx="2" fill="url(#gRib)"/>
-  <!-- Bow -->
   <g transform="translate(80,50)">
     <ellipse cx="-16" cy="0" rx="18" ry="10" transform="rotate(-15,-16,0)" fill="#e91e63"/>
     <ellipse cx="-14" cy="-2" rx="10" ry="5" transform="rotate(-15,-14,-2)" fill="#f06292" opacity=".5"/>
@@ -1953,12 +2171,9 @@ function svgGiftBox(){
     <path d="M-5,6 Q-10,22 -18,30" stroke="#c2185b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
     <path d="M5,6 Q10,22 18,30" stroke="#c2185b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
   </g>
-  <!-- Sparkles -->
   <g fill="#fcd34d">
     <circle cx="20" cy="40" r="1.5"><animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite"/></circle>
     <circle cx="140" cy="50" r="1.5"><animate attributeName="opacity" values="0;1;0" dur="2.5s" begin=".5s" repeatCount="indefinite"/></circle>
-    <circle cx="15" cy="100" r="1"><animate attributeName="opacity" values="0;1;0" dur="3s" begin="1s" repeatCount="indefinite"/></circle>
-    <circle cx="145" cy="110" r="1"><animate attributeName="opacity" values="0;1;0" dur="2s" begin=".8s" repeatCount="indefinite"/></circle>
   </g>
   </svg>`;
 }
