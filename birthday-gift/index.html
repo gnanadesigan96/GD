@@ -1745,27 +1745,29 @@ window.showExcited=function(){
       <div class="excitedSub">Choose wisely...</div>
       <div class="excitedBtns" id="excitedBtns">
         <button class="yesBtn" onclick="onExcitedYes()">Yes!</button>
-        <button class="noBtn" id="noBtn" style="right:0">No</button>
       </div>
-    </div>`;
+    </div>
+    <button class="noBtn" id="noBtn">No</button>`;
   const noBtn=document.getElementById('noBtn');
-  const container=document.getElementById('excitedBtns');
+  noBtn.style.cssText='position:fixed;bottom:25%;right:15%;z-index:30;padding:14px 36px;border-radius:50px;font-size:16px;cursor:pointer;font-weight:600;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.15);color:rgba(255,255,255,.6);transition:none;';
   let dodgeCount=0;
   function dodgeNo(e){
     e.preventDefault();e.stopPropagation();
     dodgeCount++;
-    const cw=container.offsetWidth||300,ch=container.offsetHeight||200;
-    const bw=noBtn.offsetWidth,bh=noBtn.offsetHeight;
-    const maxX=cw-bw-10,maxY=ch-bh-10;
-    let nx,ny;
+    const vw=window.innerWidth,vh=window.innerHeight;
+    const bw=noBtn.offsetWidth||100,bh=noBtn.offsetHeight||50;
+    const pad=20;
+    let nx,ny,attempts=0;
     do{
-      nx=Math.random()*maxX-maxX/2;
-      ny=Math.random()*maxY*2-maxY;
-    }while(Math.abs(nx)<60&&Math.abs(ny)<40);
-    noBtn.style.transform=`translate(${nx}px,${ny}px)`;
-    if(dodgeCount>=3)noBtn.textContent='😜 Nope!';
-    if(dodgeCount>=6)noBtn.textContent="Can't catch me!";
-    if(dodgeCount>=9)noBtn.textContent='Just say Yes! 😂';
+      nx=pad+Math.random()*(vw-bw-pad*2);
+      ny=pad+Math.random()*(vh-bh-pad*2);
+      attempts++;
+    }while(attempts<50&&nx>vw*.3&&nx<vw*.7&&ny>vh*.35&&ny<vh*.65);
+    noBtn.style.left=nx+'px';
+    noBtn.style.top=ny+'px';
+    noBtn.style.right='auto';noBtn.style.bottom='auto';
+    const msgs=['No','😜 Nope!','Haha No!','Try again!',"Can't catch me!",'Too slow!','Not today!','Keep trying! 😂','Just say Yes!','🏃💨 Byeee!'];
+    noBtn.textContent=msgs[Math.min(dodgeCount,msgs.length-1)];
   }
   noBtn.addEventListener('mouseenter',dodgeNo);
   noBtn.addEventListener('touchstart',dodgeNo,{passive:false});
