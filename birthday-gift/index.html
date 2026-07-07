@@ -176,6 +176,7 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
   <p>tap to begin</p>
 </div>
 <canvas id="c"></canvas>
+<iframe id="ytFrame" style="position:fixed;width:1px;height:1px;bottom:0;right:0;opacity:0;pointer-events:none;" allow="autoplay;encrypted-media" frameborder="0"></iframe>
 <button id="skipBtn" onclick="skipToQuiz()">SKIP ›</button>
 <div id="quizUI"></div>
 <div id="giftUI"></div>
@@ -204,27 +205,21 @@ function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webki
 
 function playRomanticMelody(){
   if(romanticPlaying)return;romanticPlaying=true;
-  if(ytPlayer&&ytPlayer.playVideo){ytPlayer.playVideo();return;}
-  // Load YouTube IFrame API
-  const tag=document.createElement('script');
-  tag.src='https://www.youtube.com/iframe_api';
-  document.head.appendChild(tag);
-  window.onYouTubeIframeAPIReady=function(){
-    const div=document.createElement('div');div.id='ytRomantic';
-    div.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
-    document.body.appendChild(div);
-    ytPlayer=new YT.Player('ytRomantic',{
-      videoId:'Ry9mRnBqzHA',
-      playerVars:{autoplay:1,loop:1,playlist:'Ry9mRnBqzHA',controls:0,disablekb:1,fs:0,modestbranding:1},
-      events:{onReady:function(e){e.target.setVolume(70);e.target.playVideo();}}
-    });
-  };
+  const fr=document.getElementById('ytFrame');
+  if(fr.src&&fr.src.indexOf('youtube')>-1){
+    fr.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}','*');
+    return;
+  }
+  fr.src='https://www.youtube.com/embed/Ry9mRnBqzHA?autoplay=1&loop=1&playlist=Ry9mRnBqzHA&controls=0&enablejsapi=1&origin='+encodeURIComponent(location.origin);
 }
 
 function stopRomanticMelody(){
   if(!romanticPlaying)return;
   romanticPlaying=false;
-  if(ytPlayer&&ytPlayer.pauseVideo)ytPlayer.pauseVideo();
+  const fr=document.getElementById('ytFrame');
+  if(fr&&fr.contentWindow){
+    fr.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');
+  }
   if(romanticTimer){clearTimeout(romanticTimer);romanticTimer=null;}
   if(romanticGain&&audioCtx){
     romanticGain.gain.linearRampToValueAtTime(0,audioCtx.currentTime+1.5);
