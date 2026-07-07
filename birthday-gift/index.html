@@ -198,6 +198,57 @@ const EO=t=>t*(2-t);
 const EIB=t=>{const s=1.5;return 1+(--t)*t*((s+1)*t+s)};
 const prog=(e,s,d)=>clamp((e-s)/d,0,1);
 
+// ─── MUSIC (Web Audio API) ───
+let audioCtx=null,bdayPlaying=false;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+
+function playBdayTune(){
+  if(bdayPlaying)return;bdayPlaying=true;
+  initAudio();
+  // Happy Birthday melody — note frequencies and durations
+  const C4=261.63,D4=293.66,E4=329.63,F4=349.23,G4=392,A4=440,Bb4=466.16,C5=523.25;
+  const melody=[
+    // "Happy birthday to you"
+    {f:C4,d:.25},{f:C4,d:.15},{f:D4,d:.5},{f:C4,d:.5},{f:F4,d:.5},{f:E4,d:.9},
+    // "Happy birthday to you"
+    {f:C4,d:.25},{f:C4,d:.15},{f:D4,d:.5},{f:C4,d:.5},{f:G4,d:.5},{f:F4,d:.9},
+    // "Happy birthday dear..."
+    {f:C4,d:.25},{f:C4,d:.15},{f:C5,d:.5},{f:A4,d:.5},{f:F4,d:.4},{f:E4,d:.4},{f:D4,d:.8},
+    // "Happy birthday to you"
+    {f:Bb4,d:.25},{f:Bb4,d:.15},{f:A4,d:.5},{f:F4,d:.5},{f:G4,d:.5},{f:F4,d:.9}
+  ];
+  const gain=audioCtx.createGain();gain.gain.value=0;gain.connect(audioCtx.destination);
+  // Fade in
+  gain.gain.linearRampToValueAtTime(.12,audioCtx.currentTime+.3);
+
+  let time=audioCtx.currentTime+.1;
+  melody.forEach(n=>{
+    // Main tone (sine — soft, music-box feel)
+    const osc=audioCtx.createOscillator();
+    osc.type='sine';osc.frequency.value=n.f;
+    const noteGain=audioCtx.createGain();
+    noteGain.gain.setValueAtTime(.6,time);
+    noteGain.gain.exponentialRampToValueAtTime(.01,time+n.d*.9);
+    osc.connect(noteGain);noteGain.connect(gain);
+    osc.start(time);osc.stop(time+n.d);
+
+    // Harmonic overtone (triangle, one octave up, quieter — adds shimmer)
+    const osc2=audioCtx.createOscillator();
+    osc2.type='triangle';osc2.frequency.value=n.f*2;
+    const ng2=audioCtx.createGain();
+    ng2.gain.setValueAtTime(.15,time);
+    ng2.gain.exponentialRampToValueAtTime(.01,time+n.d*.7);
+    osc2.connect(ng2);ng2.connect(gain);
+    osc2.start(time);osc2.stop(time+n.d);
+
+    time+=n.d+.05;
+  });
+  // Fade out at end
+  gain.gain.setValueAtTime(.12,time-.5);
+  gain.gain.linearRampToValueAtTime(0,time+.5);
+  setTimeout(()=>{bdayPlaying=false;},time*1000+600);
+}
+
 // ─── PARTICLES ───
 let parts=[];
 function emitP(x,y,n,o){
@@ -1269,6 +1320,7 @@ function playScene(idx){
     return;
   }
   curScene=idx;sceneStart=performance.now();parts=[];
+  if(idx===7)playBdayTune();
   timers.push(setTimeout(()=>playScene(idx+1),DURS[idx]*1000));
 }
 
@@ -1290,6 +1342,7 @@ function mainLoop(now){
 }
 
 function begin(){
+  initAudio();
   document.getElementById('titleScreen').classList.add('gone');
   document.getElementById('skipBtn').style.display='block';
   setTimeout(()=>playScene(0),800);
@@ -1450,6 +1503,7 @@ function endQuiz(){
 }
 
 window.showGift=function(){
+  playBdayTune();
   document.getElementById('quizUI').style.display='none';
   const el=document.getElementById('giftUI');
   el.style.display='flex';
