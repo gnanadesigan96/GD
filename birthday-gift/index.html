@@ -206,7 +206,7 @@ function playRomanticMelody(){
   if(romanticPlaying)return;romanticPlaying=true;
   initAudio();
   const master=audioCtx.createGain();master.gain.value=0;master.connect(audioCtx.destination);
-  master.gain.linearRampToValueAtTime(.14,audioCtx.currentTime+2);
+  master.gain.linearRampToValueAtTime(.2,audioCtx.currentTime+2);
   romanticGain=master;
 
   const C4=261.63,D4=293.66,Eb4=311.13,E4=329.63,F4=349.23,G4=392,Ab4=415.30,A4=440,Bb4=466.16,B4=493.88;
@@ -441,48 +441,67 @@ function stopRomanticMelody(){
 function playBdayTune(){
   if(bdayPlaying)return;bdayPlaying=true;
   initAudio();
-  // Happy Birthday melody — note frequencies and durations
-  const C4=261.63,D4=293.66,E4=329.63,F4=349.23,G4=392,A4=440,Bb4=466.16,C5=523.25;
+  // Happy Birthday — one octave higher, bright & celebratory
+  const C5=523.25,D5=587.33,E5=659.25,F5=698.46,G5=783.99,A5=880,Bb5=932.33,C6=1046.50;
   const melody=[
-    // "Happy birthday to you"
-    {f:C4,d:.25},{f:C4,d:.15},{f:D4,d:.5},{f:C4,d:.5},{f:F4,d:.5},{f:E4,d:.9},
-    // "Happy birthday to you"
-    {f:C4,d:.25},{f:C4,d:.15},{f:D4,d:.5},{f:C4,d:.5},{f:G4,d:.5},{f:F4,d:.9},
-    // "Happy birthday dear..."
-    {f:C4,d:.25},{f:C4,d:.15},{f:C5,d:.5},{f:A4,d:.5},{f:F4,d:.4},{f:E4,d:.4},{f:D4,d:.8},
-    // "Happy birthday to you"
-    {f:Bb4,d:.25},{f:Bb4,d:.15},{f:A4,d:.5},{f:F4,d:.5},{f:G4,d:.5},{f:F4,d:.9}
+    {f:C5,d:.22},{f:C5,d:.13},{f:D5,d:.45},{f:C5,d:.45},{f:F5,d:.45},{f:E5,d:.85},
+    {f:C5,d:.22},{f:C5,d:.13},{f:D5,d:.45},{f:C5,d:.45},{f:G5,d:.45},{f:F5,d:.85},
+    {f:C5,d:.22},{f:C5,d:.13},{f:C6,d:.45},{f:A5,d:.45},{f:F5,d:.35},{f:E5,d:.35},{f:D5,d:.75},
+    {f:Bb5,d:.22},{f:Bb5,d:.13},{f:A5,d:.45},{f:F5,d:.45},{f:G5,d:.45},{f:F5,d:.85}
   ];
+  // Bass chord progression underneath
+  const chords=[[174.61,261.63,349.23],[130.81,196,261.63],[174.61,261.63,349.23],[130.81,196,261.63]];
   const gain=audioCtx.createGain();gain.gain.value=0;gain.connect(audioCtx.destination);
-  // Fade in
-  gain.gain.linearRampToValueAtTime(.12,audioCtx.currentTime+.3);
+  gain.gain.linearRampToValueAtTime(.18,audioCtx.currentTime+.2);
 
   let time=audioCtx.currentTime+.1;
+  let phraseIdx=0,noteInPhrase=0;
+  const phraseLens=[6,6,7,6];
   melody.forEach(n=>{
-    // Main tone (sine — soft, music-box feel)
-    const osc=audioCtx.createOscillator();
-    osc.type='sine';osc.frequency.value=n.f;
-    const noteGain=audioCtx.createGain();
-    noteGain.gain.setValueAtTime(.6,time);
-    noteGain.gain.exponentialRampToValueAtTime(.01,time+n.d*.9);
-    osc.connect(noteGain);noteGain.connect(gain);
+    // Bright bell/celesta tone (square wave filtered)
+    const osc=audioCtx.createOscillator();osc.type='square';osc.frequency.value=n.f;
+    const filt=audioCtx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=n.f*4;filt.Q.value=.5;
+    const ng=audioCtx.createGain();
+    ng.gain.setValueAtTime(.35,time);
+    ng.gain.exponentialRampToValueAtTime(.01,time+n.d*.85);
+    osc.connect(filt);filt.connect(ng);ng.connect(gain);
     osc.start(time);osc.stop(time+n.d);
 
-    // Harmonic overtone (triangle, one octave up, quieter — adds shimmer)
-    const osc2=audioCtx.createOscillator();
-    osc2.type='triangle';osc2.frequency.value=n.f*2;
-    const ng2=audioCtx.createGain();
-    ng2.gain.setValueAtTime(.15,time);
-    ng2.gain.exponentialRampToValueAtTime(.01,time+n.d*.7);
-    osc2.connect(ng2);ng2.connect(gain);
-    osc2.start(time);osc2.stop(time+n.d);
+    // High sparkle (sine 2 octaves up)
+    const o2=audioCtx.createOscillator();o2.type='sine';o2.frequency.value=n.f*4;
+    const n2=audioCtx.createGain();
+    n2.gain.setValueAtTime(.04,time);
+    n2.gain.exponentialRampToValueAtTime(.001,time+n.d*.4);
+    o2.connect(n2);n2.connect(gain);
+    o2.start(time);o2.stop(time+n.d);
 
-    time+=n.d+.05;
+    // Warm sine body
+    const o3=audioCtx.createOscillator();o3.type='sine';o3.frequency.value=n.f;
+    const n3=audioCtx.createGain();
+    n3.gain.setValueAtTime(.25,time);
+    n3.gain.exponentialRampToValueAtTime(.01,time+n.d*.9);
+    o3.connect(n3);n3.connect(gain);
+    o3.start(time);o3.stop(time+n.d);
+
+    // Bass chord at start of each phrase
+    noteInPhrase++;
+    if(noteInPhrase===1){
+      chords[Math.min(phraseIdx,3)].forEach(cf=>{
+        const ob=audioCtx.createOscillator();ob.type='sine';ob.frequency.value=cf;
+        const gb=audioCtx.createGain();
+        gb.gain.setValueAtTime(.06,time);
+        gb.gain.exponentialRampToValueAtTime(.005,time+1.8);
+        ob.connect(gb);gb.connect(gain);
+        ob.start(time);ob.stop(time+2);
+      });
+    }
+    if(noteInPhrase>=phraseLens[phraseIdx]){noteInPhrase=0;phraseIdx++;}
+
+    time+=n.d+.04;
   });
-  // Fade out at end
-  gain.gain.setValueAtTime(.12,time-.5);
-  gain.gain.linearRampToValueAtTime(0,time+.5);
-  setTimeout(()=>{bdayPlaying=false;},time*1000+600);
+  gain.gain.setValueAtTime(.18,time-.3);
+  gain.gain.linearRampToValueAtTime(0,time+.8);
+  setTimeout(()=>{bdayPlaying=false;},time*1000+1000);
 }
 
 // ─── PARTICLES ───
