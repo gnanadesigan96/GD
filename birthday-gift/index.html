@@ -1764,7 +1764,7 @@ window.showExcited=function(){
     }while(Math.abs(nx)<60&&Math.abs(ny)<40);
     noBtn.style.transform=`translate(${nx}px,${ny}px)`;
     if(dodgeCount>=3)noBtn.textContent='😜 Nope!';
-    if(dodgeCount>=6)noBtn.textContent='Can\\'t catch me!';
+    if(dodgeCount>=6)noBtn.textContent="Can't catch me!";
     if(dodgeCount>=9)noBtn.textContent='Just say Yes! 😂';
   }
   noBtn.addEventListener('mouseenter',dodgeNo);
