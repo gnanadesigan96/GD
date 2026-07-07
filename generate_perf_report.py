@@ -6,7 +6,7 @@ generates HTML + CSV, uploads both to SharePoint, disconnects VPN.
 Works on macOS, Linux, and Windows.
 
 Setup:
-  pip install pymongo requests
+  pip install pymongo requests openpyxl
 
   macOS:   brew install openvpn
   Linux:   sudo apt install openvpn
@@ -33,8 +33,8 @@ Task Scheduler (Windows — daily 6:30 PM IST):
   Run with highest privileges: Yes
 """
 import sys
-import csv
 import html as _html
+import io
 import os
 import platform
 import shutil
@@ -45,12 +45,15 @@ import argparse
 import requests
 from datetime import datetime, timedelta, timezone
 from pymongo import MongoClient
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 # ============================================================
 #  CONFIGURATION
 # ============================================================
 
-OUTPUT_FILE = "corestack-performance-report.html"
+OUTPUT_BASE = "corestack-performance-report"
 
 # ── OpenVPN ──────────────────────────────────────────────────
 OVPN_CONFIG_PATH = "/etc/openvpn/client.ovpn"  # default; override with --ovpn
@@ -1244,6 +1247,220 @@ CSV_FIELDS = [
 
 
 # ============================================================
+#  EXCEL GENERATION
+# ============================================================
+
+_FILL_CACHE = {}
+
+def _fill(hex6: str) -> PatternFill:
+    if hex6 not in _FILL_CACHE:
+        _FILL_CACHE[hex6] = PatternFill("solid", fgColor=hex6)
+    return _FILL_CACHE[hex6]
+
+_THIN_BORDER = Border(
+    left=Side(style="thin", color="D1D5DB"),
+    right=Side(style="thin", color="D1D5DB"),
+    top=Side(style="thin", color="D1D5DB"),
+    bottom=Side(style="thin", color="D1D5DB"),
+)
+_AL_CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
+_AL_LEFT   = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+
+def _xl_header(ws, row, headers, fill_hex="1E293B"):
+    for i, h in enumerate(headers, 1):
+        c = ws.cell(row, i, h)
+        c.fill = _fill(fill_hex)
+        c.font = Font(color="FFFFFF", bold=True, size=10)
+        c.alignment = _AL_CENTER
+        c.border = _THIN_BORDER
+    ws.row_dimensions[row].height = 28
+
+
+def _xl_cell(ws, row, col, value, fill_hex="FFFFFF", font_hex="0F172A",
+             bold=False, align=None):
+    c = ws.cell(row, col, value)
+    c.fill = _fill(fill_hex)
+    c.font = Font(color=font_hex, bold=bold, size=9)
+    c.alignment = align or _AL_CENTER
+    c.border = _THIN_BORDER
+    return c
+
+
+def _xl_set_widths(ws, widths):
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+
+def generate_excel(ist: datetime, job_results: list, audit_results: list,
+                   raw_rows: list) -> bytes:
+    wb = Workbook()
+    title_date = ist.strftime("%d %b %Y %I:%M %p IST")
+
+    # ── Sheet 1: Summary ────────────────────────────────────
+    ws = wb.active
+    ws.title = "Summary"
+    ws.sheet_properties.tabColor = "1E293B"
+    _xl_set_widths(ws, [36, 16])
+
+    ws.merge_cells("A1:B1")
+    c = ws.cell(1, 1, f"CoreStack Performance Report — {title_date}")
+    c.font = Font(color="0F172A", bold=True, size=14)
+    c.alignment = _AL_LEFT
+    ws.row_dimensions[1].height = 30
+
+    ws.merge_cells("A2:B2")
+    c = ws.cell(2, 1, "Automated daily performance snapshot across all environments")
+    c.font = Font(color="64748B", size=10, italic=True)
+    ws.row_dimensions[2].height = 20
+    ws.row_dimensions[3].height = 8
+
+    ws.cell(4, 1, "Environments Monitored").font = Font(bold=True, size=10)
+    ws.cell(4, 2, len(ENVIRONMENTS)).font = Font(bold=True, size=10)
+    ws.row_dimensions[4].height = 22
+
+    valid_jobs = [j for j in job_results if not j["error"]]
+    valid_audits = [a for a in audit_results if not a["error"]]
+
+    if valid_jobs:
+        avg_compliance = round(sum(j["compliance_pct"] for j in valid_jobs) / len(valid_jobs), 1)
+    else:
+        avg_compliance = 0.0
+
+    total_pending = sum(j["n2_pending"] for j in valid_jobs)
+    total_slow = sum(a["slow_count"] for a in valid_audits)
+    total_requests = sum(a["total_requests"] for a in valid_audits)
+
+    metrics = [
+        ("Avg Compliance %", f"{avg_compliance}%",
+         "16A34A" if avg_compliance >= 98 else ("D97706" if avg_compliance >= 90 else "DC2626")),
+        ("Total Pending (N-2)", total_pending,
+         "DC2626" if total_pending > 0 else "16A34A"),
+        ("Total Slow Requests (24h)", total_slow,
+         "DC2626" if total_slow > 0 else "16A34A"),
+        ("Total Requests Analyzed", total_requests, "1D4ED8"),
+        ("Raw Data Records", len(raw_rows), "475569"),
+    ]
+    for i, (label, val, color) in enumerate(metrics, 5):
+        ws.cell(i, 1, label).font = Font(size=10, color="334155")
+        c = ws.cell(i, 2, val)
+        c.font = Font(bold=True, size=11, color=color)
+        ws.row_dimensions[i].height = 22
+
+    # ── Sheet 2: Cost Processing Compliance ──────────────────
+    ws2 = wb.create_sheet("Cost Processing")
+    ws2.sheet_properties.tabColor = "2563EB"
+    headers = ["Environment", "Total Accounts", "Completed (24h)", "Pending (N-2)",
+               "Older Backlog", "Tenants Impacted", "Compliance %"]
+    _xl_set_widths(ws2, [16, 16, 16, 16, 16, 18, 14])
+
+    ws2.merge_cells("A1:G1")
+    c = ws2.cell(1, 1, f"Section 2 — Cost Processing Compliance — {title_date}")
+    c.font = Font(color="1E293B", bold=True, size=12)
+    c.alignment = _AL_LEFT
+    ws2.row_dimensions[1].height = 28
+
+    _xl_header(ws2, 3, headers, "1E4976")
+    for i, jm in enumerate(job_results, 4):
+        if jm["error"]:
+            _xl_cell(ws2, i, 1, jm["label"], "FEE2E2", "B91C1C", bold=True, align=_AL_LEFT)
+            ws2.merge_cells(start_row=i, start_column=2, end_row=i, end_column=7)
+            _xl_cell(ws2, i, 2, f"ERROR: {jm['error']}", "FEE2E2", "B91C1C")
+        else:
+            pct = jm["compliance_pct"]
+            pct_fill = "DCFCE7" if pct >= 98 else ("FEF9C3" if pct >= 90 else "FEE2E2")
+            pct_font = "15803D" if pct >= 98 else ("B45309" if pct >= 90 else "B91C1C")
+            pending_fill = "FEE2E2" if jm["n2_pending"] > 0 else "F0FDF4"
+            pending_font = "B91C1C" if jm["n2_pending"] > 0 else "15803D"
+
+            _xl_cell(ws2, i, 1, jm["label"], "F1F5F9", "0F172A", bold=True, align=_AL_LEFT)
+            _xl_cell(ws2, i, 2, jm["total_accts"])
+            _xl_cell(ws2, i, 3, jm["completed_24h"])
+            _xl_cell(ws2, i, 4, jm["n2_pending"], pending_fill, pending_font, bold=True)
+            _xl_cell(ws2, i, 5, jm["older_backlog"])
+            _xl_cell(ws2, i, 6, jm["tenants_impacted"])
+            _xl_cell(ws2, i, 7, f"{pct}%", pct_fill, pct_font, bold=True)
+        ws2.row_dimensions[i].height = 24
+
+    # ── Sheet 3: Service / API Performance ───────────────────
+    ws3 = wb.create_sheet("API Performance")
+    ws3.sheet_properties.tabColor = "7C3AED"
+    headers3 = ["Environment", "Total Requests", "Slow Requests", "Avg Slow (s)",
+                "Max (s)", "Users Affected", "P95", "P99", "Health"]
+    _xl_set_widths(ws3, [16, 16, 14, 14, 12, 16, 10, 10, 10])
+
+    ws3.merge_cells("A1:I1")
+    c = ws3.cell(1, 1, f"Section 1 — Service / API Performance — {title_date}")
+    c.font = Font(color="1E293B", bold=True, size=12)
+    c.alignment = _AL_LEFT
+    ws3.row_dimensions[1].height = 28
+
+    _xl_header(ws3, 3, headers3, "5B21B6")
+    for i, am in enumerate(audit_results, 4):
+        if am["error"]:
+            _xl_cell(ws3, i, 1, am["label"], "FEE2E2", "B91C1C", bold=True, align=_AL_LEFT)
+            ws3.merge_cells(start_row=i, start_column=2, end_row=i, end_column=9)
+            _xl_cell(ws3, i, 2, f"ERROR: {am['error']}", "FEE2E2", "B91C1C")
+        else:
+            health = am["health"]
+            h_fill = "DCFCE7" if health == "Good" else "FEE2E2"
+            h_font = "15803D" if health == "Good" else "B91C1C"
+            slow_fill = "FEE2E2" if am["slow_count"] > 0 else "F0FDF4"
+            slow_font = "B91C1C" if am["slow_count"] > 0 else "15803D"
+
+            _xl_cell(ws3, i, 1, am["label"], "F1F5F9", "0F172A", bold=True, align=_AL_LEFT)
+            _xl_cell(ws3, i, 2, am["total_requests"])
+            _xl_cell(ws3, i, 3, am["slow_count"], slow_fill, slow_font, bold=True)
+            _xl_cell(ws3, i, 4, am["avg_slow_s"])
+            _xl_cell(ws3, i, 5, am["max_s"])
+            _xl_cell(ws3, i, 6, am["total_users"])
+            p95_ok = am["p95_good"]
+            p99_ok = am["p99_good"]
+            _xl_cell(ws3, i, 7, "Good" if p95_ok else "Bad",
+                     "DCFCE7" if p95_ok else "FEE2E2",
+                     "15803D" if p95_ok else "B91C1C", bold=True)
+            _xl_cell(ws3, i, 8, "Good" if p99_ok else "Bad",
+                     "DCFCE7" if p99_ok else "FEE2E2",
+                     "15803D" if p99_ok else "B91C1C", bold=True)
+            _xl_cell(ws3, i, 9, health, h_fill, h_font, bold=True)
+        ws3.row_dimensions[i].height = 24
+
+    # ── Sheet 4: Raw Data ────────────────────────────────────
+    ws4 = wb.create_sheet("Raw Data")
+    ws4.sheet_properties.tabColor = "0891B2"
+    raw_headers = ["Environment", "User", "Type", "User ID", "Executor", "Path",
+                   "Method", "Status", "Duration (s)", "Slow?",
+                   "Start Time (IST)", "End Time (IST)", "Source IP", "Request ID"]
+    _xl_set_widths(ws4, [14, 22, 10, 20, 10, 40, 8, 8, 12, 6, 20, 20, 16, 28])
+
+    ws4.merge_cells("A1:N1")
+    c = ws4.cell(1, 1, f"Raw Audit Data — {title_date} — {len(raw_rows)} records")
+    c.font = Font(color="1E293B", bold=True, size=12)
+    c.alignment = _AL_LEFT
+    ws4.row_dimensions[1].height = 28
+
+    _xl_header(ws4, 3, raw_headers, "0E7490")
+    for r, row in enumerate(raw_rows, 4):
+        vals = [row.get(f, "") for f in CSV_FIELDS]
+        is_slow = row.get("is_slow") == "Yes"
+        for col_idx, val in enumerate(vals, 1):
+            if is_slow:
+                bg = "FEF2F2"
+            elif (r - 4) % 2 == 0:
+                bg = "F8FAFC"
+            else:
+                bg = "FFFFFF"
+            _xl_cell(ws4, r, col_idx, val, bg, "0F172A", align=_AL_LEFT)
+        ws4.row_dimensions[r].height = 20
+
+    ws4.auto_filter.ref = f"A3:N{3 + len(raw_rows)}"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+# ============================================================
 #  MAIN
 # ============================================================
 
@@ -1302,21 +1519,25 @@ def main():
                       f"p95={'Good' if am['p95_good'] else 'Bad'}  "
                       f"p99={'Good' if am['p99_good'] else 'Bad'}")
 
-        # ── Step 3: Build HTML ───────────────────────────────
+        # ── Step 3: Build filenames ──────────────────────────
+        date_stamp = ist.strftime("%Y-%m-%d")
+        html_name = f"{OUTPUT_BASE}_{date_stamp}.html"
+        xlsx_name = f"{OUTPUT_BASE}_{date_stamp}.xlsx"
+
+        # ── Step 4: Build HTML ───────────────────────────────
         print()
         print("Building HTML ...")
         final_html = build_html(now, job_results, audit_results)
 
-        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        with open(html_name, "w", encoding="utf-8") as f:
             f.write(final_html)
 
         kb = len(final_html.encode()) // 1024
-        print(f"Written -> {OUTPUT_FILE}  ({kb} KB)")
+        print(f"Written -> {html_name}  ({kb} KB)")
 
-        # ── Step 4: Build CSV ────────────────────────────────
+        # ── Step 5: Build Excel ──────────────────────────────
         print()
-        print("Exporting Section 1 raw data CSV ...")
-        csv_name = f"corestack_section1_raw_{ist.strftime('%d%b%Y_%I%M%p')}.csv"
+        print("Exporting raw data ...")
         all_rows = []
         for env_key in ENVIRONMENTS:
             print(f"  [{env_key}] raw data ...", end=" ", flush=True)
@@ -1324,30 +1545,30 @@ def main():
             all_rows.extend(rows)
             print(f"{len(rows)} records")
 
-        with open(csv_name, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
-            writer.writeheader()
-            writer.writerows(all_rows)
-        print(f"Written -> {csv_name}  ({len(all_rows)} total records)")
+        print(f"Building Excel ({len(all_rows)} raw records) ...")
+        xlsx_bytes = generate_excel(ist, job_results, audit_results, all_rows)
+        with open(xlsx_name, "wb") as f:
+            f.write(xlsx_bytes)
+        print(f"Written -> {xlsx_name}  ({len(xlsx_bytes) // 1024} KB)")
 
     finally:
-        # ── Step 5: Disconnect VPN ───────────────────────────
+        # ── Step 6: Disconnect VPN ───────────────────────────
         if not args.no_vpn:
             print()
             vpn_disconnect()
 
-    # ── Step 6: Upload to SharePoint ─────────────────────────
+    # ── Step 7: Upload to SharePoint ─────────────────────────
     if not args.no_upload:
         print()
         print("Uploading to SharePoint ...")
         try:
-            print(f"  HTML -> {SHAREPOINT_REPORT_FOLDER}/{OUTPUT_FILE}")
-            html_url = upload_to_sharepoint(OUTPUT_FILE, SHAREPOINT_REPORT_FOLDER, OUTPUT_FILE)
+            print(f"  HTML -> {SHAREPOINT_REPORT_FOLDER}/{html_name}")
+            html_url = upload_to_sharepoint(html_name, SHAREPOINT_REPORT_FOLDER, html_name)
             print(f"  OK: {html_url}")
 
-            print(f"  CSV  -> {SHAREPOINT_CSV_FOLDER}/{csv_name}")
-            csv_url = upload_to_sharepoint(csv_name, SHAREPOINT_CSV_FOLDER, csv_name)
-            print(f"  OK: {csv_url}")
+            print(f"  XLSX -> {SHAREPOINT_CSV_FOLDER}/{xlsx_name}")
+            xlsx_url = upload_to_sharepoint(xlsx_name, SHAREPOINT_CSV_FOLDER, xlsx_name)
+            print(f"  OK: {xlsx_url}")
         except Exception as exc:
             print(f"  [ERROR] SharePoint upload failed: {exc}", file=sys.stderr)
 
