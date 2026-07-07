@@ -199,240 +199,34 @@ const EIB=t=>{const s=1.5;return 1+(--t)*t*((s+1)*t+s)};
 const prog=(e,s,d)=>clamp((e-s)/d,0,1);
 
 // ─── MUSIC (Web Audio API) ───
-let audioCtx=null,bdayPlaying=false,romanticPlaying=false,romanticGain=null,romanticTimer=null;
+let audioCtx=null,bdayPlaying=false,romanticPlaying=false,romanticGain=null,romanticTimer=null,ytPlayer=null;
 function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
 
 function playRomanticMelody(){
   if(romanticPlaying)return;romanticPlaying=true;
-  initAudio();
-  const master=audioCtx.createGain();master.gain.value=0;master.connect(audioCtx.destination);
-  master.gain.linearRampToValueAtTime(.2,audioCtx.currentTime+2);
-  romanticGain=master;
-
-  const C4=261.63,D4=293.66,Eb4=311.13,E4=329.63,F4=349.23,G4=392,Ab4=415.30,A4=440,Bb4=466.16,B4=493.88;
-  const C5=523.25,D5=587.33,Eb5=622.25,E5=659.25,F5=698.46,G5=783.99,Ab5=830.61,A5=880,Bb5=932.33,C6=1046.50;
-
-  // Cinematic string voice — layered oscillators for orchestral richness
-  function playStr(freq,startT,dur,vol,swell){
-    if(freq===0)return;
-    // Main string — sawtooth filtered to sound warm
-    const osc=audioCtx.createOscillator();osc.type='sawtooth';osc.frequency.value=freq;
-    const filt=audioCtx.createBiquadFilter();filt.type='lowpass';
-    filt.frequency.value=freq*3;filt.Q.value=.7;
-    const vib=audioCtx.createOscillator();vib.type='sine';vib.frequency.value=5;
-    const vibG=audioCtx.createGain();vibG.gain.value=freq*.005;
-    vib.connect(vibG);vibG.connect(osc.frequency);
-    const ng=audioCtx.createGain();
-    if(swell){
-      ng.gain.setValueAtTime(.001,startT);
-      ng.gain.linearRampToValueAtTime(vol*.5,startT+dur*.4);
-      ng.gain.linearRampToValueAtTime(vol*.65,startT+dur*.7);
-      ng.gain.exponentialRampToValueAtTime(.001,startT+dur*.98);
-    }else{
-      ng.gain.setValueAtTime(.001,startT);
-      ng.gain.linearRampToValueAtTime(vol*.55,startT+dur*.12);
-      ng.gain.setValueAtTime(vol*.55,startT+dur*.6);
-      ng.gain.exponentialRampToValueAtTime(.001,startT+dur*.97);
-    }
-    osc.connect(filt);filt.connect(ng);ng.connect(master);
-    osc.start(startT);osc.stop(startT+dur);
-    vib.start(startT);vib.stop(startT+dur);
-
-    // Sine doubling — warmth
-    const o2=audioCtx.createOscillator();o2.type='sine';o2.frequency.value=freq;
-    const n2=audioCtx.createGain();
-    n2.gain.setValueAtTime(.001,startT);
-    n2.gain.linearRampToValueAtTime(vol*.35,startT+dur*.15);
-    n2.gain.exponentialRampToValueAtTime(.001,startT+dur*.95);
-    o2.connect(n2);n2.connect(master);
-    o2.start(startT);o2.stop(startT+dur);
-
-    // Octave-up harmonic — brilliance
-    const o3=audioCtx.createOscillator();o3.type='triangle';o3.frequency.value=freq*2;
-    const n3=audioCtx.createGain();
-    n3.gain.setValueAtTime(.001,startT);
-    n3.gain.linearRampToValueAtTime(vol*.06,startT+dur*.2);
-    n3.gain.exponentialRampToValueAtTime(.001,startT+dur*.8);
-    o3.connect(n3);n3.connect(master);
-    o3.start(startT);o3.stop(startT+dur);
-  }
-
-  // Brass swell — for triumphant moments
-  function playBrass(freq,startT,dur,vol){
-    const osc=audioCtx.createOscillator();osc.type='sawtooth';osc.frequency.value=freq;
-    const filt=audioCtx.createBiquadFilter();filt.type='lowpass';
-    filt.frequency.setValueAtTime(freq*1.5,startT);
-    filt.frequency.linearRampToValueAtTime(freq*5,startT+dur*.5);
-    filt.frequency.linearRampToValueAtTime(freq*2,startT+dur*.9);
-    filt.Q.value=1;
-    const ng=audioCtx.createGain();
-    ng.gain.setValueAtTime(.001,startT);
-    ng.gain.linearRampToValueAtTime(vol*.4,startT+dur*.35);
-    ng.gain.linearRampToValueAtTime(vol*.5,startT+dur*.6);
-    ng.gain.exponentialRampToValueAtTime(.001,startT+dur*.97);
-    osc.connect(filt);filt.connect(ng);ng.connect(master);
-    osc.start(startT);osc.stop(startT+dur);
-  }
-
-  // String pad chord — lush sustained harmony
-  function playPad(freqs,startT,dur,vol){
-    freqs.forEach(f=>{
-      const o=audioCtx.createOscillator();o.type='sine';o.frequency.value=f;
-      const vib=audioCtx.createOscillator();vib.type='sine';vib.frequency.value=3.5+Math.random();
-      const vg=audioCtx.createGain();vg.gain.value=f*.003;
-      vib.connect(vg);vg.connect(o.frequency);
-      const g=audioCtx.createGain();
-      g.gain.setValueAtTime(.001,startT);
-      g.gain.linearRampToValueAtTime(vol*.04,startT+dur*.2);
-      g.gain.setValueAtTime(vol*.04,startT+dur*.75);
-      g.gain.exponentialRampToValueAtTime(.001,startT+dur*.99);
-      o.connect(g);g.connect(master);
-      o.start(startT);o.stop(startT+dur);
-      vib.start(startT);vib.stop(startT+dur);
+  if(ytPlayer&&ytPlayer.playVideo){ytPlayer.playVideo();return;}
+  // Load YouTube IFrame API
+  const tag=document.createElement('script');
+  tag.src='https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+  window.onYouTubeIframeAPIReady=function(){
+    const div=document.createElement('div');div.id='ytRomantic';
+    div.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
+    document.body.appendChild(div);
+    ytPlayer=new YT.Player('ytRomantic',{
+      videoId:'Ry9mRnBqzHA',
+      playerVars:{autoplay:1,loop:1,playlist:'Ry9mRnBqzHA',controls:0,disablekb:1,fs:0,modestbranding:1},
+      events:{onReady:function(e){e.target.setVolume(70);e.target.playVideo();}}
     });
-  }
-
-  // Timpani hit — epic punctuation
-  function playTimpani(startT,vol){
-    const o=audioCtx.createOscillator();o.type='sine';
-    o.frequency.setValueAtTime(80,startT);
-    o.frequency.exponentialRampToValueAtTime(45,startT+.4);
-    const g=audioCtx.createGain();
-    g.gain.setValueAtTime(vol*.3,startT);
-    g.gain.exponentialRampToValueAtTime(.001,startT+.8);
-    o.connect(g);g.connect(master);
-    o.start(startT);o.stop(startT+1);
-  }
-
-  // Cymbal shimmer
-  function playCymbal(startT,dur,vol){
-    for(let i=0;i<5;i++){
-      const o=audioCtx.createOscillator();o.type='triangle';
-      o.frequency.value=3000+Math.random()*4000;
-      const g=audioCtx.createGain();
-      g.gain.setValueAtTime(vol*.008,startT);
-      g.gain.exponentialRampToValueAtTime(.0001,startT+dur);
-      o.connect(g);g.connect(master);
-      o.start(startT);o.stop(startT+dur);
-    }
-  }
-
-  function scheduleLoop(){
-    let t=audioCtx.currentTime+.4;
-    const b=.6; // stately tempo
-
-    // ═══ ACT I: Dawn — quiet, intimate (seeing her for first time) ═══
-    playPad([C4/2,G4/2,C4,E4],t,b*12,1);
-
-    playStr(E4,t,b*2.5,.4,true);t+=b*2.8;
-    playStr(G4,t,b*2,.4,false);t+=b*2.2;
-    playStr(A4,t,b*1.5,.42,false);t+=b*1.7;
-    playStr(G4,t,b*3,.48,true);t+=b*3.5;
-    t+=b*1.5;
-
-    // ═══ ACT II: Spark — melody lifts, hope builds ═══
-    playPad([F4/2,A4/2,C4,F4],t,b*12,1);
-    playCymbal(t,.8,.5);
-
-    playStr(C5,t,b*2,.5,false);t+=b*2.2;
-    playStr(D5,t,b*1.5,.5,false);t+=b*1.7;
-    playStr(E5,t,b*2.5,.55,true);t+=b*2.8;
-    playStr(D5,t,b*1.2,.45,false);t+=b*1.4;
-    playStr(C5,t,b*1.5,.48,false);t+=b*1.7;
-    playStr(E5,t,b*3,.55,true);t+=b*3.5;
-    t+=b*1;
-
-    // ═══ ACT III: Connection — warm, full orchestra enters ═══
-    playPad([G4/2,B4/2,D4,G4],t,b*11,1);
-    playTimpani(t,.6);
-
-    playStr(G5,t,b*2,.58,false);t+=b*2.2;
-    playStr(F5,t,b*1.2,.5,false);t+=b*1.4;
-    playStr(E5,t,b*2,.55,true);t+=b*2.2;
-    playStr(D5,t,b*1,.48,false);t+=b*1.2;
-    playStr(E5,t,b*1.5,.52,false);t+=b*1.7;
-    playStr(G5,t,b*3.5,.6,true);t+=b*4;
-    t+=b*1;
-
-    // ═══ ACT IV: Passion — brass enters, crescendo building ═══
-    playPad([Ab4/2,C4,Eb4,Ab4],t,b*12,1);
-    playTimpani(t,.7);playCymbal(t,1.2,.6);
-
-    playStr(Ab5,t,b*2,.6,false);
-    playBrass(Ab4,t,b*2,.3);t+=b*2.2;
-    playStr(G5,t,b*1.5,.55,false);t+=b*1.7;
-    playStr(F5,t,b*1.2,.52,false);t+=b*1.4;
-    playStr(Eb5,t,b*2,.55,true);t+=b*2.2;
-    playStr(F5,t,b*1.5,.52,false);t+=b*1.7;
-    playStr(G5,t,b*1.5,.55,false);t+=b*1.7;
-    playStr(Ab5,t,b*3,.65,true);t+=b*3.5;
-    t+=b*1;
-
-    // ═══ ACT V: TRIUMPH — full epic climax, love conquers all ═══
-    playPad([C4/2,E4/2,G4/2,C4,E4,G4],t,b*14,1);
-    playTimpani(t,.9);playTimpani(t+b*2,.7);
-    playCymbal(t,2,.8);
-
-    playStr(C6,t,b*2.5,.7,true);
-    playBrass(C5,t,b*2.5,.4);t+=b*2.8;
-    playStr(Bb5,t,b*1.5,.6,false);
-    playBrass(Bb4,t,b*1.5,.35);t+=b*1.7;
-    playStr(A5,t,b*1.5,.6,false);t+=b*1.7;
-    playStr(G5,t,b*2,.6,true);
-    playBrass(G4,t,b*2,.35);t+=b*2.2;
-    playStr(A5,t,b*1.5,.58,false);t+=b*1.7;
-    playStr(G5,t,b*1.2,.55,false);t+=b*1.4;
-    playStr(E5,t,b*1.5,.55,false);t+=b*1.7;
-    playStr(G5,t,b*4,.7,true);
-    playBrass(G4,t,b*4,.4);t+=b*4.5;
-    t+=b*1;
-
-    // ═══ ACT VI: Tenderness — quiet after the storm ═══
-    playPad([F4/2,A4/2,C4,F4],t,b*10,1);
-
-    playStr(F5,t,b*2,.5,true);t+=b*2.2;
-    playStr(E5,t,b*1.5,.48,false);t+=b*1.7;
-    playStr(D5,t,b*1.5,.45,false);t+=b*1.7;
-    playStr(C5,t,b*2,.5,true);t+=b*2.2;
-    playStr(A4,t,b*3,.48,true);t+=b*3.5;
-    t+=b*1;
-
-    // ═══ ACT VII: Forever — rising again with full warmth ═══
-    playPad([G4/2,B4/2,D4,G4,B4],t,b*12,1);
-    playTimpani(t,.5);
-
-    playStr(D5,t,b*1.5,.5,false);t+=b*1.7;
-    playStr(E5,t,b*1.5,.52,false);t+=b*1.7;
-    playStr(G5,t,b*2.5,.6,true);
-    playBrass(G4,t,b*2.5,.3);t+=b*2.8;
-    playStr(A5,t,b*2,.58,false);t+=b*2.2;
-    playStr(G5,t,b*1.5,.55,false);t+=b*1.7;
-    playStr(E5,t,b*3.5,.6,true);t+=b*4;
-    t+=b*1;
-
-    // ═══ ACT VIII: Eternal — resolves home, peaceful majesty ═══
-    playPad([C4/2,E4/2,G4/2,C4,E4],t,b*14,1);
-    playCymbal(t,3,.5);
-
-    playStr(E5,t,b*2,.55,true);t+=b*2.2;
-    playStr(D5,t,b*1.5,.5,false);t+=b*1.7;
-    playStr(C5,t,b*2,.52,true);t+=b*2.2;
-    playStr(G4,t,b*1.5,.45,false);t+=b*1.7;
-    playStr(E4,t,b*2,.45,true);t+=b*2.2;
-    playStr(C4,t,b*5,.5,true);t+=b*5.5;
-    t+=b*3;
-
-    const loopDur=(t-audioCtx.currentTime)*1000;
-    romanticTimer=setTimeout(()=>{if(romanticPlaying)scheduleLoop();},loopDur-800);
-  }
-  scheduleLoop();
+  };
 }
 
 function stopRomanticMelody(){
   if(!romanticPlaying)return;
   romanticPlaying=false;
+  if(ytPlayer&&ytPlayer.pauseVideo)ytPlayer.pauseVideo();
   if(romanticTimer){clearTimeout(romanticTimer);romanticTimer=null;}
-  if(romanticGain){
+  if(romanticGain&&audioCtx){
     romanticGain.gain.linearRampToValueAtTime(0,audioCtx.currentTime+1.5);
     romanticGain=null;
   }
