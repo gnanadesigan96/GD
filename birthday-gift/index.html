@@ -206,150 +206,180 @@ function playRomanticMelody(){
   if(romanticPlaying)return;romanticPlaying=true;
   initAudio();
   const master=audioCtx.createGain();master.gain.value=0;master.connect(audioCtx.destination);
-  master.gain.linearRampToValueAtTime(.11,audioCtx.currentTime+2);
+  master.gain.linearRampToValueAtTime(.13,audioCtx.currentTime+1.5);
   romanticGain=master;
 
-  // Key of C major / A minor — classic romantic intervals
-  const C4=261.63,D4=293.66,E4=329.63,F4=349.23,G4=392,A4=440,B4=493.88;
-  const C5=523.25,D5=587.33,E5=659.25,F5=698.46,G5=783.99,A5=880;
+  // Bollywood Raag-inspired scale — Sa Re Ga Ma Pa Dha Ni (major-ish, bright & joyful)
+  const Sa=261.63,Re=293.66,Ga=329.63,Ma=349.23,Pa=392,Dha=440,Ni=493.88;
+  const Sa2=523.25,Re2=587.33,Ga2=659.25,Ma2=698.46,Pa2=783.99;
 
-  function playNote(freq,startT,dur,v){
+  // Flute-like lead voice with Bollywood meend (glide) and gamak (vibrato)
+  function playNote(freq,startT,dur,v,glideFrom){
     if(freq===0)return;
-    // Main warm voice — sine with slow vibrato
-    const osc=audioCtx.createOscillator();osc.type='sine';osc.frequency.value=freq;
-    const vib=audioCtx.createOscillator();vib.type='sine';vib.frequency.value=4.5;
-    const vibG=audioCtx.createGain();vibG.gain.value=freq*.006;
+    const osc=audioCtx.createOscillator();osc.type='sine';
+    if(glideFrom){
+      osc.frequency.setValueAtTime(glideFrom,startT);
+      osc.frequency.exponentialRampToValueAtTime(freq,startT+dur*.18);
+    }else{
+      osc.frequency.setValueAtTime(freq,startT);
+    }
+    // Bollywood-style gamak vibrato — faster, more expressive
+    const vib=audioCtx.createOscillator();vib.type='sine';vib.frequency.value=5.5;
+    const vibG=audioCtx.createGain();vibG.gain.value=freq*.008;
     vib.connect(vibG);vibG.connect(osc.frequency);
     const ng=audioCtx.createGain();
     ng.gain.setValueAtTime(.001,startT);
-    ng.gain.linearRampToValueAtTime(v*.6,startT+dur*.15);
-    ng.gain.setValueAtTime(v*.6,startT+dur*.6);
-    ng.gain.exponentialRampToValueAtTime(.001,startT+dur*.98);
+    ng.gain.linearRampToValueAtTime(v*.65,startT+dur*.1);
+    ng.gain.setValueAtTime(v*.65,startT+dur*.65);
+    ng.gain.exponentialRampToValueAtTime(.001,startT+dur*.97);
     osc.connect(ng);ng.connect(master);
     osc.start(startT);osc.stop(startT+dur);
     vib.start(startT);vib.stop(startT+dur);
 
-    // Octave-up shimmer — triangle, gentle
+    // Tanpura-like shimmer (triangle, octave up)
     const o2=audioCtx.createOscillator();o2.type='triangle';o2.frequency.value=freq*2;
     const n2=audioCtx.createGain();
     n2.gain.setValueAtTime(.001,startT);
-    n2.gain.linearRampToValueAtTime(v*.1,startT+dur*.2);
-    n2.gain.exponentialRampToValueAtTime(.001,startT+dur*.85);
+    n2.gain.linearRampToValueAtTime(v*.09,startT+dur*.15);
+    n2.gain.exponentialRampToValueAtTime(.001,startT+dur*.8);
     o2.connect(n2);n2.connect(master);
     o2.start(startT);o2.stop(startT+dur);
-
-    // Fifth harmony — very soft for richness
-    const o3=audioCtx.createOscillator();o3.type='sine';o3.frequency.value=freq*1.498;
-    const n3=audioCtx.createGain();
-    n3.gain.setValueAtTime(.001,startT);
-    n3.gain.linearRampToValueAtTime(v*.07,startT+dur*.2);
-    n3.gain.exponentialRampToValueAtTime(.001,startT+dur*.75);
-    o3.connect(n3);n3.connect(master);
-    o3.start(startT);o3.stop(startT+dur);
-
-    // Sub warmth
-    const o4=audioCtx.createOscillator();o4.type='sine';o4.frequency.value=freq/2;
-    const n4=audioCtx.createGain();
-    n4.gain.setValueAtTime(.001,startT);
-    n4.gain.linearRampToValueAtTime(v*.08,startT+dur*.15);
-    n4.gain.exponentialRampToValueAtTime(.001,startT+dur*.9);
-    o4.connect(n4);n4.connect(master);
-    o4.start(startT);o4.stop(startT+dur);
   }
 
-  // Sustained chord pad underneath melody
-  function playChord(freqs,startT,dur){
-    freqs.forEach(f=>{
+  // Tanpura drone — Sa and Pa sustained underneath
+  function playDrone(startT,dur){
+    [Sa/2,Pa/2,Sa].forEach(f=>{
       const o=audioCtx.createOscillator();o.type='sine';o.frequency.value=f;
       const g=audioCtx.createGain();
       g.gain.setValueAtTime(.001,startT);
-      g.gain.linearRampToValueAtTime(.035,startT+dur*.2);
-      g.gain.setValueAtTime(.035,startT+dur*.7);
-      g.gain.exponentialRampToValueAtTime(.001,startT+dur*.98);
+      g.gain.linearRampToValueAtTime(.025,startT+dur*.1);
+      g.gain.setValueAtTime(.025,startT+dur*.85);
+      g.gain.exponentialRampToValueAtTime(.001,startT+dur*.99);
       o.connect(g);g.connect(master);
       o.start(startT);o.stop(startT+dur);
     });
   }
 
+  // Tabla-like rhythmic pulse
+  function playTabla(startT,dur,beats){
+    const beatDur=dur/beats;
+    for(let i=0;i<beats;i++){
+      const bt=startT+i*beatDur;
+      const isStrong=(i%4===0)||(i%4===2);
+      // "Dha" — low thump
+      const o=audioCtx.createOscillator();o.type='sine';
+      o.frequency.setValueAtTime(isStrong?95:120,bt);
+      o.frequency.exponentialRampToValueAtTime(50,bt+.08);
+      const g=audioCtx.createGain();
+      g.gain.setValueAtTime(isStrong?.06:.03,bt);
+      g.gain.exponentialRampToValueAtTime(.001,bt+.12);
+      o.connect(g);g.connect(master);
+      o.start(bt);o.stop(bt+.15);
+      // "Na" — high tap on offbeats
+      if(i%4===1||i%4===3){
+        const o2=audioCtx.createOscillator();o2.type='square';
+        o2.frequency.setValueAtTime(800,bt);
+        o2.frequency.exponentialRampToValueAtTime(300,bt+.03);
+        const g2=audioCtx.createGain();
+        g2.gain.setValueAtTime(.012,bt);
+        g2.gain.exponentialRampToValueAtTime(.001,bt+.06);
+        o2.connect(g2);g2.connect(master);
+        o2.start(bt);o2.stop(bt+.08);
+      }
+    }
+  }
+
   function scheduleLoop(){
     let t=audioCtx.currentTime+.3;
-    const q=.55; // quarter note base
+    const b=.42; // beat duration — lively tempo
 
-    // ── Phrase 1: Yearning rise (Am → F → C → G) ──
-    playChord([A4/2,C4,E4],t,q*8);
-    playNote(E4,t,q*1.8,.5);t+=q*2;
-    playNote(A4,t,q*1.4,.55);t+=q*1.6;
-    playNote(G4,t,q*1,.45);t+=q*1.2;
-    playNote(A4,t,q*2.5,.6);t+=q*3;
-    t+=q*.6;
+    // Drone runs through entire loop
+    const loopLen=b*96;
+    playDrone(t,loopLen);
+    playTabla(t,loopLen,96);
 
-    // ── Phrase 2: Tender call (F → G → Am) ──
-    playChord([F4/2,A4/2,C4],t,q*7);
-    playNote(C5,t,q*1.6,.55);t+=q*1.8;
-    playNote(B4,t,q*1,.45);t+=q*1.2;
-    playNote(A4,t,q*1.4,.5);t+=q*1.6;
-    playNote(G4,t,q*1,.45);t+=q*1.2;
-    playNote(A4,t,q*3,.6);t+=q*3.5;
-    t+=q*.5;
+    // ── Phrase 1: Alaap — gentle opening (Sa Re Ga, Re Ga Pa) ──
+    playNote(Sa,t,b*2,.5);t+=b*2.2;
+    playNote(Re,t,b*1.5,.5,Sa);t+=b*1.7;
+    playNote(Ga,t,b*2.5,.55,Re);t+=b*2.8;
+    playNote(Re,t,b*1.2,.45);t+=b*1.4;
+    playNote(Ga,t,b*1.5,.5,Re);t+=b*1.7;
+    playNote(Pa,t,b*3,.6,Ga);t+=b*3.5;
+    t+=b*1;
 
-    // ── Phrase 3: Soaring — heart swells (C → G → Am → F) ──
-    playChord([C4/2,E4/2,G4/2],t,q*8);
-    playNote(E5,t,q*2,.6);t+=q*2.2;
-    playNote(D5,t,q*1.2,.5);t+=q*1.4;
-    playNote(C5,t,q*1.6,.55);t+=q*1.8;
-    playNote(B4,t,q*1,.45);t+=q*1.2;
-    playNote(C5,t,q*3,.6);t+=q*3.5;
-    t+=q*.6;
+    // ── Phrase 2: Filmy rise — joyful ascending (Pa Dha Ni Sa2) ──
+    playNote(Pa,t,b*1.2,.55);t+=b*1.4;
+    playNote(Dha,t,b*1.5,.55,Pa);t+=b*1.7;
+    playNote(Ni,t,b*1.2,.5,Dha);t+=b*1.4;
+    playNote(Sa2,t,b*3,.65,Ni);t+=b*3.3;
+    playNote(Ni,t,b*.8,.4);t+=b*1;
+    playNote(Sa2,t,b*2,.6);t+=b*2.5;
+    t+=b*1;
 
-    // ── Phrase 4: Warm embrace (F → C → Dm → G) ──
-    playChord([F4/2,A4/2,C4],t,q*7);
-    playNote(A4,t,q*1.4,.5);t+=q*1.6;
-    playNote(C5,t,q*1.6,.55);t+=q*1.8;
-    playNote(E5,t,q*2,.6);t+=q*2.2;
-    playNote(D5,t,q*1.2,.5);t+=q*1.4;
-    playNote(C5,t,q*3.5,.65);t+=q*4;
-    t+=q*.8;
+    // ── Phrase 3: Ornamental peak — classic Bollywood meend ──
+    playNote(Ga2,t,b*1.5,.6,Re2);t+=b*1.7;
+    playNote(Re2,t,b*1,.5,Ga2);t+=b*1.2;
+    playNote(Sa2,t,b*1.5,.55);t+=b*1.7;
+    playNote(Ni,t,b*.6,.4,Sa2);t+=b*.8;
+    playNote(Dha,t,b*.6,.4,Ni);t+=b*.8;
+    playNote(Pa,t,b*1,.5);t+=b*1.2;
+    playNote(Dha,t,b*1.5,.55,Pa);t+=b*1.7;
+    playNote(Sa2,t,b*2.5,.6,Dha);t+=b*3;
+    t+=b*1;
 
-    // ── Phrase 5: Peak emotion — climax (Am → F → G → C) ──
-    playChord([A4/2,C4,E4],t,q*9);
-    playNote(E5,t,q*1.4,.6);t+=q*1.6;
-    playNote(F5,t,q*2,.65);t+=q*2.2;
-    playNote(E5,t,q*1.2,.55);t+=q*1.4;
-    playNote(D5,t,q*1.2,.5);t+=q*1.4;
-    playNote(C5,t,q*1.2,.5);t+=q*1.4;
-    playNote(E5,t,q*3.5,.6);t+=q*4;
-    t+=q*.8;
+    // ── Phrase 4: Romantic taan — fast ornamental run ──
+    playNote(Sa2,t,b*.5,.45);t+=b*.6;
+    playNote(Ni,t,b*.4,.4);t+=b*.5;
+    playNote(Dha,t,b*.4,.4);t+=b*.5;
+    playNote(Pa,t,b*.5,.45);t+=b*.6;
+    playNote(Dha,t,b*.4,.4);t+=b*.5;
+    playNote(Ni,t,b*.5,.45);t+=b*.6;
+    playNote(Sa2,t,b*1.2,.55);t+=b*1.4;
+    playNote(Re2,t,b*1,.5,Sa2);t+=b*1.2;
+    playNote(Sa2,t,b*2.5,.6);t+=b*3;
+    t+=b*1;
 
-    // ── Phrase 6: Gentle descent — "forever" (F → Dm → Am → G) ──
-    playChord([D4/2,F4/2,A4/2],t,q*8);
-    playNote(D5,t,q*1.4,.5);t+=q*1.6;
-    playNote(C5,t,q*1.2,.5);t+=q*1.4;
-    playNote(A4,t,q*1.6,.5);t+=q*1.8;
-    playNote(G4,t,q*1.2,.45);t+=q*1.4;
-    playNote(A4,t,q*3,.55);t+=q*3.5;
-    t+=q*.6;
+    // ── Phrase 5: Heart-melting — slow emotional descent ──
+    playNote(Ga2,t,b*2,.6,Ma2);t+=b*2.2;
+    playNote(Re2,t,b*1.5,.55,Ga2);t+=b*1.7;
+    playNote(Sa2,t,b*2,.55);t+=b*2.2;
+    playNote(Dha,t,b*1.5,.5,Sa2);t+=b*1.7;
+    playNote(Pa,t,b*3,.6,Dha);t+=b*3.5;
+    t+=b*1;
 
-    // ── Phrase 7: Dreamy reprise (C → Em → F → G) ──
-    playChord([C4/2,E4/2,G4/2],t,q*8);
-    playNote(G4,t,q*1.2,.45);t+=q*1.4;
-    playNote(A4,t,q*1,.45);t+=q*1.2;
-    playNote(C5,t,q*1.6,.55);t+=q*1.8;
-    playNote(E5,t,q*2,.6);t+=q*2.2;
-    playNote(D5,t,q*1.6,.5);t+=q*1.8;
-    playNote(C5,t,q*3,.6);t+=q*3.5;
-    t+=q*.8;
+    // ── Phrase 6: Playful — quick grace notes (like flirting) ──
+    playNote(Ga,t,b*.6,.45);t+=b*.7;
+    playNote(Ma,t,b*.5,.4,Ga);t+=b*.6;
+    playNote(Pa,t,b*1,.5);t+=b*1.2;
+    playNote(Pa,t,b*.5,.4);t+=b*.6;
+    playNote(Dha,t,b*.6,.45,Pa);t+=b*.7;
+    playNote(Ni,t,b*.6,.45,Dha);t+=b*.7;
+    playNote(Sa2,t,b*1.5,.55,Ni);t+=b*1.7;
+    playNote(Dha,t,b*1,.45,Sa2);t+=b*1.2;
+    playNote(Pa,t,b*2,.55);t+=b*2.5;
+    t+=b*1;
 
-    // ── Phrase 8: Lullaby close (Am → F → C) ──
-    playChord([A4/2,C4,E4],t,q*9);
-    playNote(C5,t,q*1.6,.5);t+=q*1.8;
-    playNote(B4,t,q*1,.45);t+=q*1.2;
-    playNote(A4,t,q*1.4,.5);t+=q*1.6;
-    playNote(G4,t,q*1.2,.45);t+=q*1.4;
-    playNote(E4,t,q*4,.55);t+=q*4.5;
-    t+=q*1.5;
+    // ── Phrase 7: Grand Bollywood climax — soaring high ──
+    playNote(Sa2,t,b*1,.5);t+=b*1.2;
+    playNote(Re2,t,b*1,.55,Sa2);t+=b*1.2;
+    playNote(Ga2,t,b*2,.65,Re2);t+=b*2.2;
+    playNote(Pa2,t,b*2.5,.7,Ga2);t+=b*2.8;
+    playNote(Ga2,t,b*1.5,.55,Pa2);t+=b*1.7;
+    playNote(Re2,t,b*1,.5,Ga2);t+=b*1.2;
+    playNote(Sa2,t,b*3,.6);t+=b*3.5;
+    t+=b*1;
+
+    // ── Phrase 8: Resolve — Sa comes home (peaceful, love wins) ──
+    playNote(Dha,t,b*1.2,.5);t+=b*1.4;
+    playNote(Pa,t,b*1,.45,Dha);t+=b*1.2;
+    playNote(Ma,t,b*1,.45,Pa);t+=b*1.2;
+    playNote(Ga,t,b*1.5,.5,Ma);t+=b*1.7;
+    playNote(Re,t,b*1.2,.45,Ga);t+=b*1.4;
+    playNote(Sa,t,b*4,.55,Re);t+=b*4.5;
+    t+=b*2;
 
     const loopDur=(t-audioCtx.currentTime)*1000;
-    romanticTimer=setTimeout(()=>{if(romanticPlaying)scheduleLoop();},loopDur-800);
+    romanticTimer=setTimeout(()=>{if(romanticPlaying)scheduleLoop();},loopDur-600);
   }
   scheduleLoop();
 }
