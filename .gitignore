@@ -2,3 +2,6 @@ __pycache__/
 .claude/settings.local.json
 credentials.py
 credentials_zoho.py
+node_modules/
+package-lock.json
+package.json
