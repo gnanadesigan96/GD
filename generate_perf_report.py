@@ -21,12 +21,14 @@ import sys
 import csv
 import html as _html
 import os
+import platform
+import shutil
 import signal
 import subprocess
 import time
 import argparse
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pymongo import MongoClient
 
 # ============================================================
@@ -173,6 +175,39 @@ RAW_DATA_URL = (
 # ============================================================
 
 _vpn_process = None
+IS_MACOS = platform.system() == "Darwin"
+
+
+def _find_openvpn() -> str:
+    found = shutil.which("openvpn")
+    if found:
+        return found
+    homebrew_paths = [
+        "/opt/homebrew/sbin/openvpn",
+        "/opt/homebrew/bin/openvpn",
+        "/usr/local/sbin/openvpn",
+        "/usr/local/bin/openvpn",
+    ]
+    for p in homebrew_paths:
+        if os.path.isfile(p):
+            return p
+    print("ERROR: openvpn not found. Install it:", file=sys.stderr)
+    print("  macOS:  brew install openvpn", file=sys.stderr)
+    print("  Linux:  sudo apt install openvpn", file=sys.stderr)
+    sys.exit(1)
+
+
+def _vpn_tunnel_up() -> bool:
+    if IS_MACOS:
+        result = subprocess.run(
+            ["ifconfig"], capture_output=True, text=True,
+        )
+        return "utun" in result.stdout and "inet " in result.stdout
+    else:
+        result = subprocess.run(
+            ["ip", "addr", "show", "tun0"], capture_output=True, text=True,
+        )
+        return result.returncode == 0
 
 
 def vpn_connect(ovpn_path: str) -> None:
@@ -181,21 +216,24 @@ def vpn_connect(ovpn_path: str) -> None:
         print(f"ERROR: OpenVPN config not found: {ovpn_path}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"[VPN] Starting OpenVPN with {ovpn_path} ...")
+    openvpn_bin = _find_openvpn()
+    print(f"[VPN] Starting OpenVPN ({openvpn_bin}) with {ovpn_path} ...")
     _vpn_process = subprocess.Popen(
-        ["openvpn", "--config", ovpn_path, "--writepid", "/tmp/openvpn_report.pid"],
+        [openvpn_bin, "--config", ovpn_path, "--writepid", "/tmp/openvpn_report.pid"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
 
     elapsed = 0
     while elapsed < VPN_CONNECT_TIMEOUT:
-        result = subprocess.run(
-            ["ip", "addr", "show", "tun0"],
-            capture_output=True, text=True,
-        )
-        if result.returncode == 0:
-            print(f"[VPN] Connected (tun0 up after {elapsed}s)")
+        if _vpn_process.poll() is not None:
+            out = _vpn_process.stdout.read().decode(errors="replace") if _vpn_process.stdout else ""
+            print(f"ERROR: OpenVPN exited with code {_vpn_process.returncode}", file=sys.stderr)
+            if out:
+                print(out[-2000:], file=sys.stderr)
+            sys.exit(1)
+        if _vpn_tunnel_up():
+            print(f"[VPN] Connected (tunnel up after {elapsed}s)")
             return
         time.sleep(2)
         elapsed += 2
@@ -1154,7 +1192,7 @@ def main():
                         help="Skip SharePoint upload (just generate files locally)")
     args = parser.parse_args()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     ist = now + timedelta(hours=5, minutes=30)
     print("=" * 60)
     print("CoreStack Platform Performance Report Generator")
