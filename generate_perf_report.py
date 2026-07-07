@@ -241,31 +241,8 @@ def _find_openvpn() -> str:
     sys.exit(1)
 
 
-def _vpn_tunnel_up() -> bool:
-    if PLATFORM == "Darwin":
-        result = subprocess.run(
-            ["ifconfig"], capture_output=True, text=True,
-        )
-        for block in result.stdout.split("\n\n"):
-            if "utun" in block and "inet " in block:
-                return True
-        return False
-
-    elif PLATFORM == "Windows":
-        result = subprocess.run(
-            ["ipconfig"], capture_output=True, text=True, shell=True,
-        )
-        output = result.stdout.lower()
-        return "tap-windows" in output or "openvpn" in output or "tun" in output
-
-    else:
-        result = subprocess.run(
-            ["ip", "addr", "show", "tun0"], capture_output=True, text=True,
-        )
-        return result.returncode == 0
-
-
 def vpn_connect(ovpn_path: str) -> None:
+    """Start OpenVPN and wait for 'Initialization Sequence Completed' in its output."""
     global _vpn_process
     if not os.path.isfile(ovpn_path):
         print(f"ERROR: OpenVPN config not found: {ovpn_path}", file=sys.stderr)
@@ -286,25 +263,46 @@ def vpn_connect(ovpn_path: str) -> None:
 
     _vpn_process = subprocess.Popen(cmd, **popen_kwargs)
 
-    elapsed = 0
-    while elapsed < VPN_CONNECT_TIMEOUT:
+    log_lines = []
+    deadline = time.time() + VPN_CONNECT_TIMEOUT
+
+    while time.time() < deadline:
         if _vpn_process.poll() is not None:
-            out = _vpn_process.stdout.read().decode(errors="replace") if _vpn_process.stdout else ""
+            remaining = _vpn_process.stdout.read().decode(errors="replace") if _vpn_process.stdout else ""
+            all_output = "".join(log_lines) + remaining
             print(f"ERROR: OpenVPN exited with code {_vpn_process.returncode}", file=sys.stderr)
-            if out:
-                print(out[-2000:], file=sys.stderr)
+            if all_output:
+                print(all_output[-2000:], file=sys.stderr)
             sys.exit(1)
-        if _vpn_tunnel_up():
-            print(f"[VPN] Connected (tunnel up after {elapsed}s)")
+
+        try:
+            line = _vpn_process.stdout.readline()
+        except Exception:
+            time.sleep(0.5)
+            continue
+
+        if not line:
+            time.sleep(0.5)
+            continue
+
+        decoded = line.decode(errors="replace").rstrip()
+        log_lines.append(decoded + "\n")
+        print(f"[VPN]   {decoded}")
+
+        if "Initialization Sequence Completed" in decoded:
+            elapsed = VPN_CONNECT_TIMEOUT - int(deadline - time.time())
+            print(f"[VPN] Connected ({elapsed}s)")
             return
-        time.sleep(2)
-        elapsed += 2
+
+        if "AUTH_FAILED" in decoded or "SIGTERM" in decoded:
+            print(f"ERROR: OpenVPN authentication failed", file=sys.stderr)
+            vpn_disconnect()
+            sys.exit(1)
 
     print(f"ERROR: VPN did not connect within {VPN_CONNECT_TIMEOUT}s", file=sys.stderr)
-    if _vpn_process.stdout:
-        out = _vpn_process.stdout.read(4096)
-        if out:
-            print(out.decode(errors="replace"), file=sys.stderr)
+    print("--- Last OpenVPN output ---", file=sys.stderr)
+    for ln in log_lines[-20:]:
+        print(f"  {ln}", end="", file=sys.stderr)
     vpn_disconnect()
     sys.exit(1)
 
