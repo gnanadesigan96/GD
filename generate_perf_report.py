@@ -3,19 +3,34 @@
 CoreStack Platform Performance Report Generator
 Single-file: connects OpenVPN, queries all 7 MongoDB environments,
 generates HTML + CSV, uploads both to SharePoint, disconnects VPN.
+Works on macOS, Linux, and Windows.
 
 Setup:
   pip install pymongo requests
-  sudo apt install openvpn        # or brew install openvpn on macOS
+
+  macOS:   brew install openvpn
+  Linux:   sudo apt install openvpn
+  Windows: Download from https://openvpn.net/community-downloads/
+           or: choco install openvpn
 
 Usage:
-  sudo python3 generate_perf_report.py                          # uses default VPN path
-  sudo python3 generate_perf_report.py --ovpn /path/to/file.ovpn
-  sudo python3 generate_perf_report.py --no-vpn                 # skip VPN (already connected)
-  sudo python3 generate_perf_report.py --no-upload              # skip SharePoint upload
+  # macOS / Linux (needs sudo for VPN tunnel):
+  sudo python3 generate_perf_report.py --ovpn /path/to/client.ovpn
+  sudo python3 generate_perf_report.py --no-vpn       # already connected
+  sudo python3 generate_perf_report.py --no-upload     # skip SharePoint
 
-Cron (daily 6:30 PM IST = 13:00 UTC):
-  0 13 * * * /usr/bin/sudo /usr/bin/python3 /path/to/generate_perf_report.py >> /var/log/perf_report.log 2>&1
+  # Windows (run as Administrator):
+  python generate_perf_report.py --ovpn C:\\Users\\you\\client.ovpn
+  python generate_perf_report.py --no-vpn
+  python generate_perf_report.py --no-upload
+
+Cron (Linux/macOS — daily 6:30 PM IST = 13:00 UTC):
+  0 13 * * * /usr/bin/sudo /usr/bin/python3 /path/to/generate_perf_report.py --ovpn /path/to/client.ovpn >> /var/log/perf_report.log 2>&1
+
+Task Scheduler (Windows — daily 6:30 PM IST):
+  Program: python
+  Arguments: C:\\path\\to\\generate_perf_report.py --ovpn C:\\path\\to\\client.ovpn
+  Run with highest privileges: Yes
 """
 import sys
 import csv
@@ -175,34 +190,74 @@ RAW_DATA_URL = (
 # ============================================================
 
 _vpn_process = None
-IS_MACOS = platform.system() == "Darwin"
+PLATFORM = platform.system()   # "Darwin", "Windows", "Linux"
+
+_PID_FILE = (
+    os.path.join(os.environ.get("TEMP", "C:\\Windows\\Temp"), "openvpn_report.pid")
+    if platform.system() == "Windows"
+    else "/tmp/openvpn_report.pid"
+)
 
 
 def _find_openvpn() -> str:
     found = shutil.which("openvpn")
     if found:
         return found
-    homebrew_paths = [
-        "/opt/homebrew/sbin/openvpn",
-        "/opt/homebrew/bin/openvpn",
-        "/usr/local/sbin/openvpn",
-        "/usr/local/bin/openvpn",
-    ]
-    for p in homebrew_paths:
+
+    candidates = []
+    if PLATFORM == "Darwin":
+        candidates = [
+            "/opt/homebrew/sbin/openvpn",
+            "/opt/homebrew/bin/openvpn",
+            "/usr/local/sbin/openvpn",
+            "/usr/local/bin/openvpn",
+        ]
+    elif PLATFORM == "Windows":
+        pf = os.environ.get("ProgramFiles", "C:\\Program Files")
+        pf86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
+        candidates = [
+            os.path.join(pf, "OpenVPN", "bin", "openvpn.exe"),
+            os.path.join(pf86, "OpenVPN", "bin", "openvpn.exe"),
+            os.path.join(pf, "OpenVPN Connect", "bin", "openvpn.exe"),
+        ]
+    else:
+        candidates = [
+            "/usr/sbin/openvpn",
+            "/usr/local/sbin/openvpn",
+        ]
+
+    for p in candidates:
         if os.path.isfile(p):
             return p
+
     print("ERROR: openvpn not found. Install it:", file=sys.stderr)
-    print("  macOS:  brew install openvpn", file=sys.stderr)
-    print("  Linux:  sudo apt install openvpn", file=sys.stderr)
+    if PLATFORM == "Darwin":
+        print("  macOS:   brew install openvpn", file=sys.stderr)
+    elif PLATFORM == "Windows":
+        print("  Windows: Download from https://openvpn.net/community-downloads/", file=sys.stderr)
+        print("           or: choco install openvpn", file=sys.stderr)
+    else:
+        print("  Linux:   sudo apt install openvpn", file=sys.stderr)
     sys.exit(1)
 
 
 def _vpn_tunnel_up() -> bool:
-    if IS_MACOS:
+    if PLATFORM == "Darwin":
         result = subprocess.run(
             ["ifconfig"], capture_output=True, text=True,
         )
-        return "utun" in result.stdout and "inet " in result.stdout
+        for block in result.stdout.split("\n\n"):
+            if "utun" in block and "inet " in block:
+                return True
+        return False
+
+    elif PLATFORM == "Windows":
+        result = subprocess.run(
+            ["ipconfig"], capture_output=True, text=True, shell=True,
+        )
+        output = result.stdout.lower()
+        return "tap-windows" in output or "openvpn" in output or "tun" in output
+
     else:
         result = subprocess.run(
             ["ip", "addr", "show", "tun0"], capture_output=True, text=True,
@@ -217,12 +272,19 @@ def vpn_connect(ovpn_path: str) -> None:
         sys.exit(1)
 
     openvpn_bin = _find_openvpn()
-    print(f"[VPN] Starting OpenVPN ({openvpn_bin}) with {ovpn_path} ...")
-    _vpn_process = subprocess.Popen(
-        [openvpn_bin, "--config", ovpn_path, "--writepid", "/tmp/openvpn_report.pid"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
+    print(f"[VPN] Starting OpenVPN ({openvpn_bin}) ...")
+    print(f"[VPN] Config: {ovpn_path}")
+    print(f"[VPN] Platform: {PLATFORM}")
+
+    cmd = [openvpn_bin, "--config", ovpn_path]
+    if PLATFORM != "Windows":
+        cmd += ["--writepid", _PID_FILE]
+
+    popen_kwargs = dict(stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if PLATFORM == "Windows":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
+    _vpn_process = subprocess.Popen(cmd, **popen_kwargs)
 
     elapsed = 0
     while elapsed < VPN_CONNECT_TIMEOUT:
@@ -259,15 +321,20 @@ def vpn_disconnect() -> None:
         _vpn_process = None
         print("[VPN] Disconnected")
 
-    pid_file = "/tmp/openvpn_report.pid"
-    if os.path.isfile(pid_file):
+    if os.path.isfile(_PID_FILE):
         try:
-            pid = int(open(pid_file).read().strip())
-            os.kill(pid, signal.SIGTERM)
-        except (ValueError, ProcessLookupError, PermissionError):
+            pid = int(open(_PID_FILE).read().strip())
+            if PLATFORM == "Windows":
+                subprocess.run(
+                    ["taskkill", "/F", "/PID", str(pid)],
+                    capture_output=True, shell=True,
+                )
+            else:
+                os.kill(pid, signal.SIGTERM)
+        except (ValueError, ProcessLookupError, PermissionError, OSError):
             pass
         try:
-            os.remove(pid_file)
+            os.remove(_PID_FILE)
         except OSError:
             pass
 
