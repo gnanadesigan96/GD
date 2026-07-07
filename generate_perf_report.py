@@ -182,10 +182,7 @@ ENV_COLORS = {
     "us3":        "#8b5cf6",
 }
 
-RAW_DATA_URL = (
-    "https://cloudenablersinc.sharepoint.com/sites/SupportTeam/_layouts/15/guestaccess.aspx"
-    "?share=IgAOVyAx1g4hSr83T73ZPkgHAXY5Kkg6fhZfYz-6ZXBaYg0&e=mTZjTd"
-)
+XLSX_LINK_PLACEHOLDER = "{{XLSX_SHAREPOINT_URL}}"
 
 
 # ============================================================
@@ -1051,19 +1048,19 @@ def build_glossary() -> str:
     )
 
 
-def build_raw_data_link() -> str:
+def build_raw_data_link(xlsx_name: str) -> str:
     return (
         f'<tr><td style="padding:16px 28px 0;">'
         f'<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>'
         f'<td width="3" style="background-color:#3b82f6;font-size:1px;line-height:1px;">&nbsp;</td>'
         f'<td style="background-color:#eff6ff;padding:10px 14px;">'
         f'<p style="margin:0;padding:0;font-size:10px;font-weight:bold;text-transform:uppercase;'
-        f'letter-spacing:0.6px;color:#1d4ed8;font-family:Arial,Helvetica,sans-serif;">Raw Data Reference</p>'
+        f'letter-spacing:0.6px;color:#1d4ed8;font-family:Arial,Helvetica,sans-serif;">Download Excel Report</p>'
         f'<p style="margin:4px 0 0;padding:0;font-size:12px;color:#1e40af;'
         f'font-family:Arial,Helvetica,sans-serif;">'
-        f'<a href="{RAW_DATA_URL}" style="color:#1d4ed8;text-decoration:underline;'
+        f'<a href="{XLSX_LINK_PLACEHOLDER}" style="color:#1d4ed8;text-decoration:underline;'
         f'font-family:Arial,Helvetica,sans-serif;">'
-        f'Click here to access the raw data dump on SharePoint</a>'
+        f'{xlsx_name}</a>'
         f'</p>'
         f'</td></tr></table>'
         f'</td></tr>'
@@ -1074,7 +1071,8 @@ def build_raw_data_link() -> str:
 #  FULL HTML ASSEMBLER
 # ============================================================
 
-def build_html(now: datetime, job_results: list, audit_results: list) -> str:
+def build_html(now: datetime, job_results: list, audit_results: list,
+               xlsx_name: str = "") -> str:
     ist_now     = now + timedelta(hours=5, minutes=30)
     gen_time    = ist_now.strftime("%d %b %Y, %I:%M %p IST")
     report_date = ist_now.strftime("%A, %d %B %Y")
@@ -1118,7 +1116,7 @@ def build_html(now: datetime, job_results: list, audit_results: list) -> str:
     s2_callouts = build_section1_callouts(job_results)
 
     glossary      = build_glossary()
-    raw_data_link = build_raw_data_link()
+    raw_data_link = build_raw_data_link(xlsx_name)
 
     footer = (
         f'<tr><td style="background-color:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 28px;">'
@@ -1524,18 +1522,7 @@ def main():
         html_name = f"{OUTPUT_BASE}_{date_stamp}.html"
         xlsx_name = f"{OUTPUT_BASE}_{date_stamp}.xlsx"
 
-        # ── Step 4: Build HTML ───────────────────────────────
-        print()
-        print("Building HTML ...")
-        final_html = build_html(now, job_results, audit_results)
-
-        with open(html_name, "w", encoding="utf-8") as f:
-            f.write(final_html)
-
-        kb = len(final_html.encode()) // 1024
-        print(f"Written -> {html_name}  ({kb} KB)")
-
-        # ── Step 5: Build Excel ──────────────────────────────
+        # ── Step 4: Build Excel ──────────────────────────────
         print()
         print("Exporting raw data ...")
         all_rows = []
@@ -1551,6 +1538,17 @@ def main():
             f.write(xlsx_bytes)
         print(f"Written -> {xlsx_name}  ({len(xlsx_bytes) // 1024} KB)")
 
+        # ── Step 5: Build HTML ───────────────────────────────
+        print()
+        print("Building HTML ...")
+        final_html = build_html(now, job_results, audit_results, xlsx_name)
+
+        with open(html_name, "w", encoding="utf-8") as f:
+            f.write(final_html)
+
+        kb = len(final_html.encode()) // 1024
+        print(f"Written -> {html_name}  ({kb} KB)")
+
     finally:
         # ── Step 6: Disconnect VPN ───────────────────────────
         if not args.no_vpn:
@@ -1562,13 +1560,19 @@ def main():
         print()
         print("Uploading to SharePoint ...")
         try:
-            print(f"  HTML -> {SHAREPOINT_REPORT_FOLDER}/{html_name}")
-            html_url = upload_to_sharepoint(html_name, SHAREPOINT_REPORT_FOLDER, html_name)
-            print(f"  OK: {html_url}")
-
             print(f"  XLSX -> {SHAREPOINT_CSV_FOLDER}/{xlsx_name}")
             xlsx_url = upload_to_sharepoint(xlsx_name, SHAREPOINT_CSV_FOLDER, xlsx_name)
             print(f"  OK: {xlsx_url}")
+
+            if xlsx_url:
+                print("  Embedding Excel link into HTML ...")
+                final_html = final_html.replace(XLSX_LINK_PLACEHOLDER, xlsx_url)
+                with open(html_name, "w", encoding="utf-8") as f:
+                    f.write(final_html)
+
+            print(f"  HTML -> {SHAREPOINT_REPORT_FOLDER}/{html_name}")
+            html_url = upload_to_sharepoint(html_name, SHAREPOINT_REPORT_FOLDER, html_name)
+            print(f"  OK: {html_url}")
         except Exception as exc:
             print(f"  [ERROR] SharePoint upload failed: {exc}", file=sys.stderr)
 
