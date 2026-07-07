@@ -2228,14 +2228,34 @@ function svgHeartTree(flip){
   </g></svg>`;
 }
 
+window._roseImgUrls=[
+  'https://images.pexels.com/photos/12032362/pexels-photo-12032362.jpeg?auto=compress&cs=tinysrgb&w=600',
+  'https://images.pexels.com/photos/19269253/pexels-photo-19269253.jpeg?auto=compress&cs=tinysrgb&w=600',
+  'https://images.pexels.com/photos/10351666/pexels-photo-10351666.jpeg?auto=compress&cs=tinysrgb&w=600',
+  'https://images.pexels.com/photos/5547/pexels-photo-5547.jpeg?auto=compress&cs=tinysrgb&w=600'
+];
+window._roseImgIdx=1;
+window.roseImgFallback=function(img){
+  if(window._roseImgIdx<window._roseImgUrls.length){
+    img.src=window._roseImgUrls[window._roseImgIdx++];
+  } else {
+    img.style.display='none';
+    var cv=document.getElementById('roseCanvas');
+    if(cv){cv.style.display='block';paintRoseBouquet(cv);}
+  }
+};
 window.showRoseBouquet=function(){
   document.getElementById('cakeUI').classList.remove('show');
   const el=document.getElementById('roseUI');
   el.classList.add('show');
+  window._roseImgIdx=1;
   el.innerHTML=`
     <div class="roseTitle">Your Rose Bouquet 🌹</div>
     <div class="roseBouquet">
-      <canvas id="roseCanvas" style="width:100%;height:100%;object-fit:contain"></canvas>
+      <img id="roseBouquetImg" src="${window._roseImgUrls[0]}" alt="Rose Bouquet"
+        style="width:75%;max-width:320px;height:auto;object-fit:contain;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2;border-radius:12px;filter:drop-shadow(0 12px 32px rgba(0,0,0,.25))"
+        onerror="roseImgFallback(this)">
+      <canvas id="roseCanvas" style="width:100%;height:100%;object-fit:contain;display:none"></canvas>
       <div class="loveBubble lb1">Forever yours 💕</div>
       <div class="loveBubble lb2">You make my world beautiful</div>
       <div class="loveBubble lb3">You are my sunshine ☀️</div>
@@ -2246,10 +2266,6 @@ window.showRoseBouquet=function(){
       <div class="heartTree right">${svgHeartTree(true)}</div>
     </div>
     <button class="roseContinue" onclick="showLoveLetter()">Continue</button>`;
-  setTimeout(()=>{
-    const cv=document.getElementById('roseCanvas');
-    if(cv)paintRoseBouquet(cv);
-  },50);
 };
 
 // ── 5. LOVE LETTER (Envelope opens → typewriter) ──
