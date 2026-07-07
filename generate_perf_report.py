@@ -182,10 +182,7 @@ ENV_COLORS = {
     "us3":        "#8b5cf6",
 }
 
-RAW_DATA_URL = (
-    "https://cloudenablersinc.sharepoint.com/sites/SupportTeam/_layouts/15/guestaccess.aspx"
-    "?share=IgAOVyAx1g4hSr83T73ZPkgHAXY5Kkg6fhZfYz-6ZXBaYg0&e=mTZjTd"
-)
+XLSX_LINK_PLACEHOLDER = "{{XLSX_SHAREPOINT_URL}}"
 
 
 # ============================================================
@@ -1051,19 +1048,19 @@ def build_glossary() -> str:
     )
 
 
-def build_raw_data_link() -> str:
+def build_raw_data_link(xlsx_name: str) -> str:
     return (
         f'<tr><td style="padding:16px 28px 0;">'
         f'<table cellpadding="0" cellspacing="0" border="0" width="100%"><tr>'
         f'<td width="3" style="background-color:#3b82f6;font-size:1px;line-height:1px;">&nbsp;</td>'
         f'<td style="background-color:#eff6ff;padding:10px 14px;">'
         f'<p style="margin:0;padding:0;font-size:10px;font-weight:bold;text-transform:uppercase;'
-        f'letter-spacing:0.6px;color:#1d4ed8;font-family:Arial,Helvetica,sans-serif;">Raw Data Reference</p>'
+        f'letter-spacing:0.6px;color:#1d4ed8;font-family:Arial,Helvetica,sans-serif;">Download Excel Report</p>'
         f'<p style="margin:4px 0 0;padding:0;font-size:12px;color:#1e40af;'
         f'font-family:Arial,Helvetica,sans-serif;">'
-        f'<a href="{RAW_DATA_URL}" style="color:#1d4ed8;text-decoration:underline;'
+        f'<a href="{XLSX_LINK_PLACEHOLDER}" style="color:#1d4ed8;text-decoration:underline;'
         f'font-family:Arial,Helvetica,sans-serif;">'
-        f'Click here to access the raw data dump on SharePoint</a>'
+        f'{xlsx_name}</a>'
         f'</p>'
         f'</td></tr></table>'
         f'</td></tr>'
@@ -1074,7 +1071,8 @@ def build_raw_data_link() -> str:
 #  FULL HTML ASSEMBLER
 # ============================================================
 
-def build_html(now: datetime, job_results: list, audit_results: list) -> str:
+def build_html(now: datetime, job_results: list, audit_results: list,
+               xlsx_name: str = "") -> str:
     ist_now     = now + timedelta(hours=5, minutes=30)
     gen_time    = ist_now.strftime("%d %b %Y, %I:%M %p IST")
     report_date = ist_now.strftime("%A, %d %B %Y")
@@ -1118,7 +1116,7 @@ def build_html(now: datetime, job_results: list, audit_results: list) -> str:
     s2_callouts = build_section1_callouts(job_results)
 
     glossary      = build_glossary()
-    raw_data_link = build_raw_data_link()
+    raw_data_link = build_raw_data_link(xlsx_name)
 
     footer = (
         f'<tr><td style="background-color:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 28px;">'
@@ -1491,51 +1489,77 @@ def main():
         print()
 
     try:
-        # ── Step 2: Gather metrics ───────────────────────────
-        job_results   = []
-        audit_results = []
+        # ── Step 2: Gather metrics (with retry on timeout) ───
+        MAX_RETRIES    = 3
+        RETRY_WAIT_SEC = 600  # 10 minutes
 
-        for env_key in ENVIRONMENTS:
-            print(f"  [{env_key}] jobs  ...", end=" ", flush=True)
-            jm = get_job_metrics(env_key, now)
-            job_results.append(jm)
-            if jm["error"]:
-                print(f"ERROR: {jm['error'][:70]}")
-            else:
-                print(f"total_accts={jm['total_accts']}  "
-                      f"n2_pending={jm['n2_pending']}  "
-                      f"backlog={jm['older_backlog']}  "
-                      f"compliance={jm['compliance_pct']}%")
+        job_map   = {}  # env_key -> metrics dict
+        audit_map = {}  # env_key -> metrics dict
 
-            print(f"  [{env_key}] audit ...", end=" ", flush=True)
-            am = get_audit_metrics(env_key, now)
-            audit_results.append(am)
-            if am["error"]:
-                print(f"ERROR: {am['error'][:70]}")
-            else:
-                print(f"requests={am['total_requests']}  "
-                      f"slow={am['slow_count']}  "
-                      f"total_users={am['total_users']}  "
-                      f"p95={'Good' if am['p95_good'] else 'Bad'}  "
-                      f"p99={'Good' if am['p99_good'] else 'Bad'}")
+        def _collect(env_keys):
+            for env_key in env_keys:
+                if env_key not in job_map or job_map[env_key]["error"]:
+                    print(f"  [{env_key}] jobs  ...", end=" ", flush=True)
+                    jm = get_job_metrics(env_key, now)
+                    job_map[env_key] = jm
+                    if jm["error"]:
+                        print(f"ERROR: {jm['error'][:70]}")
+                    else:
+                        print(f"total_accts={jm['total_accts']}  "
+                              f"n2_pending={jm['n2_pending']}  "
+                              f"backlog={jm['older_backlog']}  "
+                              f"compliance={jm['compliance_pct']}%")
+
+                if env_key not in audit_map or audit_map[env_key]["error"]:
+                    print(f"  [{env_key}] audit ...", end=" ", flush=True)
+                    am = get_audit_metrics(env_key, now)
+                    audit_map[env_key] = am
+                    if am["error"]:
+                        print(f"ERROR: {am['error'][:70]}")
+                    else:
+                        print(f"requests={am['total_requests']}  "
+                              f"slow={am['slow_count']}  "
+                              f"total_users={am['total_users']}  "
+                              f"p95={'Good' if am['p95_good'] else 'Bad'}  "
+                              f"p99={'Good' if am['p99_good'] else 'Bad'}")
+
+        _collect(ENVIRONMENTS.keys())
+
+        for attempt in range(1, MAX_RETRIES + 1):
+            failed_envs = [k for k in ENVIRONMENTS
+                           if job_map[k]["error"] or audit_map[k]["error"]]
+            if not failed_envs:
+                break
+
+            failed_labels = [ENVIRONMENTS[k]["label"] for k in failed_envs]
+            print()
+            print(f"[Retry {attempt}/{MAX_RETRIES}] {len(failed_envs)} environment(s) "
+                  f"failed: {', '.join(failed_labels)}")
+            print(f"  Waiting {RETRY_WAIT_SEC // 60} minutes before retrying ...")
+            time.sleep(RETRY_WAIT_SEC)
+            print(f"  Retrying ...")
+            _collect(failed_envs)
+
+        failed_envs = [k for k in ENVIRONMENTS
+                       if job_map[k]["error"] or audit_map[k]["error"]]
+        if failed_envs:
+            failed_labels = [ENVIRONMENTS[k]["label"] for k in failed_envs]
+            print()
+            print(f"FATAL: {len(failed_envs)} environment(s) still failing after "
+                  f"{MAX_RETRIES} retries: {', '.join(failed_labels)}", file=sys.stderr)
+            print("Report generation aborted — all environments must succeed.",
+                  file=sys.stderr)
+            sys.exit(1)
+
+        job_results   = [job_map[k] for k in ENVIRONMENTS]
+        audit_results = [audit_map[k] for k in ENVIRONMENTS]
 
         # ── Step 3: Build filenames ──────────────────────────
         date_stamp = ist.strftime("%Y-%m-%d")
         html_name = f"{OUTPUT_BASE}_{date_stamp}.html"
         xlsx_name = f"{OUTPUT_BASE}_{date_stamp}.xlsx"
 
-        # ── Step 4: Build HTML ───────────────────────────────
-        print()
-        print("Building HTML ...")
-        final_html = build_html(now, job_results, audit_results)
-
-        with open(html_name, "w", encoding="utf-8") as f:
-            f.write(final_html)
-
-        kb = len(final_html.encode()) // 1024
-        print(f"Written -> {html_name}  ({kb} KB)")
-
-        # ── Step 5: Build Excel ──────────────────────────────
+        # ── Step 4: Build Excel ──────────────────────────────
         print()
         print("Exporting raw data ...")
         all_rows = []
@@ -1551,6 +1575,17 @@ def main():
             f.write(xlsx_bytes)
         print(f"Written -> {xlsx_name}  ({len(xlsx_bytes) // 1024} KB)")
 
+        # ── Step 5: Build HTML ───────────────────────────────
+        print()
+        print("Building HTML ...")
+        final_html = build_html(now, job_results, audit_results, xlsx_name)
+
+        with open(html_name, "w", encoding="utf-8") as f:
+            f.write(final_html)
+
+        kb = len(final_html.encode()) // 1024
+        print(f"Written -> {html_name}  ({kb} KB)")
+
     finally:
         # ── Step 6: Disconnect VPN ───────────────────────────
         if not args.no_vpn:
@@ -1562,13 +1597,19 @@ def main():
         print()
         print("Uploading to SharePoint ...")
         try:
-            print(f"  HTML -> {SHAREPOINT_REPORT_FOLDER}/{html_name}")
-            html_url = upload_to_sharepoint(html_name, SHAREPOINT_REPORT_FOLDER, html_name)
-            print(f"  OK: {html_url}")
-
             print(f"  XLSX -> {SHAREPOINT_CSV_FOLDER}/{xlsx_name}")
             xlsx_url = upload_to_sharepoint(xlsx_name, SHAREPOINT_CSV_FOLDER, xlsx_name)
             print(f"  OK: {xlsx_url}")
+
+            if xlsx_url:
+                print("  Embedding Excel link into HTML ...")
+                final_html = final_html.replace(XLSX_LINK_PLACEHOLDER, xlsx_url)
+                with open(html_name, "w", encoding="utf-8") as f:
+                    f.write(final_html)
+
+            print(f"  HTML -> {SHAREPOINT_REPORT_FOLDER}/{html_name}")
+            html_url = upload_to_sharepoint(html_name, SHAREPOINT_REPORT_FOLDER, html_name)
+            print(f"  OK: {html_url}")
         except Exception as exc:
             print(f"  [ERROR] SharePoint upload failed: {exc}", file=sys.stderr)
 
