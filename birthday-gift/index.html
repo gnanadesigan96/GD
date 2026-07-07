@@ -176,7 +176,9 @@ canvas{display:block;position:fixed;top:0;left:0;width:100vw;height:100vh}
   <p>tap to begin</p>
 </div>
 <canvas id="c"></canvas>
-<iframe id="ytFrame" style="position:fixed;width:1px;height:1px;bottom:0;right:0;opacity:0;pointer-events:none;" allow="autoplay;encrypted-media" frameborder="0"></iframe>
+<div id="ytWrap" style="display:none;position:fixed;bottom:8px;right:8px;z-index:9999;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.4);opacity:.75;transition:opacity .3s;">
+<iframe id="ytFrame" width="200" height="60" allow="autoplay;encrypted-media" frameborder="0" style="display:block;margin-bottom:-8px;"></iframe>
+</div>
 <button id="skipBtn" onclick="skipToQuiz()">SKIP ›</button>
 <div id="quizUI"></div>
 <div id="giftUI"></div>
@@ -205,26 +207,24 @@ function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webki
 
 function playRomanticMelody(){
   if(romanticPlaying)return;romanticPlaying=true;
+  const wrap=document.getElementById('ytWrap');
   const fr=document.getElementById('ytFrame');
+  wrap.style.display='block';
   if(fr.src&&fr.src.indexOf('youtube')>-1){
-    fr.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}','*');
+    try{fr.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}','*');}catch(e){}
     return;
   }
-  fr.src='https://www.youtube.com/embed/Ry9mRnBqzHA?autoplay=1&loop=1&playlist=Ry9mRnBqzHA&controls=0&enablejsapi=1&origin='+encodeURIComponent(location.origin);
+  fr.src='https://www.youtube.com/embed/Ry9mRnBqzHA?autoplay=1&loop=1&playlist=Ry9mRnBqzHA&enablejsapi=1&controls=1';
 }
 
 function stopRomanticMelody(){
   if(!romanticPlaying)return;
   romanticPlaying=false;
+  const wrap=document.getElementById('ytWrap');
   const fr=document.getElementById('ytFrame');
-  if(fr&&fr.contentWindow){
-    fr.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');
-  }
+  try{fr.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}','*');}catch(e){}
+  wrap.style.display='none';
   if(romanticTimer){clearTimeout(romanticTimer);romanticTimer=null;}
-  if(romanticGain&&audioCtx){
-    romanticGain.gain.linearRampToValueAtTime(0,audioCtx.currentTime+1.5);
-    romanticGain=null;
-  }
 }
 
 function playBdayTune(){
