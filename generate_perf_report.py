@@ -1489,33 +1489,70 @@ def main():
         print()
 
     try:
-        # ── Step 2: Gather metrics ───────────────────────────
-        job_results   = []
-        audit_results = []
+        # ── Step 2: Gather metrics (with retry on timeout) ───
+        MAX_RETRIES    = 3
+        RETRY_WAIT_SEC = 600  # 10 minutes
 
-        for env_key in ENVIRONMENTS:
-            print(f"  [{env_key}] jobs  ...", end=" ", flush=True)
-            jm = get_job_metrics(env_key, now)
-            job_results.append(jm)
-            if jm["error"]:
-                print(f"ERROR: {jm['error'][:70]}")
-            else:
-                print(f"total_accts={jm['total_accts']}  "
-                      f"n2_pending={jm['n2_pending']}  "
-                      f"backlog={jm['older_backlog']}  "
-                      f"compliance={jm['compliance_pct']}%")
+        job_map   = {}  # env_key -> metrics dict
+        audit_map = {}  # env_key -> metrics dict
 
-            print(f"  [{env_key}] audit ...", end=" ", flush=True)
-            am = get_audit_metrics(env_key, now)
-            audit_results.append(am)
-            if am["error"]:
-                print(f"ERROR: {am['error'][:70]}")
-            else:
-                print(f"requests={am['total_requests']}  "
-                      f"slow={am['slow_count']}  "
-                      f"total_users={am['total_users']}  "
-                      f"p95={'Good' if am['p95_good'] else 'Bad'}  "
-                      f"p99={'Good' if am['p99_good'] else 'Bad'}")
+        def _collect(env_keys):
+            for env_key in env_keys:
+                if env_key not in job_map or job_map[env_key]["error"]:
+                    print(f"  [{env_key}] jobs  ...", end=" ", flush=True)
+                    jm = get_job_metrics(env_key, now)
+                    job_map[env_key] = jm
+                    if jm["error"]:
+                        print(f"ERROR: {jm['error'][:70]}")
+                    else:
+                        print(f"total_accts={jm['total_accts']}  "
+                              f"n2_pending={jm['n2_pending']}  "
+                              f"backlog={jm['older_backlog']}  "
+                              f"compliance={jm['compliance_pct']}%")
+
+                if env_key not in audit_map or audit_map[env_key]["error"]:
+                    print(f"  [{env_key}] audit ...", end=" ", flush=True)
+                    am = get_audit_metrics(env_key, now)
+                    audit_map[env_key] = am
+                    if am["error"]:
+                        print(f"ERROR: {am['error'][:70]}")
+                    else:
+                        print(f"requests={am['total_requests']}  "
+                              f"slow={am['slow_count']}  "
+                              f"total_users={am['total_users']}  "
+                              f"p95={'Good' if am['p95_good'] else 'Bad'}  "
+                              f"p99={'Good' if am['p99_good'] else 'Bad'}")
+
+        _collect(ENVIRONMENTS.keys())
+
+        for attempt in range(1, MAX_RETRIES + 1):
+            failed_envs = [k for k in ENVIRONMENTS
+                           if job_map[k]["error"] or audit_map[k]["error"]]
+            if not failed_envs:
+                break
+
+            failed_labels = [ENVIRONMENTS[k]["label"] for k in failed_envs]
+            print()
+            print(f"[Retry {attempt}/{MAX_RETRIES}] {len(failed_envs)} environment(s) "
+                  f"failed: {', '.join(failed_labels)}")
+            print(f"  Waiting {RETRY_WAIT_SEC // 60} minutes before retrying ...")
+            time.sleep(RETRY_WAIT_SEC)
+            print(f"  Retrying ...")
+            _collect(failed_envs)
+
+        failed_envs = [k for k in ENVIRONMENTS
+                       if job_map[k]["error"] or audit_map[k]["error"]]
+        if failed_envs:
+            failed_labels = [ENVIRONMENTS[k]["label"] for k in failed_envs]
+            print()
+            print(f"FATAL: {len(failed_envs)} environment(s) still failing after "
+                  f"{MAX_RETRIES} retries: {', '.join(failed_labels)}", file=sys.stderr)
+            print("Report generation aborted — all environments must succeed.",
+                  file=sys.stderr)
+            sys.exit(1)
+
+        job_results   = [job_map[k] for k in ENVIRONMENTS]
+        audit_results = [audit_map[k] for k in ENVIRONMENTS]
 
         # ── Step 3: Build filenames ──────────────────────────
         date_stamp = ist.strftime("%Y-%m-%d")
