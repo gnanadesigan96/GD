@@ -93,6 +93,9 @@ def fetch_by_status(status: str, token: str) -> list[dict]:
             "from":         from_,
         }, timeout=30)
         resp.raise_for_status()
+        if not resp.text.strip():
+            logging.error("Empty response for status=%s from=%s (HTTP %s)", status, from_, resp.status_code)
+            break
         data = resp.json().get("data", [])
         if not data:
             break
