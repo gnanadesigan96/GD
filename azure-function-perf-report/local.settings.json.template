@@ -1,0 +1,16 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+
+    "SHAREPOINT_TENANT_ID":     "<your-azure-ad-tenant-id>",
+    "SHAREPOINT_CLIENT_ID":     "<your-azure-app-registration-client-id>",
+    "SHAREPOINT_CLIENT_SECRET": "<your-azure-app-registration-client-secret>",
+    "SHAREPOINT_SITE_URL":      "cloudenablersinc.sharepoint.com/sites/SupportTeam",
+    "SHAREPOINT_REPORT_FOLDER": "General/Cost-Performance-Report",
+    "SHAREPOINT_CSV_FOLDER":    "General/Cost-Performance-Report/Dump",
+
+    "PERF_SCHEDULE":            "0 0 13 * * *"
+  }
+}

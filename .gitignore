@@ -2,3 +2,11 @@ __pycache__/
 .claude/settings.local.json
 credentials.py
 credentials_zoho.py
+
+# VPN configs (contain private keys)
+*.ovpn
+!*.ovpn.sample
+vpn/client.ovpn
+
+# Azure Function local settings
+local.settings.json
