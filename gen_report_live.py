@@ -195,6 +195,14 @@ def main():
 
     tickets = [parse_ticket(t, today) for t in enriched]
 
+    # Age analysis
+    old_tickets = [t for t in tickets if t["age"] > 7]
+    avg_old = sum(t["age"] for t in old_tickets) / len(old_tickets) if old_tickets else 0
+    logging.info("Tickets older than 7 days: %d / %d  |  avg age: %.1f days",
+                 len(old_tickets), len(tickets), avg_old)
+    for t in old_tickets:
+        logging.info("  #%s  %s  age=%dd  status=%s", t["num"], t.get("display") or t.get("account_raw",""), t["age"], t["status"])
+
     # Count tickets with ADO
     ado_count = sum(1 for t in tickets if t.get("ado"))
     logging.info("Tickets with ADO numbers: %d / %d", ado_count, len(tickets))
