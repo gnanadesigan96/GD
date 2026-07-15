@@ -42,6 +42,7 @@ import signal
 import subprocess
 import time
 import argparse
+import concurrent.futures
 import requests
 from datetime import datetime, timedelta, timezone
 from pymongo import MongoClient
@@ -1489,39 +1490,46 @@ def main():
         print()
 
     try:
-        # ── Step 2: Gather metrics (with retry on timeout) ───
-        MAX_RETRIES    = 3
-        RETRY_WAIT_SEC = 600  # 10 minutes
+        # ── Step 2: Gather metrics (concurrent, with short backoff retries) ───
+        MAX_RETRIES       = 3
+        RETRY_BACKOFF_SEC = [15, 45, 90]  # most timeouts are transient blips,
+                                          # not worth a 10-minute wait
 
         job_map   = {}  # env_key -> metrics dict
         audit_map = {}  # env_key -> metrics dict
 
-        def _collect(env_keys):
-            for env_key in env_keys:
-                if env_key not in job_map or job_map[env_key]["error"]:
-                    print(f"  [{env_key}] jobs  ...", end=" ", flush=True)
-                    jm = get_job_metrics(env_key, now)
-                    job_map[env_key] = jm
-                    if jm["error"]:
-                        print(f"ERROR: {jm['error'][:70]}")
-                    else:
-                        print(f"total_accts={jm['total_accts']}  "
-                              f"n2_pending={jm['n2_pending']}  "
-                              f"backlog={jm['older_backlog']}  "
-                              f"compliance={jm['compliance_pct']}%")
+        def _fetch_env(env_key):
+            jm = job_map.get(env_key)
+            if jm is None or jm["error"]:
+                jm = get_job_metrics(env_key, now)
+                if jm["error"]:
+                    print(f"  [{env_key}] jobs  ... ERROR: {jm['error'][:70]}")
+                else:
+                    print(f"  [{env_key}] jobs  ... total_accts={jm['total_accts']}  "
+                          f"n2_pending={jm['n2_pending']}  "
+                          f"backlog={jm['older_backlog']}  "
+                          f"compliance={jm['compliance_pct']}%")
 
-                if env_key not in audit_map or audit_map[env_key]["error"]:
-                    print(f"  [{env_key}] audit ...", end=" ", flush=True)
-                    am = get_audit_metrics(env_key, now)
+            am = audit_map.get(env_key)
+            if am is None or am["error"]:
+                am = get_audit_metrics(env_key, now)
+                if am["error"]:
+                    print(f"  [{env_key}] audit ... ERROR: {am['error'][:70]}")
+                else:
+                    print(f"  [{env_key}] audit ... requests={am['total_requests']}  "
+                          f"slow={am['slow_count']}  "
+                          f"total_users={am['total_users']}  "
+                          f"p95={'Good' if am['p95_good'] else 'Bad'}  "
+                          f"p99={'Good' if am['p99_good'] else 'Bad'}")
+
+            return env_key, jm, am
+
+        def _collect(env_keys):
+            env_keys = list(env_keys)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(env_keys)) as pool:
+                for env_key, jm, am in pool.map(_fetch_env, env_keys):
+                    job_map[env_key]   = jm
                     audit_map[env_key] = am
-                    if am["error"]:
-                        print(f"ERROR: {am['error'][:70]}")
-                    else:
-                        print(f"requests={am['total_requests']}  "
-                              f"slow={am['slow_count']}  "
-                              f"total_users={am['total_users']}  "
-                              f"p95={'Good' if am['p95_good'] else 'Bad'}  "
-                              f"p99={'Good' if am['p99_good'] else 'Bad'}")
 
         _collect(ENVIRONMENTS.keys())
 
@@ -1532,11 +1540,12 @@ def main():
                 break
 
             failed_labels = [ENVIRONMENTS[k]["label"] for k in failed_envs]
+            wait_sec = RETRY_BACKOFF_SEC[attempt - 1]
             print()
             print(f"[Retry {attempt}/{MAX_RETRIES}] {len(failed_envs)} environment(s) "
                   f"failed: {', '.join(failed_labels)}")
-            print(f"  Waiting {RETRY_WAIT_SEC // 60} minutes before retrying ...")
-            time.sleep(RETRY_WAIT_SEC)
+            print(f"  Waiting {wait_sec}s before retrying ...")
+            time.sleep(wait_sec)
             print(f"  Retrying ...")
             _collect(failed_envs)
 
@@ -1545,11 +1554,11 @@ def main():
         if failed_envs:
             failed_labels = [ENVIRONMENTS[k]["label"] for k in failed_envs]
             print()
-            print(f"FATAL: {len(failed_envs)} environment(s) still failing after "
+            print(f"[WARN] {len(failed_envs)} environment(s) still failing after "
                   f"{MAX_RETRIES} retries: {', '.join(failed_labels)}", file=sys.stderr)
-            print("Report generation aborted — all environments must succeed.",
+            print("Continuing with partial data — these environment(s) will show "
+                  "as errors in the report instead of blocking it entirely.",
                   file=sys.stderr)
-            sys.exit(1)
 
         job_results   = [job_map[k] for k in ENVIRONMENTS]
         audit_results = [audit_map[k] for k in ENVIRONMENTS]
@@ -1562,12 +1571,18 @@ def main():
         # ── Step 4: Build Excel ──────────────────────────────
         print()
         print("Exporting raw data ...")
+        raw_map = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(ENVIRONMENTS)) as pool:
+            futures = {pool.submit(get_audit_raw_data, env_key, now): env_key
+                       for env_key in ENVIRONMENTS}
+            for future in concurrent.futures.as_completed(futures):
+                raw_map[futures[future]] = future.result()
+
         all_rows = []
         for env_key in ENVIRONMENTS:
-            print(f"  [{env_key}] raw data ...", end=" ", flush=True)
-            rows = get_audit_raw_data(env_key, now)
+            rows = raw_map[env_key]
             all_rows.extend(rows)
-            print(f"{len(rows)} records")
+            print(f"  [{env_key}] raw data ... {len(rows)} records")
 
         print(f"Building Excel ({len(all_rows)} raw records) ...")
         xlsx_bytes = generate_excel(ist, job_results, audit_results, all_rows)
