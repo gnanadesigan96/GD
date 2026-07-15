@@ -1554,11 +1554,11 @@ def main():
         if failed_envs:
             failed_labels = [ENVIRONMENTS[k]["label"] for k in failed_envs]
             print()
-            print(f"[WARN] {len(failed_envs)} environment(s) still failing after "
+            print(f"FATAL: {len(failed_envs)} environment(s) still failing after "
                   f"{MAX_RETRIES} retries: {', '.join(failed_labels)}", file=sys.stderr)
-            print("Continuing with partial data — these environment(s) will show "
-                  "as errors in the report instead of blocking it entirely.",
+            print("Report generation aborted — all environments must succeed.",
                   file=sys.stderr)
+            sys.exit(1)
 
         job_results   = [job_map[k] for k in ENVIRONMENTS]
         audit_results = [audit_map[k] for k in ENVIRONMENTS]
