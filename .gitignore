@@ -10,3 +10,6 @@ vpn/client.ovpn
 
 # Azure Function local settings
 local.settings.json
+
+# Zoho ticket trend dashboard - raw/exported ticket data, never commit real customer data
+zoho_trends/data/
