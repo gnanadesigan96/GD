@@ -6,8 +6,10 @@ you can pick one customer or bundle and see its own quarter-by-quarter mix
 (e.g. "Customer X raised 2 tickets in Q1 about cost-processing and
 onboarding, then 6 in Q2 about budgets/onboarding/slowness").
 
-Tickets from `notify-sre-ops@corestack.io`, any `@gmail.com` sender, and any
-Gartner-related account/email are dropped automatically (`normalize.is_noise`).
+Tickets from `notify-sre-ops@corestack.io`, any `@gmail.com` sender, any
+Gartner-related account/email, and internal/Corestack-placeholder accounts
+("internal", "Corestack", "CoreStack_CS") are dropped automatically
+(`normalize.is_noise`, `normalize.INTERNAL_ACCOUNT_LABEL`).
 
 ## `webapp/` — the self-service dashboard (start here)
 
@@ -45,17 +47,15 @@ Verified against live CoreStack Support department data (not guessed):
 |---|---|---|
 | Bundle | `cf.cf_bundle` / `customFields["Reporting Bundle"]` | **Not** Category/Sub-Category — those are unused (always empty) on this department. Values seen: CloudOps, FinOps, Core, SecOps, Analytics. |
 | Ticket type | `cf.cf_feature` / `customFields["Reporting Feature"]` | CoreStack's own curated taxonomy (Cost processing, Onboarding, Budget, Access, Executive dashboard, ...). Falls back to subject-keyword classification (`normalize.TYPE_KEYWORDS`) only when this is blank/"NA". |
-| Customer | `contact.account.accountName` (list/search endpoints nest it here) → `account.accountName` (single-ticket endpoint) → `cf.cf_customer` | Internal placeholder names ("internal", "Corestack", "CoreStack_CS") are relabeled to `"Corestack (internal)"` — not dropped — so they're one click to exclude via the dashboard's own customer filter. |
+| Customer | `contact.account.accountName` (list/search endpoints nest it here) → `account.accountName` (single-ticket endpoint) → `cf.cf_customer` | Internal placeholder names ("internal", "Corestack", "CoreStack_CS") are excluded entirely (`normalize.INTERNAL_ACCOUNT_LABEL`), same as notify-sre/Gmail/Gartner. |
 
-## Data-quality finding worth knowing
+## Data-quality finding that shaped the filter
 
 A live sample pull (300 tickets across Q1–Q3 2026) found **58% were
-notify-sre noise** — your filter is doing real work. After that, a further
-~17% were other `@corestack.io` senders tagged account "Corestack" /
-"CoreStack_CS" (customer = "internal") — not notify-sre, not Gmail, not
-Gartner, so today's filter rule leaves them in (now labeled "Corestack
-(internal)" per above so they're easy to spot/exclude in the UI). Say the
-word if you want those excluded by default too.
+notify-sre noise** — the filter is doing real work. A further ~17% were
+other `@corestack.io` senders tagged account "Corestack"/"CoreStack_CS"
+(customer = "internal") — not notify-sre, not Gmail, not Gartner by name,
+but clearly not a real customer either, so those are now excluded too.
 
 ## Files
 

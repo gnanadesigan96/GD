@@ -14,8 +14,10 @@ from datetime import date, datetime
 from typing import Any, Iterable
 
 # ── Noise filter ───────────────────────────────────────────────────────────
-# Per the brief: ignore anything from notify-sre, any @gmail.com sender, and
-# any Gartner-related ticket (account name or email domain).
+# Ignore anything from notify-sre, any @gmail.com sender, any Gartner-related
+# ticket (account name or email domain), and internal/Corestack-labeled
+# accounts (see INTERNAL_ACCOUNT_LABEL below, checked separately since it's
+# an exact-match on the cleaned account name rather than a substring).
 _NOISE_EMAIL_SUBSTRINGS = ("notify-sre", "notifysre", "@gmail.com")
 _NOISE_NAME_SUBSTRINGS = ("gartner",)
 
@@ -127,14 +129,14 @@ def _blank(v: Any) -> bool:
     return s == "" or s.upper() in ("NA", "N/A")
 
 
-# Internal/placeholder account names — relabeled (not dropped) so they're easy
-# to spot and exclude via the dashboard's own customer filter if you want to.
+# Internal/placeholder account names — excluded, same as notify-sre/Gmail/Gartner.
 _INTERNAL_ACCOUNT_NAMES = {"internal", "corestack", "corestack internal", "corestack_cs", "unknown", "n/a", "na", ""}
+INTERNAL_ACCOUNT_LABEL = "Corestack (internal)"
 
 
 def _clean_account(name: str) -> str:
     name = _norm_account(name)
-    return "Corestack (internal)" if name.lower() in _INTERNAL_ACCOUNT_NAMES else (name or "Unknown")
+    return INTERNAL_ACCOUNT_LABEL if name.lower() in _INTERNAL_ACCOUNT_NAMES else (name or "Unknown")
 
 
 def normalize_json_ticket(raw: dict) -> dict | None:
@@ -155,7 +157,7 @@ def normalize_json_ticket(raw: dict) -> dict | None:
         account = cf.get("cf_customer") or custom_fields.get("Customer") or ""
     account = _clean_account(account)
 
-    if is_noise(email, account, subject):
+    if account == INTERNAL_ACCOUNT_LABEL or is_noise(email, account, subject):
         return None
 
     created = _parse_date(raw.get("createdTime"))
@@ -201,7 +203,7 @@ def normalize_csv_row(row: dict) -> dict | None:
     email = g("Email", "Contact Email")
     account = _clean_account(g("Account Name", "Account", "Customer"))
 
-    if is_noise(email, account, subject):
+    if account == INTERNAL_ACCOUNT_LABEL or is_noise(email, account, subject):
         return None
 
     created = _parse_date(g("Created Time", "Created Date"))
