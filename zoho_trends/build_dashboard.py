@@ -13,15 +13,17 @@ import argparse
 import os
 from datetime import date, datetime, timezone
 
-from normalize import load_tickets
+from normalize import load_tickets, rolling_window
 from dashboard_template import render
 
 
 def main():
+    default_start, _ = rolling_window(date.today(), quarters_back=2)
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="inp", required=True, help="tickets_raw.json (from fetch_tickets.py) or a Zoho Desk CSV export")
     ap.add_argument("--out", default="trend_dashboard.html")
-    ap.add_argument("--start-date", default=f"{date.today().year}-01-01")
+    ap.add_argument("--start-date", default=default_start.isoformat(), help=f"default: {default_start.isoformat()} (current quarter - 2)")
     args = ap.parse_args()
 
     start_date = datetime.strptime(args.start_date, "%Y-%m-%d").date()

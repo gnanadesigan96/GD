@@ -1,13 +1,14 @@
 """
 fetch_tickets.py
-Pulls ALL Zoho Desk tickets created from START_DATE to today (every status,
-not just the "active" ones used by the daily incident report), and writes
-them to data/tickets_raw.json for build_dashboard.py to consume.
+Pulls Zoho Desk tickets created in a date window (default: current quarter +
+previous 2 quarters, i.e. a rolling 3-quarter window) and writes them to
+data/tickets_raw.json for build_dashboard.py to consume.
 
-This mirrors the auth/pagination pattern already used in
-azure-function/zoho_client.py and gen_report_live.py, so it will work
-wherever those already work (i.e. an environment with network access to
-desk.zoho.in / accounts.zoho.in).
+Uses the /tickets/search endpoint with createdTimeRange so the date filter
+happens server-side — no per-ticket detail enrichment call is needed, since
+search/list responses already embed `cf` and `customFields` (confirmed
+against live data: cf_bundle, cf_feature, cf_customer, contact.account are
+all present inline).
 
 Usage:
     pip install requests
@@ -16,7 +17,7 @@ Usage:
     export ZOHO_REFRESH_TOKEN=...
     export ZOHO_ORG_ID=60019389025          # optional, this is the default
     export ZOHO_DEPT_ID=100599000000010772  # optional, this is the default
-    python3 fetch_tickets.py [--start-date 2026-01-01] [--out data/tickets_raw.json]
+    python3 fetch_tickets.py [--start-date 2026-01-01] [--end-date 2026-07-31] [--out data/tickets_raw.json]
 
 Do NOT hardcode credentials in this file — pass them via environment
 variables only (see the note in README.md about the leaked credentials in
@@ -28,10 +29,11 @@ import argparse
 import json
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 
 import requests
+
+from normalize import rolling_window
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -40,29 +42,14 @@ ZOHO_API_BASE = "https://desk.zoho.in/api/v1"
 ZOHO_ORG_ID = os.environ.get("ZOHO_ORG_ID", "60019389025")
 ZOHO_DEPT_ID = os.environ.get("ZOHO_DEPT_ID", "100599000000010772")
 
-# Every status this Zoho Desk department is known to use. The list endpoint
-# is also queried once with no status filter (Zoho's default view), and the
-# two result sets are merged/de-duped by ticket id, so a status missing from
-# this list still gets picked up as long as it's in Zoho's default view.
-KNOWN_STATUSES = [
-    "Open",
-    "In Progress",
-    "On Hold",
-    "Awaiting Resolution Confirmation",
-    "Escalated",
-    "Awaiting your Response",
-    "Closed",
-    "Resolved",
-]
 
-
-def get_token() -> str:
+def get_token(client_id: str, client_secret: str, refresh_token: str) -> str:
     resp = requests.post(
         ZOHO_TOKEN_URL,
         params={
-            "refresh_token": os.environ["ZOHO_REFRESH_TOKEN"],
-            "client_id": os.environ["ZOHO_CLIENT_ID"],
-            "client_secret": os.environ["ZOHO_CLIENT_SECRET"],
+            "refresh_token": refresh_token,
+            "client_id": client_id,
+            "client_secret": client_secret,
             "grant_type": "refresh_token",
         },
         timeout=30,
@@ -71,119 +58,69 @@ def get_token() -> str:
     return resp.json()["access_token"]
 
 
-def _headers(token: str) -> dict:
-    return {"Authorization": f"Zoho-oauthtoken {token}", "orgId": ZOHO_ORG_ID}
+def _headers(token: str, org_id: str) -> dict:
+    return {"Authorization": f"Zoho-oauthtoken {token}", "orgId": org_id}
 
 
-def fetch_by_status(status: str | None, token: str) -> list[dict]:
+def fetch_range(token: str, org_id: str, dept_id: str, start: date, end: date) -> list[dict]:
+    """Fetch every ticket (any status) created in [start, end], inclusive."""
+    created_range = f"{start.isoformat()}T00:00:00.000Z,{end.isoformat()}T23:59:59.000Z"
     tickets, from_ = [], 0
     while True:
-        params = {
-            "departmentId": ZOHO_DEPT_ID,
-            "sortBy": "createdTime",
-            "limit": 50,
-            "from": from_,
-            "include": "contacts",
-        }
-        if status:
-            params["status"] = status
-        resp = requests.get(f"{ZOHO_API_BASE}/tickets", headers=_headers(token), params=params, timeout=30)
-        if resp.status_code == 400:
-            logging.warning("Status %r not valid for this department, skipping.", status)
-            break
+        resp = requests.get(
+            f"{ZOHO_API_BASE}/ticketsSearch",
+            headers=_headers(token, org_id),
+            params={
+                "departmentId": dept_id,
+                "createdTimeRange": created_range,
+                "sortBy": "createdTime",
+                "limit": 100,
+                "from": from_,
+            },
+            timeout=30,
+        )
         resp.raise_for_status()
         data = resp.json().get("data", [])
         if not data:
             break
         tickets.extend(data)
-        if len(data) < 50:
+        logging.info("  fetched %d (running total %d)", len(data), len(tickets))
+        if len(data) < 100:
             break
-        from_ += 50
+        from_ += 100
         if from_ >= 100000:
-            logging.warning("Hit Zoho's from+limit<=100000 pagination ceiling for status=%r", status)
+            logging.warning("Hit Zoho's from+limit<=100000 pagination ceiling for this range")
             break
     return tickets
 
 
-def fetch_ticket_detail(ticket_id: str, token: str) -> dict:
-    resp = requests.get(
-        f"{ZOHO_API_BASE}/tickets/{ticket_id}",
-        headers=_headers(token),
-        params={"include": "contacts,assignee"},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()
-
-
-def fetch_all(start_date: date) -> list[dict]:
-    token = get_token()
-    logging.info("Token obtained.")
-
-    by_id: dict[str, dict] = {}
-
-    # Broadest pass: default view, no status filter
-    default_view = fetch_by_status(None, token)
-    logging.info("Default view (no status filter): %d tickets", len(default_view))
-    for t in default_view:
-        by_id[str(t.get("id"))] = t
-
-    # Explicit statuses, in case the default view excludes some (e.g. Closed)
-    for s in KNOWN_STATUSES:
-        batch = fetch_by_status(s, token)
-        logging.info("  status=%s: %d tickets", s, len(batch))
-        for t in batch:
-            by_id.setdefault(str(t.get("id")), t)
-
-    all_tickets = list(by_id.values())
-    logging.info("Total unique tickets fetched (all statuses): %d", len(all_tickets))
-
-    def _created(t: dict) -> date | None:
-        s = t.get("createdTime")
-        if not s:
-            return None
-        try:
-            return datetime.fromisoformat(s.replace("Z", "+00:00")).date()
-        except Exception:
-            return None
-
-    all_tickets = [t for t in all_tickets if (_created(t) or date.min) >= start_date]
-    logging.info("After start-date filter (>= %s): %d tickets", start_date, len(all_tickets))
-
-    def _enrich(ticket: dict) -> dict:
-        tid = ticket.get("id") or ticket.get("ticketId") or ""
-        if not tid:
-            return ticket
-        try:
-            detail = fetch_ticket_detail(str(tid), token)
-            ticket["cf"] = detail.get("cf") or {}
-            ticket["customFields"] = detail.get("customFields") or {}
-            for key in ("contacts", "contact", "assignee", "account", "category", "subCategory", "resolution"):
-                if detail.get(key) and not ticket.get(key):
-                    ticket[key] = detail[key]
-        except Exception as exc:
-            logging.warning("Could not fetch detail for ticket %s: %s", tid, exc)
-        return ticket
-
-    logging.info("Enriching %d tickets with custom fields / category…", len(all_tickets))
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(_enrich, t): t for t in all_tickets}
-        enriched = [f.result() for f in as_completed(futures)]
-    logging.info("Enrichment complete.")
-
-    statuses_seen = sorted({t.get("status", "") for t in enriched})
-    logging.info("Distinct statuses in result set: %s", statuses_seen)
-    return enriched
+def fetch_all(client_id: str, client_secret: str, refresh_token: str, start: date, end: date,
+              org_id: str = ZOHO_ORG_ID, dept_id: str = ZOHO_DEPT_ID) -> list[dict]:
+    token = get_token(client_id, client_secret, refresh_token)
+    logging.info("Token obtained. Fetching tickets %s -> %s ...", start, end)
+    tickets = fetch_range(token, org_id, dept_id, start, end)
+    statuses_seen = sorted({t.get("status", "") for t in tickets})
+    logging.info("Total tickets fetched: %d. Distinct statuses: %s", len(tickets), statuses_seen)
+    return tickets
 
 
 def main():
+    today = date.today()
+    default_start, default_end = rolling_window(today, quarters_back=2)
+
     ap = argparse.ArgumentParser()
-    ap.add_argument("--start-date", default=f"{date.today().year}-01-01")
+    ap.add_argument("--start-date", default=default_start.isoformat(), help=f"default: {default_start.isoformat()} (current quarter - 2)")
+    ap.add_argument("--end-date", default=default_end.isoformat(), help=f"default: {default_end.isoformat()} (today)")
     ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "data", "tickets_raw.json"))
     args = ap.parse_args()
 
-    start_date = datetime.strptime(args.start_date, "%Y-%m-%d").date()
-    tickets = fetch_all(start_date)
+    start = datetime.strptime(args.start_date, "%Y-%m-%d").date()
+    end = datetime.strptime(args.end_date, "%Y-%m-%d").date()
+
+    tickets = fetch_all(
+        os.environ["ZOHO_CLIENT_ID"], os.environ["ZOHO_CLIENT_SECRET"], os.environ["ZOHO_REFRESH_TOKEN"],
+        start, end,
+    )
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:

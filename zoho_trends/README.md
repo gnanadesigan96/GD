@@ -1,50 +1,83 @@
 # Zoho Ticket Trend Dashboard
 
-Quarter-over-quarter trend analysis of Zoho Desk support tickets (Jan 1 –
-today), broken down by priority, customer, bundle (Category/Sub-Category),
-and ticket type — with a drill-down view so you can pick one customer or
-bundle and see its own quarter-by-quarter mix, the way it's described in the
-brief (e.g. "Customer X raised 2 tickets in Q1 about cost-processing and
+Quarter-over-quarter trend analysis of Zoho Desk support tickets, broken down
+by priority, customer, bundle, and ticket type — with a drill-down view so
+you can pick one customer or bundle and see its own quarter-by-quarter mix
+(e.g. "Customer X raised 2 tickets in Q1 about cost-processing and
 onboarding, then 6 in Q2 about budgets/onboarding/slowness").
 
 Tickets from `notify-sre-ops@corestack.io`, any `@gmail.com` sender, and any
 Gartner-related account/email are dropped automatically (`normalize.is_noise`).
 
+## `webapp/` — the self-service dashboard (start here)
+
+An Azure Function (same deployment pattern as `azure-function/`) that serves
+a page where **you paste your own Zoho credentials in the browser** — no
+Zoho secret is stored server-side anywhere. It fetches the current quarter +
+previous 2 quarters (configurable) and renders the same dashboard described
+below.
+
+```bash
+cd zoho_trends/webapp
+pip install -r requirements.txt
+cp local.settings.json.template local.settings.json   # no Zoho values needed here
+func start
+# open http://localhost:7071/api/dashboard
+```
+
+Deploy it the same way you deploy `azure-function/` (`func azure functionapp
+publish <name>`) to get a shareable URL. On the page: enter Client ID, Client
+Secret, Refresh Token (Org ID / Department ID are pre-filled with CoreStack
+Support's defaults), pick the window (current + last N quarters, default 2),
+click **Load dashboard**.
+
+**Credential handling:** sent once per request to the function's own `/api/tickets`
+endpoint, used in-memory to call Zoho, then discarded — never logged, never
+written to disk, never persisted across a page reload. Deploy behind HTTPS
+(Azure Functions gives you this by default) since credentials travel in the
+POST body.
+
+## Confirmed real Zoho field mappings
+
+Verified against live CoreStack Support department data (not guessed):
+
+| Concept | Field | Notes |
+|---|---|---|
+| Bundle | `cf.cf_bundle` / `customFields["Reporting Bundle"]` | **Not** Category/Sub-Category — those are unused (always empty) on this department. Values seen: CloudOps, FinOps, Core, SecOps, Analytics. |
+| Ticket type | `cf.cf_feature` / `customFields["Reporting Feature"]` | CoreStack's own curated taxonomy (Cost processing, Onboarding, Budget, Access, Executive dashboard, ...). Falls back to subject-keyword classification (`normalize.TYPE_KEYWORDS`) only when this is blank/"NA". |
+| Customer | `contact.account.accountName` (list/search endpoints nest it here) → `account.accountName` (single-ticket endpoint) → `cf.cf_customer` | Internal placeholder names ("internal", "Corestack", "CoreStack_CS") are relabeled to `"Corestack (internal)"` — not dropped — so they're one click to exclude via the dashboard's own customer filter. |
+
+## Data-quality finding worth knowing
+
+A live sample pull (300 tickets across Q1–Q3 2026) found **58% were
+notify-sre noise** — your filter is doing real work. After that, a further
+~17% were other `@corestack.io` senders tagged account "Corestack" /
+"CoreStack_CS" (customer = "internal") — not notify-sre, not Gmail, not
+Gartner, so today's filter rule leaves them in (now labeled "Corestack
+(internal)" per above so they're easy to spot/exclude in the UI). Say the
+word if you want those excluded by default too.
+
 ## Files
 
 | File | Purpose |
 |---|---|
-| `fetch_tickets.py` | Pulls **all** tickets (every status, not just the "active" ones the daily incident report uses) from Zoho Desk, Jan 1 → today. Requires network access to `desk.zoho.in` / `accounts.zoho.in` and `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` / `ZOHO_REFRESH_TOKEN` env vars. |
-| `normalize.py` | Noise filter, ticket-type keyword classifier, priority/quarter normalization. Loads either `fetch_tickets.py`'s JSON output or a Zoho Desk CSV export. |
-| `build_dashboard.py` | Renders the self-contained HTML dashboard from normalized tickets. |
-| `dashboard_template.py` | The dashboard's HTML/CSS/JS (no external dependencies — opens standalone in any browser). |
-| `sample_data.py` | Generates synthetic demo data (`data/sample_tickets_raw.json`) so the dashboard can be previewed before real data is wired in. **Not real ticket data.** |
+| `webapp/` | The Azure Function above — self-contained, own copy of `normalize.py`, credentials supplied per-request. |
+| `fetch_tickets.py` | CLI fetch: current quarter + previous 2 quarters (rolling window) from Zoho Desk, every status. Requires network access to `desk.zoho.in` / `accounts.zoho.in` and `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` / `ZOHO_REFRESH_TOKEN` env vars. |
+| `normalize.py` | Noise filter, bundle/type/customer field mapping, quarter-window math. Loads either `fetch_tickets.py`'s JSON output or a Zoho Desk CSV export. |
+| `build_dashboard.py` | Renders the same dashboard as a static HTML file from normalized tickets (no server needed). |
+| `dashboard_template.py` | That static dashboard's HTML/CSS/JS. |
+| `sample_data.py` | Generates synthetic demo data. **Not real ticket data.** |
 
-## Running it for real
+## Running the static (no-server) version
 
-This sandboxed session's network policy blocks `desk.zoho.in`, so the fetch
-step has to run somewhere with Zoho access — the same constraint
-`gen_report_live.py` already works under. Pick one:
-
-**A. Run locally** (same pattern as `gen_report_live.py`):
 ```bash
 export ZOHO_CLIENT_ID=...
 export ZOHO_CLIENT_SECRET=...
 export ZOHO_REFRESH_TOKEN=...
-python3 fetch_tickets.py --start-date 2026-01-01
+python3 fetch_tickets.py                 # defaults to current quarter + last 2
 python3 build_dashboard.py --in data/tickets_raw.json --out trend_dashboard.html
 ```
-Open `trend_dashboard.html` in a browser, or send it back for a live Artifact preview.
-
-**B. Export from the Zoho Desk UI** — export tickets (Jan 1–today, all
-statuses) as CSV with at least: Ticket Number, Subject, Priority, Status,
-Account Name, Category, Created Time, Email. Then:
-```bash
-python3 build_dashboard.py --in tickets_export.csv --out trend_dashboard.html
-```
-
-**C. Grant this environment network access to `zoho.in`** in the Claude Code
-environment settings, then re-run from a fresh session.
+Or from a Zoho Desk CSV export: `python3 build_dashboard.py --in tickets_export.csv`.
 
 ## Preview with synthetic data
 
@@ -52,15 +85,6 @@ environment settings, then re-run from a fresh session.
 python3 sample_data.py
 python3 build_dashboard.py --in data/sample_tickets_raw.json --out sample_dashboard.html
 ```
-
-## Tuning to your real taxonomy
-
-- **Bundle** currently reads Zoho's `category` / `subCategory` field. If your
-  bundles (FinOps/CloudOps/SecOps/etc.) live in a different custom field,
-  point `normalize.normalize_json_ticket`'s `bundle = ...` line at it.
-- **Ticket type** is keyword-matched against the subject line
-  (`normalize.TYPE_KEYWORDS`). Once you see the dashboard against real data,
-  tighten/expand those keyword lists to match actual ticket language.
 
 ## Known issue in this repo (not part of this feature)
 
