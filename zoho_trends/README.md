@@ -27,11 +27,33 @@ func start
 # open http://localhost:7071/api/dashboard
 ```
 
-Deploy it the same way you deploy `azure-function/` (`func azure functionapp
-publish <name>`) to get a shareable URL. On the page: enter Client ID, Client
-Secret, Refresh Token (Org ID / Department ID are pre-filled with CoreStack
-Support's defaults), pick the window (current + last N quarters, default 2),
-click **Load dashboard**.
+### Deploying it to get a real URL
+
+`webapp/deploy.sh` provisions a resource group + storage account + Linux
+Python Function App and publishes this folder to it in one go. Run it from
+your own machine or Azure Cloud Shell (needs the Azure CLI logged in —
+`az login` — and Azure Functions Core Tools v4):
+
+```bash
+cd zoho_trends/webapp
+# edit the RESOURCE_GROUP / LOCATION / FUNCTION_APP_NAME variables at the top first
+./deploy.sh
+```
+
+This can't be run from this Claude Code sandbox — it needs network access to
+`management.azure.com`, which this environment's egress policy also blocks
+(same class of restriction as the `zoho.in` block below). Once deployed,
+the dashboard is at `https://<your-function-app-name>.azurewebsites.net/api/dashboard`.
+
+The route uses anonymous auth (`AuthLevel.ANONYMOUS` in `function_app.py`) —
+anyone with the URL can load the page and POST to `/api/tickets` with
+*their own* Zoho credentials (nothing of yours is exposed by that), but it
+does mean the endpoint itself isn't gated. Put it behind your org's SSO,
+Front Door, or an IP restriction if it shouldn't be publicly reachable.
+
+On the page itself: enter Client ID, Client Secret, Refresh Token (Org ID /
+Department ID are pre-filled with CoreStack Support's defaults), pick the
+window (current + last N quarters, default 2), click **Load dashboard**.
 
 **Credential handling:** sent once per request to the function's own `/api/tickets`
 endpoint, used in-memory to call Zoho, then discarded — never logged, never
