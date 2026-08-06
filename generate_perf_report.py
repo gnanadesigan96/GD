@@ -78,7 +78,7 @@ ENVIRONMENTS = {
     "mea":        {"label": "MEA",        "host": "74.162.91.2",    "port": 1200,  "username": "demo", "password": "EcgH1HbgyxXWI8O9","auth_source": "admin"},
     "prod_us":    {"label": "Prod US",    "host": "20.112.121.242", "port": 1200,  "username": "demo", "password": "TY0rwn1skOwtQA9z", "auth_source": "admin"},
     "prod_eu":    {"label": "Prod EU",    "host": "4.180.107.93",    "port": 1200,  "username": "demo", "password": "3av7uJLv7lkBvAl0", "auth_source": "admin"},
-    "ms_prod":    {"label": "MSPROD",     "host": "40.76.52.237",   "port": 27017, "username": "demo", "password": "XL6NWKZqTaxBROER", "auth_source": "admin"},
+    "ms_prod":    {"label": "MSPROD",     "host": "132.196.90.174", "port": 27017, "username": "demo", "password": "XL6NWKZqTaxBROER", "auth_source": "admin"},
     "us3":        {"label": "US3",        "host": "20.83.185.233",  "port": 27017, "username": "demo", "password": "Vn9kABFChZg0o_h",  "auth_source": "admin"},
 }
 
