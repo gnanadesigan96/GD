@@ -44,12 +44,22 @@ import time
 import argparse
 import concurrent.futures
 import re
+import socket
 import requests
+import urllib3.util.connection as _urllib3_conn
 from datetime import datetime, timedelta, timezone
 from pymongo import MongoClient
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+
+# Force requests/urllib3 to resolve+connect over IPv4 only. On this VM the
+# local resolver returns IPv6 (AAAA) for login.microsoftonline.com /
+# graph.microsoft.com, and IPv6 traffic still goes through the VPN's
+# intercepting proxy even after adding IPv4 bypass routes (--fix-ms-routes),
+# since those routes only affect IPv4. This only affects `requests` calls
+# (the SharePoint/Graph API), not pymongo's own connections.
+_urllib3_conn.allowed_gai_family = lambda: socket.AF_INET
 
 # ============================================================
 #  CONFIGURATION
