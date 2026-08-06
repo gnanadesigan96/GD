@@ -62,11 +62,14 @@ OVPN_CONFIG_PATH = "/etc/openvpn/client.ovpn"  # default; override with --ovpn
 VPN_CONNECT_TIMEOUT = 60  # seconds to wait for tun0
 
 # ── SharePoint (Microsoft Graph API — client credentials) ───
+# NOTE: kept as placeholders in git (GitHub push-protection blocks the real
+# secret); fill in the real values directly on the deployment VM, which no
+# longer tracks this file in git.
 SHAREPOINT_TENANT_ID     = "<your-azure-tenant-id>"
 SHAREPOINT_CLIENT_ID     = "<your-azure-app-client-id>"
 SHAREPOINT_CLIENT_SECRET = "<your-azure-app-client-secret>"
 SHAREPOINT_SITE_URL      = "cloudenablersinc.sharepoint.com/sites/SupportTeam"
-SHAREPOINT_REPORT_FOLDER = "General/Cost-Performance-Report"
+SHAREPOINT_REPORT_FOLDER = "General/Daily-Incident-Report/Template"
 SHAREPOINT_CSV_FOLDER    = "General/Cost-Performance-Report/Dump"
 
 GRAPH_TOKEN_URL = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
