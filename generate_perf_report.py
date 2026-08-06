@@ -399,11 +399,40 @@ def _with_retries(label: str, fn):
     raise last_exc
 
 
+MS_ROUTE_BYPASS_HOSTS_MARKER = "# generate_perf_report.py MS Graph bypass"
+
+
+def _pin_etc_hosts(pins: dict) -> None:
+    """Pin hostname -> ip in /etc/hosts, which getaddrinfo checks before DNS.
+    Without this, this box's own resolver can hand `requests` a different IP
+    from the same rotating Traffic Manager pool than the one we just added a
+    bypass route for, and it lands back on the VPN's intercepting proxy."""
+    hosts_path = "/etc/hosts"
+    try:
+        with open(hosts_path, "r") as f:
+            lines = f.readlines()
+    except Exception as exc:
+        print(f"  [WARN] could not read {hosts_path}: {exc}", file=sys.stderr)
+        return
+
+    kept = [ln for ln in lines if MS_ROUTE_BYPASS_HOSTS_MARKER not in ln]
+    new_lines = [f"{ip} {hostname} {MS_ROUTE_BYPASS_HOSTS_MARKER}\n"
+                 for hostname, ip in pins.items()]
+    try:
+        with open(hosts_path, "w") as f:
+            f.writelines(kept + new_lines)
+    except Exception as exc:
+        print(f"  [WARN] could not update {hosts_path}: {exc}", file=sys.stderr)
+
+
 def fix_ms_graph_routes(gateway: str, iface: str) -> None:
-    """Resolve MS_ROUTE_BYPASS_HOSTS via an external resolver and add explicit
-    /32 routes via `gateway`/`iface`, bypassing a VPN's full-tunnel default
-    route for just this traffic. See the MS_ROUTE_BYPASS_* comment above."""
+    """Resolve MS_ROUTE_BYPASS_HOSTS via an external resolver, add explicit
+    /32 routes via `gateway`/`iface` for each resolved IP (bypassing a VPN's
+    full-tunnel default route), and pin each hostname to its first resolved
+    IP in /etc/hosts so `requests`'s own DNS lookup can't land on a
+    different, unrouted IP from the same pool. See MS_ROUTE_BYPASS_* above."""
     ip_re = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
+    pins = {}
     for hostname in MS_ROUTE_BYPASS_HOSTS:
         try:
             dig_out = subprocess.run(
@@ -426,6 +455,12 @@ def fix_ms_graph_routes(gateway: str, iface: str) -> None:
             except Exception as exc:
                 print(f"  [WARN] could not add bypass route for {ip}: {exc}", file=sys.stderr)
         print(f"  [{hostname}] bypass routes -> {', '.join(ips) if ips else '(none resolved)'}")
+        if ips:
+            pins[hostname] = ips[0]
+
+    if pins:
+        _pin_etc_hosts(pins)
+        print(f"  /etc/hosts pinned -> {pins}")
 
 
 def _get_graph_token() -> str:
