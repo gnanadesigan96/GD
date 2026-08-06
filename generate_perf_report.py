@@ -342,39 +342,76 @@ def vpn_disconnect() -> None:
 #  SHAREPOINT UPLOAD (Microsoft Graph API)
 # ============================================================
 
+SHAREPOINT_RETRY_ATTEMPTS = 3
+SHAREPOINT_RETRY_BACKOFF_SEC = (5, 15)  # transient network blips, not outages
+
+
+def _json_or_raise(resp) -> dict:
+    """resp.json() but with the raw status/body on failure instead of a bare
+    JSONDecodeError — the actual cause is usually a non-JSON response body
+    (empty, truncated, or an intercepted/blocked page), not a real HTTP error."""
+    try:
+        return resp.json()
+    except ValueError as exc:
+        raise RuntimeError(
+            f"non-JSON response (status {resp.status_code}): {resp.text[:300]!r}"
+        ) from exc
+
+
+def _with_retries(label: str, fn):
+    last_exc = None
+    for attempt in range(1, SHAREPOINT_RETRY_ATTEMPTS + 1):
+        try:
+            return fn()
+        except Exception as exc:
+            last_exc = exc
+            if attempt < SHAREPOINT_RETRY_ATTEMPTS:
+                wait = SHAREPOINT_RETRY_BACKOFF_SEC[min(attempt - 1, len(SHAREPOINT_RETRY_BACKOFF_SEC) - 1)]
+                print(f"  [WARN] {label} failed ({exc}); retrying in {wait}s "
+                      f"({attempt}/{SHAREPOINT_RETRY_ATTEMPTS}) ...", file=sys.stderr)
+                time.sleep(wait)
+    raise last_exc
+
+
 def _get_graph_token() -> str:
-    url = GRAPH_TOKEN_URL.format(tenant_id=SHAREPOINT_TENANT_ID)
-    resp = requests.post(url, data={
-        "client_id":     SHAREPOINT_CLIENT_ID,
-        "client_secret": SHAREPOINT_CLIENT_SECRET,
-        "scope":         "https://graph.microsoft.com/.default",
-        "grant_type":    "client_credentials",
-    }, timeout=30)
-    resp.raise_for_status()
-    return resp.json()["access_token"]
+    def _do():
+        url = GRAPH_TOKEN_URL.format(tenant_id=SHAREPOINT_TENANT_ID)
+        resp = requests.post(url, data={
+            "client_id":     SHAREPOINT_CLIENT_ID,
+            "client_secret": SHAREPOINT_CLIENT_SECRET,
+            "scope":         "https://graph.microsoft.com/.default",
+            "grant_type":    "client_credentials",
+        }, timeout=30)
+        resp.raise_for_status()
+        return _json_or_raise(resp)["access_token"]
+    return _with_retries("Graph token request", _do)
 
 
 def _get_site_id(token: str) -> str:
-    parts = SHAREPOINT_SITE_URL.replace("https://", "").split("/sites/")
-    hostname = parts[0]
-    site_name = parts[1] if len(parts) > 1 else ""
-    resp = requests.get(
-        f"{GRAPH_BASE}/sites/{hostname}:/sites/{site_name}",
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()["id"]
+    def _do():
+        parts = SHAREPOINT_SITE_URL.replace("https://", "").split("/sites/")
+        hostname = parts[0]
+        site_name = parts[1] if len(parts) > 1 else ""
+        resp = requests.get(
+            f"{GRAPH_BASE}/sites/{hostname}:/sites/{site_name}",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return _json_or_raise(resp)["id"]
+    return _with_retries("SharePoint site lookup", _do)
 
 
 def _get_drive_id(token: str, site_id: str) -> str:
-    resp = requests.get(
-        f"{GRAPH_BASE}/sites/{site_id}/drive",
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()["id"]
+    def _do():
+        resp = requests.get(
+            f"{GRAPH_BASE}/sites/{site_id}/drive",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return _json_or_raise(resp)["id"]
+    return _with_retries("SharePoint drive lookup", _do)
 
 
 def upload_to_sharepoint(local_path: str, sp_folder: str, filename: str) -> str:
@@ -391,49 +428,54 @@ def upload_to_sharepoint(local_path: str, sp_folder: str, filename: str) -> str:
     if file_size > 4 * 1024 * 1024:
         return _upload_large(token, drive_id, folder, filename, file_bytes)
 
-    upload_url = f"{GRAPH_BASE}/drives/{drive_id}/root:/{folder}/{filename}:/content"
-    resp = requests.put(
-        upload_url,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/octet-stream",
-        },
-        data=file_bytes,
-        timeout=120,
-    )
-    resp.raise_for_status()
-    return resp.json().get("webUrl", "")
+    def _do():
+        upload_url = f"{GRAPH_BASE}/drives/{drive_id}/root:/{folder}/{filename}:/content"
+        resp = requests.put(
+            upload_url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/octet-stream",
+            },
+            data=file_bytes,
+            timeout=120,
+        )
+        resp.raise_for_status()
+        return _json_or_raise(resp).get("webUrl", "")
+    return _with_retries("SharePoint file upload", _do)
 
 
 def _upload_large(token: str, drive_id: str, folder: str,
                   filename: str, file_bytes: bytes) -> str:
-    session_url = (
-        f"{GRAPH_BASE}/drives/{drive_id}/root:/{folder}/{filename}"
-        f":/createUploadSession"
-    )
-    resp = requests.post(
-        session_url,
-        headers={"Authorization": f"Bearer {token}",
-                 "Content-Type": "application/json"},
-        json={"item": {"@microsoft.graph.conflictBehavior": "replace"}},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    upload_url = resp.json()["uploadUrl"]
-
-    chunk_size = 10 * 1024 * 1024
-    total = len(file_bytes)
-    for start in range(0, total, chunk_size):
-        end = min(start + chunk_size, total)
-        chunk = file_bytes[start:end]
-        headers = {
-            "Content-Length": str(len(chunk)),
-            "Content-Range": f"bytes {start}-{end - 1}/{total}",
-        }
-        resp = requests.put(upload_url, headers=headers, data=chunk, timeout=120)
+    def _do():
+        session_url = (
+            f"{GRAPH_BASE}/drives/{drive_id}/root:/{folder}/{filename}"
+            f":/createUploadSession"
+        )
+        resp = requests.post(
+            session_url,
+            headers={"Authorization": f"Bearer {token}",
+                     "Content-Type": "application/json"},
+            json={"item": {"@microsoft.graph.conflictBehavior": "replace"}},
+            timeout=30,
+        )
         resp.raise_for_status()
+        upload_url = _json_or_raise(resp)["uploadUrl"]
 
-    return resp.json().get("webUrl", "")
+        chunk_size = 10 * 1024 * 1024
+        total = len(file_bytes)
+        last_resp = None
+        for start in range(0, total, chunk_size):
+            end = min(start + chunk_size, total)
+            chunk = file_bytes[start:end]
+            headers = {
+                "Content-Length": str(len(chunk)),
+                "Content-Range": f"bytes {start}-{end - 1}/{total}",
+            }
+            last_resp = requests.put(upload_url, headers=headers, data=chunk, timeout=120)
+            last_resp.raise_for_status()
+
+        return _json_or_raise(last_resp).get("webUrl", "")
+    return _with_retries("SharePoint large file upload", _do)
 
 
 # ============================================================
