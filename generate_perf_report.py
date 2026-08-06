@@ -43,6 +43,7 @@ import subprocess
 import time
 import argparse
 import concurrent.futures
+import re
 import requests
 from datetime import datetime, timedelta, timezone
 from pymongo import MongoClient
@@ -70,6 +71,18 @@ SHAREPOINT_CSV_FOLDER    = "General/Cost-Performance-Report/Dump"
 
 GRAPH_TOKEN_URL = "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
 GRAPH_BASE      = "https://graph.microsoft.com/v1.0"
+
+# ── MS Graph/Login route bypass (--fix-ms-routes) ────────────────────────
+# On some servers the site's VPN pushes a full-tunnel default route that
+# funnels ALL outbound traffic — including to login.microsoftonline.com and
+# graph.microsoft.com — through a proxy that requires an interactive SSO
+# login, which a headless script can never complete. The fix is to resolve
+# these hosts via an external resolver (the local one only returns AAAA for
+# them) and add explicit /32 routes via the box's real gateway so this
+# traffic bypasses the VPN entirely. This is specific to that deployment's
+# network, so it's opt-in via --fix-ms-routes rather than always-on.
+MS_ROUTE_BYPASS_HOSTS   = ["login.microsoftonline.com", "graph.microsoft.com"]
+MS_ROUTE_BYPASS_DNS     = "8.8.8.8"
 
 # ── MongoDB Environments ────────────────────────────────────
 ENVIRONMENTS = {
@@ -371,6 +384,35 @@ def _with_retries(label: str, fn):
                       f"({attempt}/{SHAREPOINT_RETRY_ATTEMPTS}) ...", file=sys.stderr)
                 time.sleep(wait)
     raise last_exc
+
+
+def fix_ms_graph_routes(gateway: str, iface: str) -> None:
+    """Resolve MS_ROUTE_BYPASS_HOSTS via an external resolver and add explicit
+    /32 routes via `gateway`/`iface`, bypassing a VPN's full-tunnel default
+    route for just this traffic. See the MS_ROUTE_BYPASS_* comment above."""
+    ip_re = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
+    for hostname in MS_ROUTE_BYPASS_HOSTS:
+        try:
+            dig_out = subprocess.run(
+                ["dig", "+short", "A", hostname, f"@{MS_ROUTE_BYPASS_DNS}"],
+                capture_output=True, text=True, timeout=10, check=True,
+            ).stdout
+        except Exception as exc:
+            print(f"  [WARN] could not resolve {hostname} via {MS_ROUTE_BYPASS_DNS}: {exc}",
+                  file=sys.stderr)
+            continue
+
+        ips = [line.strip().rstrip(".") for line in dig_out.splitlines()]
+        ips = [ip for ip in ips if ip_re.match(ip)]
+        for ip in ips:
+            try:
+                subprocess.run(
+                    ["ip", "route", "replace", f"{ip}/32", "via", gateway, "dev", iface],
+                    capture_output=True, text=True, timeout=10, check=True,
+                )
+            except Exception as exc:
+                print(f"  [WARN] could not add bypass route for {ip}: {exc}", file=sys.stderr)
+        print(f"  [{hostname}] bypass routes -> {', '.join(ips) if ips else '(none resolved)'}")
 
 
 def _get_graph_token() -> str:
@@ -1513,6 +1555,17 @@ def main():
                         help="Skip VPN connect/disconnect (use if already connected)")
     parser.add_argument("--no-upload", action="store_true",
                         help="Skip SharePoint upload (just generate files locally)")
+    parser.add_argument("--fix-ms-routes", action="store_true",
+                        help="Add explicit routes for login.microsoftonline.com / "
+                             "graph.microsoft.com via --bypass-gateway/--bypass-iface, "
+                             "bypassing a VPN that would otherwise intercept this traffic "
+                             "(needed on servers where a full-tunnel VPN blocks SharePoint upload)")
+    parser.add_argument("--bypass-gateway", default="172.16.1.1",
+                        help="Gateway IP to route MS Graph/Login traffic through "
+                             "(only used with --fix-ms-routes)")
+    parser.add_argument("--bypass-iface", default="eth0",
+                        help="Network interface for --bypass-gateway "
+                             "(only used with --fix-ms-routes)")
     args = parser.parse_args()
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -1653,6 +1706,8 @@ def main():
     if not args.no_upload:
         print()
         print("Uploading to SharePoint ...")
+        if args.fix_ms_routes:
+            fix_ms_graph_routes(args.bypass_gateway, args.bypass_iface)
         try:
             print(f"  XLSX -> {SHAREPOINT_CSV_FOLDER}/{xlsx_name}")
             xlsx_url = upload_to_sharepoint(xlsx_name, SHAREPOINT_CSV_FOLDER, xlsx_name)
