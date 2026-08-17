@@ -1473,7 +1473,7 @@ def main():
     doc = render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, metrics)
 
     today   = datetime.date.today()
-    out_file = f"Blackstone_Scrum_{fmt_day(today)}{today.strftime('%B')}.docx"
+    out_file = f"Blackstone_Scrum_{today.strftime('%b%d')}.docx"
     doc.save(out_file)
     print(f"\n✓ Saved to {out_file}")
 
