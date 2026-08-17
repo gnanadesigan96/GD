@@ -4,6 +4,7 @@ Fetches data from:
   - Azure DevOps (work items tagged Blackstone)
   - Pendo (visitor engagement for Blackstone segment)
   - Platform metrics (pluggable — fill in your source)
+Then uploads the generated .docx to SharePoint.
 
 Usage:
   python3 blackstone_scrum.py
@@ -13,6 +14,14 @@ Required env vars (or edit the CONFIG block below):
   PENDO_API_KEY    - Pendo Integration key (Settings > Integrations > Integration keys)
   PENDO_SEGMENT_ID_EU      - Pendo segment ID for Blackstone EU
   PENDO_SEGMENT_ID_USEAST  - Pendo segment ID for Blackstone USEast
+  SHAREPOINT_TENANT_ID     - Azure AD tenant ID
+  SHAREPOINT_CLIENT_SECRET - Azure AD app client secret
+
+Credentials:
+  Create a file called  credentials.py  in the same folder with:
+    SHAREPOINT_TENANT_ID     = "your-tenant-id"
+    SHAREPOINT_CLIENT_SECRET = "your-client-secret"
+  That file is git-ignored and never committed.
 """
 
 import os
@@ -27,6 +36,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.gridspec import GridSpec
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "azure-function"))
+from sharepoint_client import upload_file
 
 
 def fmt_day(dt) -> str:
@@ -58,16 +70,41 @@ ADO_PROJECT = "Product_Mgmt"
 ADO_PAT       = os.environ.get("ADO_PAT", "")
 PENDO_API_KEY = os.environ.get("PENDO_API_KEY", "")
 
+# ── SharePoint credentials — loaded from credentials.py (never committed) ─────
+SHAREPOINT_TENANT_ID     = os.environ.get("SHAREPOINT_TENANT_ID",     "")
+SHAREPOINT_CLIENT_ID     = os.environ.get("SHAREPOINT_CLIENT_ID",     "abb2a8fa-4603-4aff-80b2-bf614beb173b")
+SHAREPOINT_CLIENT_SECRET = os.environ.get("SHAREPOINT_CLIENT_SECRET", "")
+SHAREPOINT_SITE_URL      = os.environ.get("SHAREPOINT_SITE_URL",      "cloudenablersinc.sharepoint.com/sites/SupportTeam")
+SHAREPOINT_SCRUM_FOLDER  = os.environ.get("SHAREPOINT_SCRUM_FOLDER",  "General/Daily-Incident-Report/Blackstone-Scrum")
+
 # ── Local credentials override (never committed) ──────────────────────────
 # Create a file called  credentials.py  in the same folder with:
-#   ADO_PAT       = "your-ado-pat"
-#   PENDO_API_KEY = "your-pendo-key"
+#   ADO_PAT                  = "your-ado-pat"
+#   PENDO_API_KEY            = "your-pendo-key"
+#   SHAREPOINT_TENANT_ID     = "your-tenant-id"
+#   SHAREPOINT_CLIENT_SECRET = "your-client-secret"
 try:
     from credentials import ADO_PAT as _A, PENDO_API_KEY as _P  # type: ignore
     if _A: ADO_PAT = _A
     if _P: PENDO_API_KEY = _P
 except ImportError:
     pass
+try:
+    from credentials import (          # type: ignore
+        SHAREPOINT_TENANT_ID     as _ST,
+        SHAREPOINT_CLIENT_SECRET as _SS,
+    )
+    if _ST: SHAREPOINT_TENANT_ID     = _ST
+    if _SS: SHAREPOINT_CLIENT_SECRET = _SS
+except ImportError:
+    pass
+
+# Push resolved values into env so sharepoint_client.py picks them up
+os.environ["SHAREPOINT_TENANT_ID"]     = SHAREPOINT_TENANT_ID
+os.environ["SHAREPOINT_CLIENT_ID"]     = SHAREPOINT_CLIENT_ID
+os.environ["SHAREPOINT_CLIENT_SECRET"] = SHAREPOINT_CLIENT_SECRET
+os.environ["SHAREPOINT_SITE_URL"]      = SHAREPOINT_SITE_URL
+
 PENDO_REGION_EU      = "portal.corestack.io"
 PENDO_REGION_USEAST  = "useast.corestack.io"
 PENDO_SEGMENT_ID_EU  = "Hh8nJFk5pC2QUMWBQavVPz3Y9zw"   # Blackstone EU segment
@@ -1232,16 +1269,6 @@ def render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, 
          f"Grey rows = segment members with no activity in this window.",
          size=8, italic=True, color=C_MUTED)
 
-    # EU / USEast count summary line
-    trend_p = doc.add_paragraph()
-    _para_fmt(trend_p, space_before=0, space_after=6)
-    _run(trend_p, f"EU (portal.corestack.io): ", bold=True, size=9, color=C_DARK)
-    _run(trend_p, f"{len(eu_visitors)} active visitor{'s' if len(eu_visitors) != 1 else ''}",
-         size=9, color=C_ACCENT)
-    _run(trend_p, "     USEast (useast.corestack.io): ", bold=True, size=9, color=C_DARK)
-    _run(trend_p, f"{len(useast_visitors)} active visitor{'s' if len(useast_visitors) != 1 else ''}",
-         size=9, color=C_ACCENT)
-
     _heading(doc, "Active visitors", level_size=10)
     visitor_rows = []
     for v in all_visitors:
@@ -1354,6 +1381,9 @@ def main():
     else:
         print("✓ Pendo API key detected — will fetch live visitors")
 
+    if not SHAREPOINT_CLIENT_SECRET or not SHAREPOINT_TENANT_ID:
+        using_fake.append("SharePoint → upload will be skipped  (add SHAREPOINT_TENANT_ID / SHAREPOINT_CLIENT_SECRET to credentials.py)")
+
     if using_fake:
         print("\n⚠️  WARNING — missing credentials:")
         for msg in using_fake:
@@ -1376,9 +1406,22 @@ def main():
 
     doc = render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, metrics)
 
-    out_file = f"Blackstone_Scrum_{datetime.date.today().strftime('%Y%m%d')}.docx"
+    today   = datetime.date.today()
+    out_file = f"Blackstone_Scrum_{fmt_day(today)}{today.strftime('%B')}.docx"
     doc.save(out_file)
     print(f"\n✓ Saved to {out_file}")
+
+    if not SHAREPOINT_TENANT_ID or not SHAREPOINT_CLIENT_SECRET:
+        print("SharePoint credentials missing — skipping upload. File saved locally.")
+        return
+
+    try:
+        print("Uploading report to SharePoint…")
+        sp_url = upload_file(out_file, SHAREPOINT_SCRUM_FOLDER, out_file)
+        print(f"✓ Uploaded to SharePoint: {sp_url}")
+    except Exception as e:
+        print(f"✗ SharePoint upload failed: {e}", file=sys.stderr)
+        print("File saved locally — upload manually if needed.")
 
 
 if __name__ == "__main__":
