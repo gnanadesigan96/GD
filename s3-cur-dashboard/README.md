@@ -16,7 +16,13 @@ the page and it's gone.
    `<report>/BILLING_PERIOD=<YYYY-MM>/` for CUR 2.0/Data Exports). The
    backend lists the report prefix once and picks the folder matching the
    requested month, then reads that folder's manifest — never anything
-   outside the selected month.
+   outside the selected month. AWS regenerates a billing period's report
+   repeatedly as costs settle, and each regeneration is a full cumulative
+   report for the month (not a delta), so when a customer's report history
+   setting leaves multiple versioned manifests for the same month, the
+   backend picks the one with the newest S3 `LastModified` — the latest
+   regeneration already has every day's cost for the month so far, so older
+   versions are never read.
 3. **Read the part files**: the manifest lists every part file for that
    month, in whichever format the customer's export uses:
    - **Parquet** — columnar and splittable, read directly via DuckDB's

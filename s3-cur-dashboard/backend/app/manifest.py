@@ -8,6 +8,17 @@ Standard AWS CUR layout partitions report data by billing period:
 Rather than hardcode either convention, we list the objects under the report
 prefix once and match the billing-period folder against the requested month,
 so both layouts (and any date-range formatting AWS chooses) work.
+
+A billing period isn't generated once -- AWS regenerates the report for the
+current (and sometimes a recent past) month repeatedly as usage/cost data
+settles, and each regeneration is a full cumulative report for that month,
+not an incremental delta. Depending on the customer's "overwrite existing
+report" setting, old regenerations may remain in S3 as their own
+assembly-versioned copies alongside the newest one. We only ever want the
+most recent regeneration -- it already contains every day's cost for the
+month so far -- so among manifests matching the requested month we pick the
+one with the latest S3 LastModified timestamp, rather than processing (or
+even reading) every historical version.
 """
 
 import json
@@ -52,25 +63,30 @@ def _folder_matches_month(folder: str, month: str) -> bool:
 
 def find_month_manifest_key(s3_client, bucket: str, report_prefix: str, month: str) -> str:
     paginator = s3_client.get_paginator("list_objects_v2")
-    candidates = []
+    matches = []  # (key, last_modified)
     try:
         for page in paginator.paginate(Bucket=bucket, Prefix=f"{report_prefix}/"):
             for obj in page.get("Contents", []):
                 key = obj["Key"]
-                if key.endswith("-Manifest.json") or key.endswith("Manifest.json"):
-                    candidates.append(key)
+                if not (key.endswith("-Manifest.json") or key.endswith("Manifest.json")):
+                    continue
+                folder = key[len(report_prefix):].strip("/")
+                if _folder_matches_month(folder, month):
+                    matches.append((key, obj["LastModified"]))
     except ClientError as exc:
         raise HTTPException(status_code=502, detail=f"Unable to list report files: {exc}") from exc
 
-    for key in candidates:
-        folder = key[len(report_prefix):].strip("/")
-        if _folder_matches_month(folder, month):
-            return key
+    if not matches:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No CUR manifest found for billing period {month} under s3://{bucket}/{report_prefix}",
+        )
 
-    raise HTTPException(
-        status_code=404,
-        detail=f"No CUR manifest found for billing period {month} under s3://{bucket}/{report_prefix}",
-    )
+    # Most recently regenerated report wins -- it already covers every day
+    # of the month up to the last refresh, so older versioned copies (if the
+    # customer keeps report history) are never read.
+    latest_key, _ = max(matches, key=lambda pair: pair[1])
+    return latest_key
 
 
 def load_manifest(s3_client, bucket: str, manifest_key: str) -> dict:
