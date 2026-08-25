@@ -98,8 +98,11 @@ is no separate config file or CLI to drive it.
   beyond Lambda itself). `app/lambda_handler.py` wraps the same FastAPI app
   used locally via [Mangum](https://github.com/jordaneremieff/mangum), so
   there's no route/logic fork between `uvicorn` and Lambda.
-- **Frontend** is a static build synced to an S3 bucket, pointed at the
-  deployed Function URL via `VITE_API_BASE_URL` at build time.
+- **Frontend** is a static build synced to a private S3 bucket, served over
+  HTTPS through a CloudFront distribution (using Origin Access Control, so
+  only CloudFront — not the public internet — can read the bucket
+  directly), and pointed at the deployed Function URL via
+  `VITE_API_BASE_URL` at build time.
 
 ```bash
 # 1. Deploy the backend (builds + pushes a container image, creates the
@@ -122,10 +125,20 @@ rejects requests without a match (see `require_api_key` in `app/main.py`).
 Left unset, both sides skip it — convenient for local dev, not for a public
 URL.
 
-`deploy/deploy_frontend.sh` uses plain S3 static website hosting (HTTP
-only, effectively free at low traffic). Put CloudFront in front of the
-bucket once you want HTTPS and a custom domain — not included here to keep
-this scaffold to one moving part.
+`deploy/deploy_frontend.sh` prints the CloudFront domain
+(`https://<id>.cloudfront.net`) at the end — that's the URL to open. It
+uses `PriceClass_100` (US/Canada/Europe edge locations only, the cheapest
+tier) since cost is the priority here; CloudFront's 1TB/month + 10M
+requests/month free tier is permanent, so this stays $0 at low traffic. Re-
+running the script after a content-only change (no new distribution)
+invalidates the CloudFront cache so the new build is served immediately
+instead of waiting for the old one to expire.
+
+A custom domain instead of `*.cloudfront.net` needs an ACM certificate
+(issued in `us-east-1`, regardless of the distribution's edge locations)
+and a DNS alias record — not included here to keep this scaffold to one
+moving part, but straightforward to add to the distribution's `Aliases` /
+`ViewerCertificate` config once you have one.
 
 `deploy_backend.sh` also applies an ECR lifecycle policy on every run:
 untagged images (left behind whenever a later push moves the `latest` tag
