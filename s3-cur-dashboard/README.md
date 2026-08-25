@@ -44,12 +44,20 @@ the page and it's gone.
 cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env   # fill in real values, or set these as real env vars/secrets
 uvicorn app.main:app --reload
 ```
 
-The AWS identity running the backend (or its default credential chain) only
-needs `sts:AssumeRole` permission on the role(s) customers provide — it does
-not need direct S3 access itself.
+The backend calls `sts:AssumeRole` *as* some IAM identity, which must be a
+principal named in the customer's role trust policy. That caller identity's
+access key / secret key are read from `CUR_DASHBOARD_CALLER_ACCESS_KEY_ID`
+/ `CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY` (see `.env.example`) rather than
+hardcoded, so they can live in a secrets manager and be rotated without a
+code change. If unset, it falls back to boto3's default credential chain
+(instance/task role, etc.) — prefer that over static keys in any
+environment where it's available. Either way, this identity only needs
+`sts:AssumeRole` permission on the role(s) customers provide; it does not
+need direct S3 access itself.
 
 ### Frontend
 

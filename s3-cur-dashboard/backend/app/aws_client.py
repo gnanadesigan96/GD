@@ -1,19 +1,45 @@
 """Cross-account access via sts:AssumeRole.
 
-The dashboard never stores long-lived credentials: every request assumes the
-customer's role fresh using the role ARN + external ID supplied in the
-request, and the resulting temporary credentials live only for the duration
-of that single request (they are never written to disk or cached between
-requests).
+The dashboard never stores long-lived credentials for *customers*: every
+request assumes the customer's role fresh using the role ARN + external ID
+supplied in the request, and the resulting temporary credentials live only
+for the duration of that single request (they are never written to disk or
+cached between requests).
+
+sts:AssumeRole itself has to be called *as somebody* -- an IAM identity that
+the customer's role trust policy names as a trusted principal. That caller
+identity's own access key / secret key are read from environment variables
+(CUR_DASHBOARD_CALLER_ACCESS_KEY_ID / CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY)
+rather than hardcoded, so they can be rotated/managed via a secrets manager
+without touching code. If they're not set, boto3 falls back to its default
+credential provider chain (e.g. an instance/task role), which is preferable
+in any environment where that's available.
 """
+
+import os
 
 import boto3
 from botocore.exceptions import ClientError
 from fastapi import HTTPException
 
+_STS_REGION = os.environ.get("CUR_DASHBOARD_STS_REGION", "us-east-1")
+
+
+def _sts_client():
+    access_key = os.environ.get("CUR_DASHBOARD_CALLER_ACCESS_KEY_ID")
+    secret_key = os.environ.get("CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY")
+    if access_key and secret_key:
+        return boto3.client(
+            "sts",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name=_STS_REGION,
+        )
+    return boto3.client("sts", region_name=_STS_REGION)
+
 
 def assume_role(role_arn: str, external_id: str, session_name: str, duration_seconds: int = 3600) -> dict:
-    sts = boto3.client("sts")
+    sts = _sts_client()
     try:
         resp = sts.assume_role(
             RoleArn=role_arn,

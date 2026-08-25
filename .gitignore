@@ -16,4 +16,5 @@ s3-cur-dashboard/backend/.venv/
 s3-cur-dashboard/frontend/node_modules/
 s3-cur-dashboard/frontend/dist/
 s3-cur-dashboard/frontend/tsconfig.tsbuildinfo
+s3-cur-dashboard/backend/.env
 
