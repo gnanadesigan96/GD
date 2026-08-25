@@ -57,7 +57,10 @@
         "lambda:GetFunctionConfiguration",
         "lambda:GetFunctionUrlConfig",
         "lambda:CreateFunctionUrlConfig",
-        "lambda:AddPermission"
+        "lambda:UpdateFunctionUrlConfig",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:GetPolicy"
       ],
       "Resource": "arn:aws:lambda:*:*:function:cur-dashboard-backend"
     },
