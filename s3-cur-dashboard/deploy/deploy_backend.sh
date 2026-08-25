@@ -27,6 +27,42 @@ echo "== Ensuring ECR repo exists =="
 aws ecr describe-repositories --repository-names "$ECR_REPO_NAME" --region "$AWS_REGION" >/dev/null 2>&1 \
   || aws ecr create-repository --repository-name "$ECR_REPO_NAME" --region "$AWS_REGION" >/dev/null
 
+echo "== Applying ECR lifecycle policy (auto-expire old images) =="
+# Rule 1: an untagged image only exists because a later push moved a tag
+# (e.g. "latest") off it -- nothing references it anymore, so drop it
+# quickly. Rule 2: cap total stored images regardless of tag, in case this
+# is ever run with unique per-deploy tags instead of reusing IMAGE_TAG.
+# Without this, ECR storage cost grows by one image on every deploy.
+LIFECYCLE_POLICY='{
+  "rules": [
+    {
+      "rulePriority": 1,
+      "description": "Expire untagged images after 1 day",
+      "selection": {
+        "tagStatus": "untagged",
+        "countType": "sinceImagePushed",
+        "countUnit": "days",
+        "countNumber": 1
+      },
+      "action": { "type": "expire" }
+    },
+    {
+      "rulePriority": 2,
+      "description": "Keep only the most recent 5 images total",
+      "selection": {
+        "tagStatus": "any",
+        "countType": "imageCountMoreThan",
+        "countNumber": 5
+      },
+      "action": { "type": "expire" }
+    }
+  ]
+}'
+aws ecr put-lifecycle-policy \
+  --repository-name "$ECR_REPO_NAME" \
+  --lifecycle-policy-text "$LIFECYCLE_POLICY" \
+  --region "$AWS_REGION" >/dev/null
+
 echo "== Building image =="
 docker build -t "${ECR_REPO_NAME}:${IMAGE_TAG}" "$BACKEND_DIR"
 docker tag "${ECR_REPO_NAME}:${IMAGE_TAG}" "${ECR_URI}:${IMAGE_TAG}"

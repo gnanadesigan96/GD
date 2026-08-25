@@ -127,6 +127,12 @@ only, effectively free at low traffic). Put CloudFront in front of the
 bucket once you want HTTPS and a custom domain — not included here to keep
 this scaffold to one moving part.
 
+`deploy_backend.sh` also applies an ECR lifecycle policy on every run:
+untagged images (left behind whenever a later push moves the `latest` tag
+off them) expire after 1 day, and the repo never keeps more than 5 images
+total — otherwise every redeploy would add another image to ECR's storage
+bill forever.
+
 ## API
 
 `POST /api/cur/load`
