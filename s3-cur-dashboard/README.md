@@ -50,13 +50,23 @@ uvicorn app.main:app --reload
 
 The backend calls `sts:AssumeRole` *as* some IAM identity, which must be a
 principal named in the customer's role trust policy. That caller identity's
-access key / secret key are read from `CUR_DASHBOARD_CALLER_ACCESS_KEY_ID`
-/ `CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY` (see `.env.example`) rather than
-hardcoded, so they can live in a secrets manager and be rotated without a
-code change. If unset, it falls back to boto3's default credential chain
-(instance/task role, etc.) — prefer that over static keys in any
-environment where it's available. Either way, this identity only needs
-`sts:AssumeRole` permission on the role(s) customers provide; it does not
+access key / secret key are resolved in priority order (`app/aws_client.py`):
+
+1. **Azure Key Vault** (`app/secrets.py`) — replace the placeholder
+   `KEY_VAULT_URL` / secret names there (or set `AZURE_KEY_VAULT_URL` /
+   `AZURE_KV_ACCESS_KEY_SECRET_NAME` / `AZURE_KV_SECRET_KEY_SECRET_NAME`)
+   once the vault is provisioned. Auth uses `DefaultAzureCredential`, so it
+   picks up Managed Identity on Azure or an `az login` session locally with
+   no extra config.
+2. `CUR_DASHBOARD_CALLER_ACCESS_KEY_ID` / `CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY`
+   env vars (see `.env.example`), used only if no vault is configured.
+3. boto3's default credential chain (instance/task role, etc.) if neither
+   of the above is set — prefer that over static keys wherever it's
+   available.
+
+The key material never has to live in code or a committed file either way.
+This identity only needs `sts:AssumeRole` permission on the role(s)
+customers provide; it does not
 need direct S3 access itself.
 
 ### Frontend

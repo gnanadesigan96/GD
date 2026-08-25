@@ -8,12 +8,16 @@ cached between requests).
 
 sts:AssumeRole itself has to be called *as somebody* -- an IAM identity that
 the customer's role trust policy names as a trusted principal. That caller
-identity's own access key / secret key are read from environment variables
-(CUR_DASHBOARD_CALLER_ACCESS_KEY_ID / CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY)
-rather than hardcoded, so they can be rotated/managed via a secrets manager
-without touching code. If they're not set, boto3 falls back to its default
-credential provider chain (e.g. an instance/task role), which is preferable
-in any environment where that's available.
+identity's own access key / secret key come from, in priority order:
+
+  1. Azure Key Vault (see secrets.py), if a vault is configured there
+  2. CUR_DASHBOARD_CALLER_ACCESS_KEY_ID / CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY
+     env vars
+  3. boto3's default credential provider chain (e.g. an instance/task role),
+     which is preferable to static keys in any environment where it's
+     available
+
+so the key material itself never has to live in code or a committed file.
 """
 
 import os
@@ -22,12 +26,19 @@ import boto3
 from botocore.exceptions import ClientError
 from fastapi import HTTPException
 
+from .secrets import load_caller_credentials
+
 _STS_REGION = os.environ.get("CUR_DASHBOARD_STS_REGION", "us-east-1")
 
 
 def _sts_client():
-    access_key = os.environ.get("CUR_DASHBOARD_CALLER_ACCESS_KEY_ID")
-    secret_key = os.environ.get("CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY")
+    vault_creds = load_caller_credentials()
+    if vault_creds:
+        access_key, secret_key = vault_creds
+    else:
+        access_key = os.environ.get("CUR_DASHBOARD_CALLER_ACCESS_KEY_ID")
+        secret_key = os.environ.get("CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY")
+
     if access_key and secret_key:
         return boto3.client(
             "sts",
