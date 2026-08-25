@@ -61,17 +61,29 @@ def lambda_origin(lambda_domain, lambda_oac_id):
 
 
 def api_cache_behavior():
+    # As with the origin: UpdateDistribution rejects a behavior missing
+    # fields CreateDistribution would default for free (SmoothStreaming,
+    # Compress, etc.). All fields below are exactly what CloudFront itself
+    # returned for this behavior after accepting it via CreateDistribution.
     return {
         "PathPattern": "/api/*",
         "TargetOriginId": "lambda-origin",
+        "TrustedSigners": {"Enabled": False, "Quantity": 0},
+        "TrustedKeyGroups": {"Enabled": False, "Quantity": 0},
         "ViewerProtocolPolicy": "https-only",
         "AllowedMethods": {
             "Quantity": 7,
             "Items": ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
             "CachedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"]},
         },
+        "SmoothStreaming": False,
+        "Compress": False,
+        "LambdaFunctionAssociations": {"Quantity": 0},
+        "FunctionAssociations": {"Quantity": 0},
+        "FieldLevelEncryptionId": "",
         "CachePolicyId": CACHING_DISABLED_POLICY_ID,
         "OriginRequestPolicyId": ALL_VIEWER_EXCEPT_HOST_HEADER_POLICY_ID,
+        "GrpcConfig": {"Enabled": False},
     }
 
 
