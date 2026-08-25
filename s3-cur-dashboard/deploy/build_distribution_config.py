@@ -45,7 +45,7 @@ def lambda_origin(lambda_domain, lambda_oac_id):
         "DomainName": lambda_domain,
         "OriginPath": "",
         "OriginAccessControlId": lambda_oac_id,
-        "OriginCustomHeaders": {"Quantity": 0},
+        "CustomHeaders": {"Quantity": 0, "Items": []},
         "ConnectionAttempts": 3,
         "ConnectionTimeout": 10,
         "OriginShield": {"Enabled": False},
