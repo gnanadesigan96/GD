@@ -35,10 +35,20 @@ def viewer_certificate(domain_name, acm_cert_arn):
 
 
 def lambda_origin(lambda_domain, lambda_oac_id):
+    # UpdateDistribution validates more strictly than CreateDistribution and
+    # rejects an origin missing fields that otherwise have sensible
+    # defaults (e.g. "The 'OriginCustomHeaders' field is missing") -- so
+    # every field is spelled out explicitly here rather than relying on
+    # CloudFront to fill in defaults.
     return {
         "Id": "lambda-origin",
         "DomainName": lambda_domain,
+        "OriginPath": "",
         "OriginAccessControlId": lambda_oac_id,
+        "OriginCustomHeaders": {"Quantity": 0},
+        "ConnectionAttempts": 3,
+        "ConnectionTimeout": 10,
+        "OriginShield": {"Enabled": False},
         "CustomOriginConfig": {
             "HTTPPort": 80,
             "HTTPSPort": 443,
