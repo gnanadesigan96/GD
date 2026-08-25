@@ -48,7 +48,7 @@ Pass this to deploy_frontend.sh along with DOMAIN_NAME to attach it to the
 CloudFront distribution:
 
   DOMAIN_NAME=<your-domain> ACM_CERT_ARN=${CERT_ARN} \\
-  API_BASE_URL=<function-url> BUCKET=<bucket> ./deploy_frontend.sh
+  LAMBDA_FUNCTION_NAME=<backend-lambda-name> BUCKET=<bucket> ./deploy_frontend.sh
 
 Note: an imported certificate does not auto-renew. Re-run this script with
 the renewed cert/key before it expires, then re-run deploy_frontend.sh with
