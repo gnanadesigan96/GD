@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 # Build the backend as a container image, push it to ECR, and create/update
-# the Lambda function + a public Function URL (no API Gateway -- Function
-# URLs have no extra cost beyond Lambda itself).
+# the Lambda function + a Function URL secured with AuthType=AWS_IAM (no API
+# Gateway -- Function URLs have no extra cost beyond Lambda itself).
+#
+# AWS_IAM (not NONE) because the Function URL is never called directly --
+# only CloudFront reaches it, signing requests via Origin Access Control
+# (set up in deploy_frontend.sh once the distribution exists). Some AWS
+# Organizations block resource-based policies with Principal:"*" outright
+# (a guardrail against public exposure), which a NONE-auth Function URL's
+# permission requires -- routing through CloudFront's OAC avoids needing
+# that wildcard principal at all.
 #
 # Requires: docker, aws cli v2, credentials with permission to manage ECR,
 # Lambda, and IAM in the target account/region.
@@ -115,20 +123,24 @@ else
   aws lambda wait function-active --function-name "$FUNCTION_NAME" --region "$AWS_REGION"
 fi
 
-echo "== Ensuring Function URL exists =="
+echo "== Ensuring Function URL exists (AuthType=AWS_IAM) =="
 if ! aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
   aws lambda create-function-url-config \
     --function-name "$FUNCTION_NAME" \
-    --auth-type NONE \
-    --cors '{"AllowOrigins":["*"],"AllowMethods":["*"],"AllowHeaders":["content-type","x-api-key"]}' \
+    --auth-type AWS_IAM \
     --region "$AWS_REGION" >/dev/null
-  aws lambda add-permission \
-    --function-name "$FUNCTION_NAME" \
-    --statement-id FunctionURLAllowPublicAccess \
-    --action lambda:InvokeFunctionUrl \
-    --principal '*' \
-    --function-url-auth-type NONE \
-    --region "$AWS_REGION" >/dev/null
+else
+  CURRENT_AUTH_TYPE="$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" --query 'AuthType' --output text)"
+  if [ "$CURRENT_AUTH_TYPE" != "AWS_IAM" ]; then
+    echo "Migrating Function URL from $CURRENT_AUTH_TYPE to AWS_IAM"
+    aws lambda update-function-url-config \
+      --function-name "$FUNCTION_NAME" \
+      --auth-type AWS_IAM \
+      --region "$AWS_REGION" >/dev/null
+    # Drop the old public-invoke permission left over from AuthType=NONE, if any.
+    aws lambda remove-permission --function-name "$FUNCTION_NAME" \
+      --statement-id FunctionURLAllowPublicAccess --region "$AWS_REGION" 2>/dev/null || true
+  fi
 fi
 
 FUNCTION_URL="$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" --query 'FunctionUrl' --output text)"
@@ -138,15 +150,18 @@ cat <<EOF
 Backend deployed.
 
   Function URL: ${FUNCTION_URL}
+  (not directly invocable -- AuthType=AWS_IAM, only CloudFront can reach it)
 
-Set CUR_DASHBOARD_API_KEY on the function (and the matching VITE_API_KEY
-when building the frontend) before pointing real users at this URL --
-AuthType=NONE means anyone with the URL can invoke it otherwise:
+Next: run deploy_frontend.sh with LAMBDA_FUNCTION_NAME=$FUNCTION_NAME --
+it wires this function into the same CloudFront distribution as the
+frontend (via Origin Access Control) and grants it permission to invoke
+this URL, scoped to that specific distribution.
+
+Set CUR_DASHBOARD_CALLER_ACCESS_KEY_ID / _SECRET_ACCESS_KEY (or Azure Key
+Vault) on the function so it can actually assume customer roles -- see
+backend/.env.example for the full list:
 
   aws lambda update-function-configuration --function-name "$FUNCTION_NAME" \\
-    --environment "Variables={CUR_DASHBOARD_API_KEY=<a-random-secret>}" \\
+    --environment "Variables={CUR_DASHBOARD_CALLER_ACCESS_KEY_ID=<...>,CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY=<...>}" \\
     --region "$AWS_REGION"
-
-Set the Azure Key Vault / AWS caller-identity env vars the same way -- see
-backend/.env.example for the full list.
 EOF

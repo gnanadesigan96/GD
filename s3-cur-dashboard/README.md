@@ -94,36 +94,44 @@ report" — that form submission is the only input this system takes. There
 is no separate config file or CLI to drive it.
 
 - **Backend** runs as a container-image Lambda function behind a Lambda
-  Function URL (an HTTPS endpoint, no API Gateway needed — no extra cost
-  beyond Lambda itself). `app/lambda_handler.py` wraps the same FastAPI app
-  used locally via [Mangum](https://github.com/jordaneremieff/mangum), so
-  there's no route/logic fork between `uvicorn` and Lambda.
-- **Frontend** is a static build synced to a private S3 bucket, served over
-  HTTPS through a CloudFront distribution (using Origin Access Control, so
-  only CloudFront — not the public internet — can read the bucket
-  directly), and pointed at the deployed Function URL via
-  `VITE_API_BASE_URL` at build time.
+  Function URL secured with `AuthType=AWS_IAM` (no API Gateway needed — no
+  extra cost beyond Lambda itself). `app/lambda_handler.py` wraps the same
+  FastAPI app used locally via [Mangum](https://github.com/jordaneremieff/mangum),
+  so there's no route/logic fork between `uvicorn` and Lambda.
+- **Frontend + API share one CloudFront distribution**: a static build
+  synced to a private S3 bucket serves the frontend at `/`, and a `/api/*`
+  behavior forwards to the Lambda Function URL. Both origins use Origin
+  Access Control, so CloudFront signs requests to each on the
+  distribution's behalf — neither the S3 bucket nor the Function URL needs
+  a public (`Principal: "*"`) resource policy. This also means the
+  frontend calls its API same-origin, so no CORS is needed, and there's
+  only one domain to remember.
+
+  (Why `AWS_IAM` instead of a plain public Function URL: some AWS
+  Organizations block resource-based policies with a wildcard principal
+  outright as a guardrail against public exposure — which is exactly what
+  a `NONE`-auth Function URL's invoke permission requires. Routing through
+  CloudFront's OAC sidesteps that; only CloudFront can ever invoke this
+  function.)
 
 ```bash
 # 1. Deploy the backend (builds + pushes a container image, creates the
-#    Lambda function and its Function URL)
+#    Lambda function and a Function URL only CloudFront can call)
 AWS_REGION=us-east-1 ./deploy/deploy_backend.sh
-# -> prints the Function URL
 
-# 2. Deploy the frontend, pointed at that URL
-API_BASE_URL=<function-url-from-step-1> BUCKET=my-cur-dashboard-frontend \
+# 2. Deploy the frontend -- this also wires the Lambda into the same
+#    CloudFront distribution and grants it permission scoped to that
+#    specific distribution
+LAMBDA_FUNCTION_NAME=cur-dashboard-backend BUCKET=my-cur-dashboard-frontend \
   ./deploy/deploy_frontend.sh
 ```
 
-A Lambda Function URL with `AuthType=NONE` is invocable by anyone who has
-the URL, and this backend's job is to call `sts:AssumeRole` on whatever role
-ARN it's given — so before sharing the URL with real users, set
-`CUR_DASHBOARD_API_KEY` on the Lambda (see the output of
-`deploy_backend.sh`) and pass the same value as `API_KEY` to
-`deploy_frontend.sh`; the frontend sends it as `x-api-key` and the backend
-rejects requests without a match (see `require_api_key` in `app/main.py`).
-Left unset, both sides skip it — convenient for local dev, not for a public
-URL.
+The backend's job is to call `sts:AssumeRole` on whatever role ARN it's
+given, so it's still worth an extra layer even behind CloudFront: set
+`CUR_DASHBOARD_API_KEY` on the Lambda and pass the same value as `API_KEY`
+to `deploy_frontend.sh`; the frontend sends it as `x-api-key` and the
+backend rejects requests without a match (see `require_api_key` in
+`app/main.py`). Left unset, both sides skip it — convenient for local dev.
 
 `deploy/deploy_frontend.sh` prints the CloudFront domain
 (`https://<id>.cloudfront.net`) at the end — that's the URL to open. It
@@ -163,7 +171,7 @@ Then deploy (or redeploy) the frontend with the domain and that ARN:
 
 ```bash
 DOMAIN_NAME=cur.example.com ACM_CERT_ARN=<arn-from-above> \
-API_BASE_URL=<function-url> BUCKET=my-cur-dashboard-frontend \
+LAMBDA_FUNCTION_NAME=cur-dashboard-backend BUCKET=my-cur-dashboard-frontend \
 ./deploy/deploy_frontend.sh
 ```
 
