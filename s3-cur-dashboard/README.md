@@ -134,11 +134,43 @@ running the script after a content-only change (no new distribution)
 invalidates the CloudFront cache so the new build is served immediately
 instead of waiting for the old one to expire.
 
-A custom domain instead of `*.cloudfront.net` needs an ACM certificate
-(issued in `us-east-1`, regardless of the distribution's edge locations)
-and a DNS alias record — not included here to keep this scaffold to one
-moving part, but straightforward to add to the distribution's `Aliases` /
-`ViewerCertificate` config once you have one.
+### Custom domain
+
+A custom domain instead of `*.cloudfront.net` needs a certificate in ACM's
+`us-east-1` region (required by CloudFront regardless of the distribution's
+own edge locations), plus a DNS record pointing the domain at the
+distribution.
+
+If you already have a certificate/key (rather than one ACM should issue and
+DNS-validate itself), import it first:
+
+```bash
+CERT_FILE=/path/to/certificate.pem \
+CHAIN_FILE=/path/to/intermediate-chain.pem \
+KEY_FILE=/path/to/private.key \
+./deploy/import_certificate.sh
+# -> prints ACM_CERT_ARN
+```
+
+The chain file should contain intermediate certificate(s) only, not the
+self-signed root — if your CA gave you a bundle with the root included,
+strip it (`awk` on `-----BEGIN CERTIFICATE-----` boundaries, keeping only
+the first block, works for a two-cert bundle). The script verifies the key
+matches the certificate before importing and never prints the key itself.
+An imported certificate does not auto-renew — re-import before it expires.
+
+Then deploy (or redeploy) the frontend with the domain and that ARN:
+
+```bash
+DOMAIN_NAME=cur.example.com ACM_CERT_ARN=<arn-from-above> \
+API_BASE_URL=<function-url> BUCKET=my-cur-dashboard-frontend \
+./deploy/deploy_frontend.sh
+```
+
+This works whether the distribution already exists (it gets updated in
+place) or is being created fresh. The script prints the CNAME (or
+ALIAS/ANAME, if the domain is a bare apex) record to add on your DNS
+provider, pointing at the CloudFront domain.
 
 `deploy_backend.sh` also applies an ECR lifecycle policy on every run:
 untagged images (left behind whenever a later push moves the `latest` tag

@@ -20,3 +20,9 @@ s3-cur-dashboard/backend/.env
 s3-cur-dashboard/frontend/.env.production
 s3-cur-dashboard/frontend/.env.local
 
+# Never commit certificate/key material dropped in for import_certificate.sh
+s3-cur-dashboard/deploy/*.key
+s3-cur-dashboard/deploy/*.pem
+s3-cur-dashboard/deploy/*.crt
+s3-cur-dashboard/deploy/certs/
+

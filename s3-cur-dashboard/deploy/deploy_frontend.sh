@@ -8,12 +8,25 @@
 # cost, not global latency, is the priority here.
 #
 # Usage: API_BASE_URL=https://xxxx.lambda-url.us-east-1.on.aws BUCKET=my-cur-dashboard-frontend ./deploy_frontend.sh
+#
+# Optional custom domain (both must be set together):
+#   DOMAIN_NAME=cur.example.com ACM_CERT_ARN=arn:aws:acm:us-east-1:...:certificate/... ./deploy_frontend.sh
+# The ACM certificate must already exist in us-east-1 -- CloudFront requires
+# that region regardless of the distribution's own edge locations. Use
+# import_certificate.sh if you have an existing cert/key rather than one
+# ACM can issue and DNS-validate itself.
 set -euo pipefail
 
 : "${API_BASE_URL:?Set API_BASE_URL to the backend Lambda Function URL}"
 : "${BUCKET:?Set BUCKET to the S3 bucket to host the frontend from}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 API_KEY="${API_KEY:-}"
+DOMAIN_NAME="${DOMAIN_NAME:-}"
+ACM_CERT_ARN="${ACM_CERT_ARN:-}"
+if { [ -n "$DOMAIN_NAME" ] && [ -z "$ACM_CERT_ARN" ]; } || { [ -z "$DOMAIN_NAME" ] && [ -n "$ACM_CERT_ARN" ]; }; then
+  echo "DOMAIN_NAME and ACM_CERT_ARN must be set together" >&2
+  exit 1
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$SCRIPT_DIR/../frontend"
@@ -50,44 +63,20 @@ DIST_ID="$(aws cloudfront list-distributions \
   --query "DistributionList.Items[?Origins.Items[0].DomainName=='${BUCKET_DOMAIN}'].Id | [0]" --output text)"
 
 if [ -z "$DIST_ID" ] || [ "$DIST_ID" = "None" ]; then
-  DIST_CONFIG=$(cat <<EOF
-{
-  "CallerReference": "${BUCKET}-frontend",
-  "Comment": "S3 CUR dashboard frontend",
-  "Enabled": true,
-  "PriceClass": "PriceClass_100",
-  "DefaultRootObject": "index.html",
-  "Origins": {
-    "Quantity": 1,
-    "Items": [
-      {
-        "Id": "s3-origin",
-        "DomainName": "${BUCKET_DOMAIN}",
-        "S3OriginConfig": { "OriginAccessIdentity": "" },
-        "OriginAccessControlId": "${OAC_ID}"
-      }
-    ]
-  },
-  "DefaultCacheBehavior": {
-    "TargetOriginId": "s3-origin",
-    "ViewerProtocolPolicy": "redirect-to-https",
-    "AllowedMethods": { "Quantity": 2, "Items": ["GET", "HEAD"] },
-    "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6"
-  },
-  "CustomErrorResponses": {
-    "Quantity": 2,
-    "Items": [
-      { "ErrorCode": 403, "ResponseCode": "200", "ResponsePagePath": "/index.html" },
-      { "ErrorCode": 404, "ResponseCode": "200", "ResponsePagePath": "/index.html" }
-    ]
-  }
-}
-EOF
-)
+  DIST_CONFIG="$(python3 "$SCRIPT_DIR/build_distribution_config.py" create \
+    "$BUCKET" "$BUCKET_DOMAIN" "$OAC_ID" "$DOMAIN_NAME" "$ACM_CERT_ARN")"
   CREATE_RESULT="$(aws cloudfront create-distribution --distribution-config "$DIST_CONFIG")"
   DIST_ID="$(echo "$CREATE_RESULT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["Distribution"]["Id"])')"
   echo "Created distribution $DIST_ID -- first-time edge propagation can take up to ~15 minutes."
 else
+  if [ -n "$DOMAIN_NAME" ]; then
+    echo "== Adding custom domain to the existing distribution =="
+    CURRENT="$(aws cloudfront get-distribution-config --id "$DIST_ID")"
+    ETAG="$(echo "$CURRENT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["ETag"])')"
+    MERGED_CONFIG="$(echo "$CURRENT" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["DistributionConfig"]))' \
+      | python3 "$SCRIPT_DIR/build_distribution_config.py" merge "$DOMAIN_NAME" "$ACM_CERT_ARN")"
+    aws cloudfront update-distribution --id "$DIST_ID" --if-match "$ETAG" --distribution-config "$MERGED_CONFIG" >/dev/null
+  fi
   echo "== Invalidating cache so the new build is served immediately =="
   aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*" >/dev/null
 fi
@@ -114,14 +103,32 @@ EOF
 )
 aws s3api put-bucket-policy --bucket "$BUCKET" --policy "$BUCKET_POLICY"
 
-cat <<EOF
+if [ -n "$DOMAIN_NAME" ]; then
+  cat <<EOF
+
+Frontend deployed.
+
+  https://${DOMAIN_NAME}   (once DNS is pointed below)
+  https://${DIST_DOMAIN}   (works immediately)
+
+On your DNS provider, add a CNAME record:
+
+  ${DOMAIN_NAME}  ->  ${DIST_DOMAIN}
+
+(If ${DOMAIN_NAME} is a bare apex domain, most DNS providers require an
+ALIAS/ANAME record instead of CNAME at the apex -- use that record type
+pointed at the same target.)
+EOF
+else
+  cat <<EOF
 
 Frontend deployed.
 
   https://${DIST_DOMAIN}
 
 HTTPS via CloudFront's default certificate for that domain -- no ACM setup
-needed. To use your own domain instead, add an ACM certificate (in
-us-east-1) and an alias record pointing at ${DIST_DOMAIN}, then update the
-distribution with Aliases + ViewerCertificate.
+needed. To use your own domain, get a certificate imported/issued into ACM
+in us-east-1 (see import_certificate.sh for an existing cert/key) and
+re-run this script with DOMAIN_NAME and ACM_CERT_ARN set.
 EOF
+fi
