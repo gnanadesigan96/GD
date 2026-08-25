@@ -64,7 +64,16 @@ aws ecr put-lifecycle-policy \
   --region "$AWS_REGION" >/dev/null
 
 echo "== Building image =="
-docker build -t "${ECR_REPO_NAME}:${IMAGE_TAG}" "$BACKEND_DIR"
+# --platform linux/amd64: Lambda create-function defaults to the x86_64
+# architecture below (no --architectures flag), so the image must match --
+# without this, building on an Apple Silicon Mac produces an arm64 image
+# Lambda would reject as a mismatch.
+# --provenance=false --sbom=false: modern Docker/BuildKit attaches OCI
+# attestation manifests by default, which Lambda's container image support
+# does not understand ("image manifest ... not supported"). Disabling them
+# keeps the image in the plain Docker manifest format Lambda expects.
+docker build --platform linux/amd64 --provenance=false --sbom=false \
+  -t "${ECR_REPO_NAME}:${IMAGE_TAG}" "$BACKEND_DIR"
 docker tag "${ECR_REPO_NAME}:${IMAGE_TAG}" "${ECR_URI}:${IMAGE_TAG}"
 
 echo "== Pushing image =="
