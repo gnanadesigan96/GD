@@ -86,6 +86,7 @@
       "Action": [
         "cloudfront:ListOriginAccessControls",
         "cloudfront:CreateOriginAccessControl",
+        "cloudfront:GetOriginAccessControl",
         "cloudfront:ListDistributions",
         "cloudfront:CreateDistribution",
         "cloudfront:GetDistribution",
