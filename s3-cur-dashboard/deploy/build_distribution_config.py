@@ -100,13 +100,11 @@ def main():
                 "CachePolicyId": CACHING_OPTIMIZED_POLICY_ID,
             },
             "CacheBehaviors": {"Quantity": 1, "Items": [api_cache_behavior()]},
-            "CustomErrorResponses": {
-                "Quantity": 2,
-                "Items": [
-                    {"ErrorCode": 403, "ResponseCode": "200", "ResponsePagePath": "/index.html"},
-                    {"ErrorCode": 404, "ResponseCode": "200", "ResponsePagePath": "/index.html"},
-                ],
-            },
+            # No CustomErrorResponses: this app has a single route (no
+            # client-side routing to fall back for), and a distribution-wide
+            # 403/404 -> index.html rule would silently mask real errors
+            # from the /api/* Lambda origin behind the frontend page.
+            "CustomErrorResponses": {"Quantity": 0, "Items": []},
             "ViewerCertificate": cert,
         }
         print(json.dumps(config))
@@ -133,6 +131,11 @@ def main():
         behaviors["Items"].append(api_cache_behavior())
         behaviors["Quantity"] = len(behaviors["Items"])
         config["CacheBehaviors"] = behaviors
+
+        # Drop any 403/404 -> index.html rule from an earlier version of
+        # this script: it's distribution-wide, so it would mask real errors
+        # from the /api/* Lambda origin behind the frontend page.
+        config["CustomErrorResponses"] = {"Quantity": 0, "Items": []}
 
         print(json.dumps(config))
 
