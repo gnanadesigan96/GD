@@ -1,6 +1,7 @@
+import os
 import time
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .aws_client import assume_role, resolve_bucket_region, s3_client_for
@@ -19,12 +20,26 @@ app.add_middleware(
 )
 
 
+def require_api_key(x_api_key: str | None = Header(default=None)):
+    """No-op unless CUR_DASHBOARD_API_KEY is set.
+
+    A Lambda Function URL with AuthType=NONE is invocable by anyone who has
+    it -- without this, that means anyone could get this backend to attempt
+    sts:AssumeRole against arbitrary role ARNs. Set CUR_DASHBOARD_API_KEY in
+    the deployment and the matching value in the frontend's build to close
+    that off with a shared secret. Left unset for local development.
+    """
+    expected = os.environ.get("CUR_DASHBOARD_API_KEY")
+    if expected and x_api_key != expected:
+        raise HTTPException(status_code=401, detail="Missing or invalid API key")
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
 
-@app.post("/api/cur/load", response_model=CurLoadResponse)
+@app.post("/api/cur/load", response_model=CurLoadResponse, dependencies=[Depends(require_api_key)])
 def load_cur(req: CurLoadRequest):
     started = time.perf_counter()
 

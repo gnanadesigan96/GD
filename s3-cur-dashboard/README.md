@@ -86,6 +86,47 @@ npm run dev
 Vite proxies `/api` to `http://localhost:8000` in dev (see
 `vite.config.ts`).
 
+## Deployment (AWS Lambda + S3)
+
+The dashboard is the human interface: a person opens the frontend page in a
+browser, fills in role ARN / external ID / S3 URI / month, and clicks "Load
+report" — that form submission is the only input this system takes. There
+is no separate config file or CLI to drive it.
+
+- **Backend** runs as a container-image Lambda function behind a Lambda
+  Function URL (an HTTPS endpoint, no API Gateway needed — no extra cost
+  beyond Lambda itself). `app/lambda_handler.py` wraps the same FastAPI app
+  used locally via [Mangum](https://github.com/jordaneremieff/mangum), so
+  there's no route/logic fork between `uvicorn` and Lambda.
+- **Frontend** is a static build synced to an S3 bucket, pointed at the
+  deployed Function URL via `VITE_API_BASE_URL` at build time.
+
+```bash
+# 1. Deploy the backend (builds + pushes a container image, creates the
+#    Lambda function and its Function URL)
+AWS_REGION=us-east-1 ./deploy/deploy_backend.sh
+# -> prints the Function URL
+
+# 2. Deploy the frontend, pointed at that URL
+API_BASE_URL=<function-url-from-step-1> BUCKET=my-cur-dashboard-frontend \
+  ./deploy/deploy_frontend.sh
+```
+
+A Lambda Function URL with `AuthType=NONE` is invocable by anyone who has
+the URL, and this backend's job is to call `sts:AssumeRole` on whatever role
+ARN it's given — so before sharing the URL with real users, set
+`CUR_DASHBOARD_API_KEY` on the Lambda (see the output of
+`deploy_backend.sh`) and pass the same value as `API_KEY` to
+`deploy_frontend.sh`; the frontend sends it as `x-api-key` and the backend
+rejects requests without a match (see `require_api_key` in `app/main.py`).
+Left unset, both sides skip it — convenient for local dev, not for a public
+URL.
+
+`deploy/deploy_frontend.sh` uses plain S3 static website hosting (HTTP
+only, effectively free at low traffic). Put CloudFront in front of the
+bucket once you want HTTPS and a custom domain — not included here to keep
+this scaffold to one moving part.
+
 ## API
 
 `POST /api/cur/load`

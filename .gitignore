@@ -17,4 +17,6 @@ s3-cur-dashboard/frontend/node_modules/
 s3-cur-dashboard/frontend/dist/
 s3-cur-dashboard/frontend/tsconfig.tsbuildinfo
 s3-cur-dashboard/backend/.env
+s3-cur-dashboard/frontend/.env.production
+s3-cur-dashboard/frontend/.env.local
 
