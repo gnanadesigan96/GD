@@ -1,0 +1,92 @@
+"""Aggregate a single month's CUR part files with DuckDB.
+
+Both CUR file formats are handled the same way: point DuckDB's httpfs
+extension at the list of part-file S3 keys from the manifest and let it read
+them directly over the network using the assumed-role's temporary
+credentials.
+
+- Parquet parts are columnar and splittable, so DuckDB pushes projection and
+  predicate filters down and only pulls the bytes the aggregation needs.
+- Gzip-CSV parts are not splittable *within* a file, but a CUR export is
+  always split into many part files, so DuckDB still parallelizes across
+  files -- each part decompresses on its own thread.
+
+No data is written to disk and nothing is cached between requests: the
+DuckDB connection and the temporary credentials are discarded as soon as the
+request finishes, matching the "wiped on refresh" requirement.
+"""
+
+import duckdb
+
+from ..cur_columns import ResolvedColumn
+
+
+def _build_source(file_format: str, paths: list[str]) -> str:
+    array_literal = "[" + ", ".join(f"'{p}'" for p in paths) + "]"
+    if file_format == "parquet":
+        return f"read_parquet({array_literal}, union_by_name=true)"
+    return f"read_csv({array_literal}, header=true, compression='gzip', all_varchar=true, union_by_name=true)"
+
+
+def _col_ref(file_format: str, column: ResolvedColumn) -> str:
+    if file_format == "parquet":
+        return column.athena_name()
+    return f'"{column.csv_header()}"'
+
+
+def aggregate(
+    creds: dict,
+    region: str,
+    bucket: str,
+    part_keys: list[str],
+    file_format: str,
+    columns: dict[str, ResolvedColumn],
+) -> dict:
+    con = duckdb.connect()
+    con.execute("INSTALL httpfs")
+    con.execute("LOAD httpfs")
+    con.execute(f"SET s3_region='{region}'")
+    con.execute("SET s3_access_key_id=?", [creds["aws_access_key_id"]])
+    con.execute("SET s3_secret_access_key=?", [creds["aws_secret_access_key"]])
+    con.execute("SET s3_session_token=?", [creds["aws_session_token"]])
+
+    paths = [f"s3://{bucket}/{key}" for key in part_keys]
+    source = _build_source(file_format, paths)
+
+    cost = f"TRY_CAST({_col_ref(file_format, columns['cost'])} AS DOUBLE)"
+    service = _col_ref(file_format, columns["service"])
+    day = f"TRY_CAST({_col_ref(file_format, columns['usage_start_date'])} AS TIMESTAMP)::DATE"
+    account = _col_ref(file_format, columns["account_id"])
+
+    total_cost = con.execute(f"SELECT SUM({cost}) FROM {source}").fetchone()[0] or 0.0
+
+    by_service = con.execute(
+        f"SELECT {service} AS service, SUM({cost}) AS cost FROM {source} "
+        f"GROUP BY 1 ORDER BY 2 DESC"
+    ).fetchall()
+
+    by_day = con.execute(
+        f"SELECT {day} AS day, SUM({cost}) AS cost FROM {source} "
+        f"GROUP BY 1 ORDER BY 1"
+    ).fetchall()
+
+    by_account = con.execute(
+        f"SELECT {account} AS account, SUM({cost}) AS cost FROM {source} "
+        f"GROUP BY 1 ORDER BY 2 DESC"
+    ).fetchall()
+
+    currency = None
+    if "currency" in columns:
+        currency_ref = _col_ref(file_format, columns["currency"])
+        row = con.execute(f"SELECT {currency_ref} FROM {source} LIMIT 1").fetchone()
+        currency = row[0] if row else None
+
+    con.close()
+
+    return {
+        "total_cost": float(total_cost),
+        "currency": currency,
+        "cost_by_service": [{"service": str(s) if s is not None else "unknown", "cost": float(c or 0)} for s, c in by_service],
+        "cost_by_day": [{"date": str(d), "cost": float(c or 0)} for d, c in by_day if d is not None],
+        "cost_by_account": [{"account_id": str(a) if a is not None else "unknown", "cost": float(c or 0)} for a, c in by_account],
+    }

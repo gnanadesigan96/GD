@@ -10,3 +10,10 @@ vpn/client.ovpn
 
 # Azure Function local settings
 local.settings.json
+
+# S3 CUR dashboard
+s3-cur-dashboard/backend/.venv/
+s3-cur-dashboard/frontend/node_modules/
+s3-cur-dashboard/frontend/dist/
+s3-cur-dashboard/frontend/tsconfig.tsbuildinfo
+
