@@ -111,6 +111,13 @@ def aggregate(
     con = duckdb.connect()
     con.execute("SET home_directory='/tmp'")
     con.execute("SET extension_directory='/tmp/duckdb_extensions'")
+    # DuckDB spills intermediate results to disk once a query's working set
+    # is large enough (aggregating a real customer's full month easily is),
+    # and its default spill location is a relative ".tmp" directory under
+    # the current working directory -- /var/task in Lambda, which is
+    # read-only outside /tmp, same class of problem as home_directory
+    # above but only surfaces once the data is big enough to spill at all.
+    con.execute("SET temp_directory='/tmp/duckdb_temp'")
 
     zip_tmp_dir = f"/tmp/cur-{uuid.uuid4().hex}" if file_format == "csv_zip" else None
 
