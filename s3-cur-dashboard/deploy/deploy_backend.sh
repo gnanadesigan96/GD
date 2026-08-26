@@ -131,14 +131,11 @@ fi
 API_NAME="${API_NAME:-${FUNCTION_NAME}-api}"
 
 echo "== Ensuring API Gateway HTTP API exists (quick-create, Lambda proxy) =="
-# Quick-create wires a default $default route/stage AND grants API Gateway
-# permission to invoke the function -- no separate add-permission step
-# needed, unlike the old Function URL approach.
+LAMBDA_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:${FUNCTION_NAME}"
 API_ID="$(aws apigatewayv2 get-apis --region "$AWS_REGION" \
   --query "Items[?Name=='${API_NAME}'].ApiId | [0]" --output text)"
 
 if [ "$API_ID" = "None" ] || [ -z "$API_ID" ]; then
-  LAMBDA_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:${FUNCTION_NAME}"
   API_ID="$(aws apigatewayv2 create-api \
     --name "$API_NAME" \
     --protocol-type HTTP \
@@ -149,6 +146,31 @@ if [ "$API_ID" = "None" ] || [ -z "$API_ID" ]; then
 else
   echo "API Gateway HTTP API already exists: $API_ID"
 fi
+
+echo "== Ensuring API Gateway has permission to invoke the function =="
+# --target on create-api is documented to auto-grant this, but in this
+# account it didn't -- confirmed by `get-policy` returning
+# ResourceNotFoundException after a fresh quick-create, which surfaced as a
+# generic 500 with the request never reaching Lambda at all (no log
+# entries). Granting it explicitly here makes this reliable regardless.
+# The source ARN is deliberately just "<api-id>/*" (not the three-segment
+# ".../*/*/*" pattern REST APIs use): HTTP APIs invoke through the
+# $default stage as "<api-id>/$default/$default" -- only two segments --
+# so a three-wildcard pattern never matches and silently blocks the
+# invoke.
+ADD_PERMISSION_OUTPUT="$(aws lambda add-permission \
+  --function-name "$FUNCTION_NAME" \
+  --statement-id apigateway-invoke \
+  --action lambda:InvokeFunction \
+  --principal apigateway.amazonaws.com \
+  --source-arn "arn:aws:execute-api:${AWS_REGION}:${ACCOUNT_ID}:${API_ID}/*" \
+  --region "$AWS_REGION" 2>&1)" || {
+    if ! echo "$ADD_PERMISSION_OUTPUT" | grep -q "ResourceConflictException"; then
+      echo "$ADD_PERMISSION_OUTPUT" >&2
+      exit 1
+    fi
+    echo "(already granted on a prior run)"
+  }
 
 API_ENDPOINT="$(aws apigatewayv2 get-api --api-id "$API_ID" --region "$AWS_REGION" --query 'ApiEndpoint' --output text)"
 
