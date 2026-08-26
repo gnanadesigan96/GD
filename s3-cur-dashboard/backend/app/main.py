@@ -55,7 +55,18 @@ def load_cur(req: CurLoadRequest):
     if not part_keys:
         raise HTTPException(status_code=502, detail="Manifest for this billing period lists no report files")
 
-    file_format = "parquet" if part_keys[0].endswith(".parquet") else "csv_gz"
+    first_key = part_keys[0]
+    if first_key.endswith(".parquet"):
+        file_format = "parquet"
+    elif first_key.endswith(".zip"):
+        # Legacy CUR's ZIP compression option: each part is a real ZIP
+        # archive (one CSV member inside), not a gzip stream -- DuckDB's
+        # httpfs/read_csv can't read inside a ZIP archive directly the way
+        # it can sniff gzip/plain CSV, so this format needs the part files
+        # downloaded and extracted first (see readers/duckdb_reader.py).
+        file_format = "csv_zip"
+    else:
+        file_format = "csv_gz"
     columns = resolve_columns(manifest["columns"])
 
     result = aggregate(creds, region, location.bucket, part_keys, file_format, columns)
