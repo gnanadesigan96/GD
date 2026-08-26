@@ -9,13 +9,18 @@ export default function App() {
   // backend store, so refreshing the page wipes the loaded report.
   const [data, setData] = useState<CurLoadResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(req: CurLoadRequest) {
     setLoading(true);
+    setElapsedSeconds(0);
     setError(null);
     try {
-      const result = await loadCur(req);
+      // A real CUR export can take minutes, not seconds -- loadCur polls
+      // in the background rather than a single blocking request, so this
+      // callback is how the UI knows how long it's been running.
+      const result = await loadCur(req, setElapsedSeconds);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load report");
@@ -32,7 +37,7 @@ export default function App() {
         <p className="subtitle">Reads one month of Cost &amp; Usage Report data directly from S3. Nothing is stored.</p>
       </header>
 
-      <CurForm onSubmit={handleSubmit} loading={loading} />
+      <CurForm onSubmit={handleSubmit} loading={loading} elapsedSeconds={elapsedSeconds} />
 
       {error && <div className="error">{error}</div>}
       {data && <Dashboard data={data} />}

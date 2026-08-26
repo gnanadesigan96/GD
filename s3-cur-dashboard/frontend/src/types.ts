@@ -31,3 +31,13 @@ export interface CurLoadResponse {
   part_file_count: number;
   load_time_ms: number;
 }
+
+export interface CurJobStartedResponse {
+  job_id: string;
+}
+
+export interface CurJobStatusResponse {
+  status: "pending" | "done" | "error";
+  result: CurLoadResponse | null;
+  error: string | null;
+}

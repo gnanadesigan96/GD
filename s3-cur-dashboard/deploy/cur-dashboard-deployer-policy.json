@@ -35,7 +35,8 @@
       "Action": [
         "iam:GetRole",
         "iam:CreateRole",
-        "iam:AttachRolePolicy"
+        "iam:AttachRolePolicy",
+        "iam:PutRolePolicy"
       ],
       "Resource": "arn:aws:iam::*:role/cur-dashboard-lambda-role"
     },
@@ -74,6 +75,16 @@
         "apigateway:DELETE"
       ],
       "Resource": "arn:aws:apigateway:*::/apis*"
+    },
+    {
+      "Sid": "JobsTable",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:UpdateTimeToLive"
+      ],
+      "Resource": "arn:aws:dynamodb:*:*:table/cur-dashboard-backend-jobs"
     },
     {
       "Sid": "FrontendBucket",

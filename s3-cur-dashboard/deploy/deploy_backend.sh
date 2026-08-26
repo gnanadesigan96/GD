@@ -1,35 +1,31 @@
 #!/usr/bin/env bash
 # Build the backend as a container image, push it to ECR, and create/update
-# the Lambda function + both an API Gateway HTTP API and a public Function
-# URL in front of it.
+# the Lambda function, an API Gateway HTTP API in front of it, and a
+# DynamoDB table used to run slow CUR loads as async jobs.
 #
-# Why both: API Gateway's Lambda proxy integration is the reliable general
-# path in this account (see below for why a *CloudFront-fronted* Function
-# URL specifically doesn't work here) -- but API Gateway's 30-second
-# integration timeout is hard and not configurable. A real customer CUR
-# export (151 part files) blew past even Lambda's own 120s timeout, so
-# large loads need a call path with no 30-second ceiling. A Function URL
-# called directly (no CloudFront in front of it) has no such ceiling --
-# only the Lambda's own --timeout applies, which is why that's now set to
-# Lambda's max (900s). The frontend calls the Function URL directly for
-# /api/cur/load (the slow one) and can keep using either path for
-# /api/health.
-#
-# Why not route everything through a CloudFront-fronted Function URL
-# instead of API Gateway: AuthType=AWS_IAM + CloudFront Origin Access
-# Control (the documented pattern for that) failed in this account --
-# confirmed by a controlled test: a genuinely SigV4-signed request straight
-# to the Function URL succeeded, but CloudFront's OAC-signed request to the
-# same URL did not, isolating the fault to CloudFront's OAC support for
-# Lambda Function URL origins specifically, not anything in this script's
-# config. That's a different code path from calling the Function URL
-# directly (no CloudFront, no OAC, no signing at all) -- this script's
-# AuthType=NONE Function URL relies on the app-level CUR_DASHBOARD_API_KEY
-# for access control (see main.py) instead of IAM signing, same as the API
-# Gateway path already does.
+# Why async jobs instead of one request/response: API Gateway's 30-second
+# integration timeout is hard and not configurable, and a real customer CUR
+# export (151 part files) blew past even Lambda's own 120s timeout -- no
+# amount of query optimization changes that ceiling. Two approaches to
+# escape it were tried and abandoned before this one: (1) a Function URL
+# behind CloudFront + Origin Access Control -- confirmed broken in this
+# account by a controlled SigV4-signing test; (2) a *public* Function URL
+# called directly, bypassing CloudFront entirely -- also returned Forbidden
+# when tested directly with plain curl, ruling it out too (root cause
+# unconfirmed; this account rejects unauthenticated Function URL
+# invocations by some mechanism broader than what was checked). Since
+# neither Function URL path works here, POST /api/cur/load now only
+# creates a job record and fires an async (fire-and-forget) self-invocation
+# of this same Lambda to do the real work -- see main.py's _dispatch_job
+# and lambda_handler.py's routing. That self-invocation isn't a synchronous
+# HTTP call through API Gateway or a Function URL at all, so neither's
+# timeout applies to it -- only this Lambda's own --timeout does, which is
+# why that's set to Lambda's max (900s) below. The frontend polls
+# GET /api/cur/job/{job_id} for the result; both that and the initial POST
+# are fast enough to stay well within API Gateway's 30s ceiling.
 #
 # Requires: docker, aws cli v2, credentials with permission to manage ECR,
-# Lambda, API Gateway, and IAM in the target account/region.
+# Lambda, API Gateway, DynamoDB, and IAM in the target account/region.
 #
 # Usage: AWS_REGION=us-east-1 ./deploy_backend.sh
 set -euo pipefail
@@ -189,80 +185,99 @@ ADD_PERMISSION_OUTPUT="$(aws lambda add-permission \
 
 API_ENDPOINT="$(aws apigatewayv2 get-api --api-id "$API_ID" --region "$AWS_REGION" --query 'ApiEndpoint' --output text)"
 
-echo "== Ensuring Function URL exists (AuthType=NONE, for calls with no 30s ceiling) =="
-if ! aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
-  aws lambda create-function-url-config \
-    --function-name "$FUNCTION_NAME" \
-    --auth-type NONE \
-    --cors '{"AllowOrigins":["*"],"AllowMethods":["*"],"AllowHeaders":["*"]}' \
+JOBS_TABLE_NAME="${JOBS_TABLE_NAME:-${FUNCTION_NAME}-jobs}"
+
+echo "== Ensuring the DynamoDB jobs table exists =="
+if ! aws dynamodb describe-table --table-name "$JOBS_TABLE_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
+  aws dynamodb create-table \
+    --table-name "$JOBS_TABLE_NAME" \
+    --attribute-definitions AttributeName=job_id,AttributeType=S \
+    --key-schema AttributeName=job_id,KeyType=HASH \
+    --billing-mode PAY_PER_REQUEST \
+    --region "$AWS_REGION" >/dev/null
+  aws dynamodb wait table-exists --table-name "$JOBS_TABLE_NAME" --region "$AWS_REGION"
+  # TTL means every job record auto-deletes ~30 minutes after it's written
+  # (see jobs.py) -- only job status and the same small aggregated result
+  # the API already returns is ever stored here, and only briefly.
+  aws dynamodb update-time-to-live \
+    --table-name "$JOBS_TABLE_NAME" \
+    --time-to-live-specification "Enabled=true,AttributeName=ttl" \
     --region "$AWS_REGION" >/dev/null
 fi
+JOBS_TABLE_ARN="arn:aws:dynamodb:${AWS_REGION}:${ACCOUNT_ID}:table/${JOBS_TABLE_NAME}"
 
-echo "== Ensuring the Function URL is publicly invocable =="
-ADD_URL_PERMISSION_OUTPUT="$(aws lambda add-permission \
+echo "== Ensuring the Lambda execution role can use the jobs table and invoke itself =="
+JOB_POLICY_DOC=$(cat <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem"],
+      "Resource": "${JOBS_TABLE_ARN}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "lambda:InvokeFunction",
+      "Resource": "${LAMBDA_ARN}"
+    }
+  ]
+}
+EOF
+)
+aws iam put-role-policy --role-name "$ROLE_NAME" --policy-name CurDashboardJobsAccess --policy-document "$JOB_POLICY_DOC"
+
+echo "== Setting CUR_DASHBOARD_JOBS_TABLE (merged with any existing environment variables) =="
+# update-function-configuration replaces the ENTIRE Environment.Variables
+# map, not just the keys given -- reading the current map first and merging
+# into it avoids wiping out CUR_DASHBOARD_CALLER_*/CUR_DASHBOARD_API_KEY if
+# they were already set by hand.
+EXISTING_ENV_JSON="$(aws lambda get-function-configuration --function-name "$FUNCTION_NAME" --region "$AWS_REGION" --query 'Environment.Variables' --output json 2>/dev/null || echo 'null')"
+MERGED_ENV_JSON="$(echo "$EXISTING_ENV_JSON" | python3 -c "
+import json, sys
+existing = json.load(sys.stdin) or {}
+existing['CUR_DASHBOARD_JOBS_TABLE'] = '${JOBS_TABLE_NAME}'
+print(json.dumps({'Variables': existing}))
+")"
+aws lambda update-function-configuration \
   --function-name "$FUNCTION_NAME" \
-  --statement-id FunctionURLAllowPublicAccess \
-  --action lambda:InvokeFunctionUrl \
-  --principal "*" \
-  --function-url-auth-type NONE \
-  --region "$AWS_REGION" 2>&1)" || {
-    if ! echo "$ADD_URL_PERMISSION_OUTPUT" | grep -q "ResourceConflictException"; then
-      echo "$ADD_URL_PERMISSION_OUTPUT" >&2
-      exit 1
-    fi
-    echo "(already granted on a prior run)"
-  }
-
-FUNCTION_URL="$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" --query 'FunctionUrl' --output text)"
-
-echo ""
-echo "== IMPORTANT: verify the Function URL is actually reachable before wiring the frontend to it =="
-echo "A public (AuthType=NONE) Function URL returned Forbidden the first time this was tried in this"
-echo "account, before CloudFront was ever involved -- that specific failure was never conclusively"
-echo "root-caused (attention shifted to the CloudFront+OAC case instead). Confirm this works on its"
-echo "own first:"
-echo ""
-echo "  curl -i -X POST ${FUNCTION_URL}api/cur/load -H 'Content-Type: application/json' -d '{}'"
-echo ""
-echo "Expect a 422 (FastAPI validation error for the empty body) or a real response -- NOT Forbidden."
-echo "If it's Forbidden, stop here and report back rather than proceeding to deploy_frontend.sh."
-echo ""
+  --environment "$MERGED_ENV_JSON" \
+  --region "$AWS_REGION" >/dev/null
+aws lambda wait function-updated --function-name "$FUNCTION_NAME" --region "$AWS_REGION"
 
 cat <<EOF
 
 Backend deployed.
 
-  API endpoint (fast calls, e.g. /api/health):  ${API_ENDPOINT}
-  Function URL (slow calls, e.g. /api/cur/load): ${FUNCTION_URL}
+  API endpoint: ${API_ENDPOINT}
+  Jobs table:   ${JOBS_TABLE_NAME}
 
-  Both require the app-level CUR_DASHBOARD_API_KEY -- see require_api_key
-  in main.py. The Function URL exists specifically because API Gateway's
-  30-second integration timeout is hard and not configurable, and a real
-  CUR export can take far longer than that to download/aggregate; calling
-  the Function URL directly (no CloudFront, no API Gateway) has no such
-  ceiling -- only the Lambda's own --timeout (900s, its max) applies.
-  VERIFY THE FUNCTION URL WORKS (see the curl command printed above)
-  before running deploy_frontend.sh -- a plain public Function URL
-  returned Forbidden the first time this was tried in this account,
-  before CloudFront was ever involved.
+  Every route requires the app-level CUR_DASHBOARD_API_KEY -- see
+  require_api_key in main.py. POST /api/cur/load starts a job and returns
+  a job_id immediately; GET /api/cur/job/{job_id} polls for the result.
+  The actual work runs as an async self-invocation of this same Lambda,
+  outside any HTTP request's timeout -- only this function's own --timeout
+  (${TIMEOUT_SECONDS}s) bounds how long a single load can take.
 
 Next: run deploy_frontend.sh with LAMBDA_FUNCTION_NAME=$FUNCTION_NAME --
-it wires the API endpoint into the CloudFront distribution as the /api/*
-origin, and builds the frontend to call the Function URL directly for
-/api/cur/load.
+it wires this API endpoint into the CloudFront distribution as the /api/*
+origin.
 
 Set CUR_DASHBOARD_CALLER_ACCESS_KEY_ID / _SECRET_ACCESS_KEY (or Azure Key
-Vault) on the function so it can actually assume customer roles -- see
-backend/.env.example for the full list:
+Vault) and CUR_DASHBOARD_API_KEY on the function so it can actually assume
+customer roles -- see backend/.env.example for the full list. Fetch the
+current environment first and merge into it (update-function-configuration
+replaces the whole map, so a plain --environment call would wipe out
+CUR_DASHBOARD_JOBS_TABLE and anything else already set):
 
+  aws lambda get-function-configuration --function-name "$FUNCTION_NAME" \\
+    --region "$AWS_REGION" --query 'Environment.Variables' --output json > /tmp/cur-dashboard-env.json
+  # edit /tmp/cur-dashboard-env.json: add CUR_DASHBOARD_CALLER_ACCESS_KEY_ID,
+  # CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY, and CUR_DASHBOARD_API_KEY
   aws lambda update-function-configuration --function-name "$FUNCTION_NAME" \\
-    --environment "Variables={CUR_DASHBOARD_CALLER_ACCESS_KEY_ID=<...>,CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY=<...>}" \\
+    --environment "Variables=\$(cat /tmp/cur-dashboard-env.json)" \\
     --region "$AWS_REGION"
 
-Set CUR_DASHBOARD_API_KEY on the function too, and pass the same value as
-API_KEY to deploy_frontend.sh, so the frontend's requests are accepted:
-
-  aws lambda update-function-configuration --function-name "$FUNCTION_NAME" \\
-    --environment "Variables={CUR_DASHBOARD_API_KEY=<...>}" \\
-    --region "$AWS_REGION"
+Pass the same CUR_DASHBOARD_API_KEY value as API_KEY to deploy_frontend.sh,
+so the frontend's requests are accepted.
 EOF

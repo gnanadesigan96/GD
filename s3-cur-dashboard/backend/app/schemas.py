@@ -46,3 +46,13 @@ class CurLoadResponse(BaseModel):
     file_format: str
     part_file_count: int
     load_time_ms: float
+
+
+class CurJobStartedResponse(BaseModel):
+    job_id: str
+
+
+class CurJobStatusResponse(BaseModel):
+    status: str  # "pending" | "done" | "error"
+    result: Optional[CurLoadResponse] = None
+    error: Optional[str] = None

@@ -1,14 +1,18 @@
+import json
 import os
 import time
+import uuid
 
+import boto3
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import jobs
 from .aws_client import assume_role, resolve_bucket_region, s3_client_for
 from .cur_columns import resolve_columns
 from .manifest import find_month_manifest_key, load_manifest, parse_s3_uri
 from .readers.duckdb_reader import aggregate
-from .schemas import CurLoadRequest, CurLoadResponse
+from .schemas import CurJobStartedResponse, CurJobStatusResponse, CurLoadRequest, CurLoadResponse
 
 app = FastAPI(title="S3 CUR Dashboard API")
 
@@ -23,8 +27,7 @@ app.add_middleware(
 def require_api_key(x_api_key: str | None = Header(default=None)):
     """No-op unless CUR_DASHBOARD_API_KEY is set.
 
-    A Lambda Function URL with AuthType=NONE is invocable by anyone who has
-    it -- without this, that means anyone could get this backend to attempt
+    Without this, anyone who reaches this API could get it to attempt
     sts:AssumeRole against arbitrary role ARNs. Set CUR_DASHBOARD_API_KEY in
     the deployment and the matching value in the frontend's build to close
     that off with a shared secret. Left unset for local development.
@@ -39,8 +42,14 @@ def health():
     return {"status": "ok"}
 
 
-@app.post("/api/cur/load", response_model=CurLoadResponse, dependencies=[Depends(require_api_key)])
-def load_cur(req: CurLoadRequest):
+def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
+    """The actual (potentially slow) work: assume the role, locate the
+    month's manifest, and aggregate its part files. Can take anywhere from
+    seconds to several minutes depending on the export's size -- this is
+    only ever called from the async job path (see _execute_job), never
+    directly from an HTTP request, so it isn't bound by any request
+    timeout.
+    """
     started = time.perf_counter()
 
     location = parse_s3_uri(req.s3_uri)
@@ -82,3 +91,62 @@ def load_cur(req: CurLoadRequest):
         part_file_count=len(part_keys),
         load_time_ms=(time.perf_counter() - started) * 1000,
     )
+
+
+def _execute_job(job_id: str, req: CurLoadRequest) -> None:
+    """Runs run_cur_job and records the outcome. Called either inline (no
+    Lambda to self-invoke -- local/uvicorn dev) or from lambda_handler.py
+    when this Lambda invokes itself asynchronously.
+    """
+    try:
+        result = run_cur_job(req)
+        jobs.mark_done(job_id, result.model_dump())
+    except HTTPException as exc:
+        jobs.mark_error(job_id, str(exc.detail))
+    except Exception as exc:  # noqa: BLE001 -- must not leave a job stuck "pending" for any failure
+        jobs.mark_error(job_id, str(exc))
+
+
+def _dispatch_job(job_id: str, req: CurLoadRequest) -> None:
+    function_name = os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+    if not function_name:
+        # Local dev (uvicorn) -- there's no separate Lambda invocation to
+        # fire, so just run the job in this same process/request instead.
+        _execute_job(job_id, req)
+        return
+    boto3.client("lambda").invoke(
+        FunctionName=function_name,
+        InvocationType="Event",  # fire-and-forget -- don't wait for it to finish
+        Payload=json.dumps({"cur_job": {"job_id": job_id, "request": req.model_dump()}}).encode(),
+    )
+
+
+@app.post("/api/cur/load", response_model=CurJobStartedResponse, status_code=202, dependencies=[Depends(require_api_key)])
+def load_cur(req: CurLoadRequest):
+    """Starts the load as a background job and returns immediately.
+
+    A real CUR export can take minutes to download and aggregate --
+    comfortably past API Gateway's hard, non-configurable 30-second
+    integration timeout. This endpoint itself does no S3/STS work, so it
+    stays fast; the actual work happens in _execute_job, dispatched via
+    _dispatch_job to run outside any request's timeout. Poll
+    GET /api/cur/job/{job_id} for the result.
+    """
+    job_id = uuid.uuid4().hex
+    jobs.create_job(job_id)
+    _dispatch_job(job_id, req)
+    return CurJobStartedResponse(job_id=job_id)
+
+
+@app.get("/api/cur/job/{job_id}", response_model=CurJobStatusResponse, dependencies=[Depends(require_api_key)])
+def get_cur_job(job_id: str):
+    item = jobs.get_job(job_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Job not found (it may have expired)")
+
+    status = item["status"]
+    if status == "done":
+        return CurJobStatusResponse(status="done", result=CurLoadResponse(**json.loads(item["result"])))
+    if status == "error":
+        return CurJobStatusResponse(status="error", error=item.get("error"))
+    return CurJobStatusResponse(status="pending")

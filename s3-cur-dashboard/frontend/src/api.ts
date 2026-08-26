@@ -1,27 +1,69 @@
-import type { CurLoadRequest, CurLoadResponse } from "./types";
+import type { CurJobStartedResponse, CurJobStatusResponse, CurLoadRequest, CurLoadResponse } from "./types";
 
-// In dev, "/api" is proxied to localhost:8000 (see vite.config.ts). In a
-// deployed build, set VITE_API_BASE_URL to the Lambda Function URL at build
-// time so the static frontend knows where its backend lives.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+// Same-origin in both dev (proxied to localhost:8000, see vite.config.ts)
+// and production (CloudFront's /api/* behavior forwards to API Gateway).
+// A long-running call bypassing this via a Lambda Function URL was tried
+// and abandoned -- see deploy/deploy_backend.sh's history -- once the load
+// became an async job, both calls here (start + poll) are fast enough to
+// stay well within API Gateway's timeout, so there's no need for a second
+// origin at all.
 const API_KEY = import.meta.env.VITE_API_KEY || "";
 
-export async function loadCur(req: CurLoadRequest): Promise<CurLoadResponse> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (API_KEY) {
-    headers["x-api-key"] = API_KEY;
-  }
+const POLL_INTERVAL_MS = 2000;
 
-  const res = await fetch(`${API_BASE_URL}/api/cur/load`, {
+function authHeaders(): Record<string, string> {
+  return API_KEY ? { "x-api-key": API_KEY } : {};
+}
+
+async function parseErrorOrThrow(res: Response): Promise<never> {
+  const body = await res.json().catch(() => ({}));
+  throw new Error(body.detail || `Request failed with ${res.status}`);
+}
+
+async function startCurLoad(req: CurLoadRequest): Promise<CurJobStartedResponse> {
+  const res = await fetch("/api/cur/load", {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(req),
   });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `Request failed with ${res.status}`);
-  }
-
+  if (!res.ok) return parseErrorOrThrow(res);
   return res.json();
+}
+
+async function getCurJob(jobId: string): Promise<CurJobStatusResponse> {
+  const res = await fetch(`/api/cur/job/${jobId}`, { headers: authHeaders() });
+  if (!res.ok) return parseErrorOrThrow(res);
+  return res.json();
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Starts the load and polls until it's done. A real CUR export can take
+ * anywhere from seconds to several minutes -- this is why the backend
+ * moved to a start-job/poll-status pattern instead of one blocking
+ * request, since API Gateway's 30-second timeout can't be raised.
+ *
+ * onTick (optional) is called after every poll with how many seconds
+ * have elapsed, so the caller can show live progress.
+ */
+export async function loadCur(req: CurLoadRequest, onTick?: (elapsedSeconds: number) => void): Promise<CurLoadResponse> {
+  const { job_id } = await startCurLoad(req);
+  const startedAt = Date.now();
+
+  for (;;) {
+    await sleep(POLL_INTERVAL_MS);
+    const status = await getCurJob(job_id);
+    onTick?.(Math.round((Date.now() - startedAt) / 1000));
+
+    if (status.status === "done" && status.result) {
+      return status.result;
+    }
+    if (status.status === "error") {
+      throw new Error(status.error || "Failed to load report");
+    }
+    // status === "pending" -- keep polling
+  }
 }

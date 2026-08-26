@@ -4,6 +4,7 @@ import type { CurLoadRequest } from "../types";
 interface CurFormProps {
   onSubmit: (req: CurLoadRequest) => void;
   loading: boolean;
+  elapsedSeconds: number;
 }
 
 function currentMonth(): string {
@@ -11,7 +12,7 @@ function currentMonth(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function CurForm({ onSubmit, loading }: CurFormProps) {
+export function CurForm({ onSubmit, loading, elapsedSeconds }: CurFormProps) {
   const [roleArn, setRoleArn] = useState("");
   const [externalId, setExternalId] = useState("");
   const [s3Uri, setS3Uri] = useState("");
@@ -51,7 +52,7 @@ export function CurForm({ onSubmit, loading }: CurFormProps) {
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} required />
       </label>
       <button type="submit" disabled={loading}>
-        {loading ? "Loading..." : "Load report"}
+        {loading ? `Loading... (${elapsedSeconds}s -- large reports can take several minutes)` : "Load report"}
       </button>
     </form>
   );

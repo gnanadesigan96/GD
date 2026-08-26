@@ -57,6 +57,18 @@ the page and it's gone.
    linked account are computed with SQL `GROUP BY` in DuckDB, so only the
    aggregated result — not the raw line items — crosses into the API
    response.
+5. **Run it as a background job, not one blocking request**: a real CUR
+   export can take anywhere from seconds to several minutes to download and
+   aggregate — comfortably past API Gateway's hard, non-configurable
+   30-second integration timeout. `POST /api/cur/load` only creates a job
+   record and fires an async (fire-and-forget) self-invocation of the same
+   Lambda to do the actual work; the frontend polls
+   `GET /api/cur/job/{job_id}` every couple of seconds until it's done. Job
+   status and the final result live in a DynamoDB table with a short
+   auto-expiring TTL (30 minutes) — only that small aggregated result is
+   ever stored there, and only briefly, so this stays close to the "nothing
+   persists" spirit even though it's a real (if short-lived) departure from
+   "nothing is ever written down".
 
 ## Running locally
 
@@ -112,8 +124,12 @@ is no separate config file or CLI to drive it.
 - **Backend** runs as a container-image Lambda function behind an API
   Gateway HTTP API (Lambda proxy integration, quick-create mode).
   `app/lambda_handler.py` wraps the same FastAPI app used locally via
-  [Mangum](https://github.com/jordaneremieff/mangum), so there's no
-  route/logic fork between `uvicorn` and Lambda.
+  [Mangum](https://github.com/jordaneremieff/mangum) for normal HTTP
+  requests, so there's no route/logic fork between `uvicorn` and Lambda —
+  but it also routes a second, internal event shape (`{"cur_job": ...}`)
+  straight to the job-running code, bypassing Mangum entirely. That's how
+  the async self-invocation described above reaches the same Lambda
+  without going through API Gateway a second time.
 - **Frontend + API share one CloudFront distribution**: a static build
   synced to a private S3 bucket serves the frontend at `/`, and a `/api/*`
   behavior forwards to the API Gateway endpoint. The S3 origin uses Origin
@@ -126,14 +142,14 @@ is no separate config file or CLI to drive it.
 
   (Why API Gateway and not a Lambda Function URL: a `NONE`-auth Function
   URL needs a public (`Principal: "*"`) resource policy, which this
-  account's setup rejected outright. Switching to `AuthType=AWS_IAM` +
-  CloudFront Origin Access Control — the documented fix for exactly that
-  case — still failed the same way: a controlled test proved a genuinely
+  account's setup rejected outright — confirmed twice, both behind
+  CloudFront + Origin Access Control (a controlled test proved a genuinely
   SigV4-signed request straight to the Function URL succeeded, but
-  CloudFront's OAC-signed request to that same URL did not, isolating the
-  fault to CloudFront's OAC support for Lambda Function URL origins in
-  this account. API Gateway's Lambda proxy integration is a much older,
-  more battle-tested path that sidesteps that failure entirely.)
+  CloudFront's OAC-signed request to that same URL did not) and called
+  directly with no CloudFront involved at all. API Gateway's Lambda proxy
+  integration is a much older, more battle-tested path that sidesteps both
+  failures — its own 30-second timeout is what the async job pattern above
+  works around instead.)
 
 ```bash
 # 1. Deploy the backend (builds + pushes a container image, creates the
@@ -208,7 +224,7 @@ bill forever.
 
 ## API
 
-`POST /api/cur/load`
+`POST /api/cur/load` starts the load as a background job:
 
 ```json
 {
@@ -219,9 +235,27 @@ bill forever.
 }
 ```
 
-Returns total cost, cost by service, cost by day, and cost by linked
-account for that billing period, plus `file_format`, `part_file_count`, and
-`load_time_ms` so the read strategy and its cost are visible.
+Returns `202` with `{"job_id": "..."}` immediately — this endpoint does no
+S3/STS work itself, so it stays fast regardless of how big the export
+turns out to be.
+
+`GET /api/cur/job/{job_id}` polls for the result:
+
+```json
+{"status": "pending"}
+```
+```json
+{"status": "done", "result": { "total_cost": ..., "cost_by_service": [...], "...": "..." }}
+```
+```json
+{"status": "error", "error": "..."}
+```
+
+`result` (once `status` is `"done"`) has total cost, cost by service, cost
+by day, and cost by linked account for that billing period, plus
+`file_format`, `part_file_count`, and `load_time_ms` so the read strategy
+and its cost are visible. A `job_id` not found (expired, or never existed)
+returns `404`.
 
 ## Notes / follow-ups
 
