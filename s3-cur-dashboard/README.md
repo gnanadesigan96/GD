@@ -257,9 +257,9 @@ by day, and cost by linked account for that billing period, plus
 and its cost are visible. A `job_id` not found (expired, or never existed)
 returns `404`.
 
-It also carries everything the per-account and per-day drill-down UIs
-need, computed in the same pass as everything else above (two extra
-`GROUP BY`s, not a second read of the export):
+It also carries everything the per-account drill-down UI needs, computed
+in the same pass as everything else above (one extra `GROUP BY`, not a
+second read of the export):
 
 - `available_cost_metrics` — whichever cost columns this specific export
   actually has (e.g. `["unblended_cost", "blended_cost"]`; `net_*` variants
@@ -272,17 +272,22 @@ need, computed in the same pass as everything else above (two extra
   `cost_by_service`'s `service`; `resource_category` resolves to
   `product/productFamily` and `charge_type` to `lineItem/LineItemType`
   when present, falling back to `"unknown"` for exports that lack them.
-- `day_drilldown` — the same idea, grouped by `(date, product_category,
-  resource_category, charge_type)` instead of by account. Account isn't
-  part of this grouping, so it stays bounded by day-count × distinct
-  combinations rather than also multiplying in account cardinality.
+
+`cost_by_day` entries also carry a `costs` map (cost per metric for that
+day) alongside the existing `date`/`cost` fields — no product/resource/
+charge-type dimension, just the metric breakdown. There used to be a
+separate `day_drilldown` array with the full category breakdown per day,
+mirroring the account one; it was removed because day-count × every other
+dimension's combinations made it by far the largest of the backend's
+grouping-set buckets, and cutting it measurably reduces peak memory on a
+large export. Clicking a day in the UI now shows a small per-metric table
+(`DayCostBreakdown`) instead of the full `DrilldownPanel`.
 
 The frontend fetches this all once and drills through it entirely
-client-side — clicking an account in "Cost by linked account", or a date
-in "Cost by day", needs no further request. Both drill-downs render
-through the same `DrilldownPanel` component (metric → dimension → search,
-with click-to-expand rows to reconcile totals across dimensions), just
-fed a different slice of rows.
+client-side — clicking an account in "Cost by linked account" needs no
+further request. It renders through the shared `DrilldownPanel` component
+(metric → dimension → search, with click-to-expand rows to reconcile
+totals across dimensions).
 
 It also carries `part_files` — one `{key, size_bytes}` entry per part file
 in the manifest, resolved with one (occasionally a handful of) paginated
@@ -313,10 +318,13 @@ extra request either, since the data's already loaded.
   to disk as late as possible; and — the main fix —
   `duckdb_reader.aggregate()` no longer materializes a full row-level copy
   of the export into a temp table at all. Every breakdown (total,
-  by-service, by-day, by-account, both drill-downs) comes out of a single
-  `GROUP BY GROUPING SETS (...)` query that runs as one `HASH_GROUP_BY`
-  over one scan of the source (confirmed via `EXPLAIN`), tagging each
-  output row's grouping set via `GROUPING_ID(...)` rather than a temp
-  table + six separate re-queries of it. Verified against a 3,000-row
-  randomized synthetic export cross-checked row-for-row against an
-  independent pure-Python reference implementation.
+  by-service, by-day, by-account, the account drill-down) comes out of a
+  single `GROUP BY GROUPING SETS (...)` query that runs as one
+  `HASH_GROUP_BY` over one scan of the source (confirmed via `EXPLAIN`),
+  tagging each output row's grouping set via `GROUPING_ID(...)` rather than
+  a temp table + separate re-queries of it -- and the day-level category
+  drill-down (by far the largest of the grouping-set buckets) was dropped
+  entirely in favor of a lighter per-metric-only breakdown, further cutting
+  peak memory. Verified against a 3,000-row randomized synthetic export
+  cross-checked row-for-row against an independent pure-Python reference
+  implementation.

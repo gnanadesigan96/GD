@@ -3,7 +3,7 @@ import { downloadCsv, formatBytes, metricLabel, toCsv } from "../lib/format";
 import type { CurLoadResponse } from "../types";
 import { AccountDrilldown } from "./AccountDrilldown";
 import { BarChart } from "./BarChart";
-import { DayDrilldown } from "./DayDrilldown";
+import { DayCostBreakdown } from "./DayCostBreakdown";
 import { LineChart } from "./LineChart";
 
 const MAX_REPORT_ACCOUNTS = 10;
@@ -38,7 +38,7 @@ export function Dashboard({ data }: DashboardProps) {
     ? reportMetric
     : data.available_cost_metrics[0] ?? "";
   const hasDrilldown = data.drilldown.length > 0 && data.available_cost_metrics.length > 0;
-  const hasDayDrilldown = data.day_drilldown.length > 0 && data.available_cost_metrics.length > 0;
+  const hasDayCosts = data.available_cost_metrics.length > 0;
   const hasPartFiles = data.part_files.length > 0;
 
   const toggleReportAccount = (accountId: string) => {
@@ -134,8 +134,8 @@ export function Dashboard({ data }: DashboardProps) {
 
       <div className="panel">
         <h2>Cost by day</h2>
-        {hasDayDrilldown && <p className="panel-hint">Click a day to see its cost broken down by product category, resource category, and charge type.</p>}
-        <table className={hasDayDrilldown ? "account-table clickable" : "account-table"}>
+        {hasDayCosts && <p className="panel-hint">Click a day to see its cost broken down by cost metric.</p>}
+        <table className={hasDayCosts ? "account-table clickable" : "account-table"}>
           <thead>
             <tr>
               <th>Date</th>
@@ -148,18 +148,18 @@ export function Dashboard({ data }: DashboardProps) {
               return (
                 <Fragment key={d.date}>
                   <tr
-                    onClick={hasDayDrilldown ? () => setSelectedDay(isSelected ? null : d.date) : undefined}
+                    onClick={hasDayCosts ? () => setSelectedDay(isSelected ? null : d.date) : undefined}
                     className={isSelected ? "selected" : undefined}
                   >
                     <td>{d.date}</td>
                     <td>{money(d.cost)}</td>
                   </tr>
-                  {hasDayDrilldown && isSelected && (
+                  {hasDayCosts && isSelected && (
                     <tr className="drilldown-row">
                       <td colSpan={2} className="drilldown-cell">
-                        <DayDrilldown
+                        <DayCostBreakdown
                           date={d.date}
-                          rows={data.day_drilldown}
+                          costs={d.costs}
                           availableCostMetrics={data.available_cost_metrics}
                           formatMoney={money}
                           onClose={() => setSelectedDay(null)}

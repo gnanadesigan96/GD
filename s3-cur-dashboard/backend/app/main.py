@@ -95,7 +95,6 @@ def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
         load_time_ms=(time.perf_counter() - started) * 1000,
         available_cost_metrics=result["available_cost_metrics"],
         drilldown=result["drilldown"],
-        day_drilldown=result["day_drilldown"],
         part_files=[{"key": k, "size_bytes": part_sizes.get(k, 0)} for k in part_keys],
     )
 

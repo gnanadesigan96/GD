@@ -13,6 +13,7 @@ export interface ServiceCost {
 export interface DailyCost {
   date: string;
   cost: number;
+  costs: Record<string, number>;
 }
 
 export interface AccountCost {
@@ -29,10 +30,6 @@ export interface DimensionalCosts {
 
 export interface DrilldownRow extends DimensionalCosts {
   account_id: string;
-}
-
-export interface DayDrilldownRow extends DimensionalCosts {
-  date: string;
 }
 
 export interface PartFileInfo {
@@ -52,7 +49,6 @@ export interface CurLoadResponse {
   load_time_ms: number;
   available_cost_metrics: string[];
   drilldown: DrilldownRow[];
-  day_drilldown: DayDrilldownRow[];
   part_files: PartFileInfo[];
 }
 

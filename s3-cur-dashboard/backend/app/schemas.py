@@ -29,6 +29,7 @@ class ServiceCost(BaseModel):
 class DailyCost(BaseModel):
     date: str
     cost: float
+    costs: dict[str, float] = {}  # cost metric name (e.g. "unblended_cost") -> amount for that day
 
 
 class AccountCost(BaseModel):
@@ -38,14 +39,6 @@ class AccountCost(BaseModel):
 
 class DrilldownRow(BaseModel):
     account_id: str
-    product_category: str
-    resource_category: str
-    charge_type: str
-    costs: dict[str, float]  # cost metric name (e.g. "unblended_cost") -> amount
-
-
-class DayDrilldownRow(BaseModel):
-    date: str
     product_category: str
     resource_category: str
     charge_type: str
@@ -69,7 +62,6 @@ class CurLoadResponse(BaseModel):
     load_time_ms: float
     available_cost_metrics: list[str] = []
     drilldown: list[DrilldownRow] = []
-    day_drilldown: list[DayDrilldownRow] = []
     part_files: list[PartFileInfo] = []
 
 
