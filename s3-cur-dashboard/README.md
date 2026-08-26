@@ -93,35 +93,39 @@ browser, fills in role ARN / external ID / S3 URI / month, and clicks "Load
 report" — that form submission is the only input this system takes. There
 is no separate config file or CLI to drive it.
 
-- **Backend** runs as a container-image Lambda function behind a Lambda
-  Function URL secured with `AuthType=AWS_IAM` (no API Gateway needed — no
-  extra cost beyond Lambda itself). `app/lambda_handler.py` wraps the same
-  FastAPI app used locally via [Mangum](https://github.com/jordaneremieff/mangum),
-  so there's no route/logic fork between `uvicorn` and Lambda.
+- **Backend** runs as a container-image Lambda function behind an API
+  Gateway HTTP API (Lambda proxy integration, quick-create mode).
+  `app/lambda_handler.py` wraps the same FastAPI app used locally via
+  [Mangum](https://github.com/jordaneremieff/mangum), so there's no
+  route/logic fork between `uvicorn` and Lambda.
 - **Frontend + API share one CloudFront distribution**: a static build
   synced to a private S3 bucket serves the frontend at `/`, and a `/api/*`
-  behavior forwards to the Lambda Function URL. Both origins use Origin
-  Access Control, so CloudFront signs requests to each on the
-  distribution's behalf — neither the S3 bucket nor the Function URL needs
-  a public (`Principal: "*"`) resource policy. This also means the
+  behavior forwards to the API Gateway endpoint. The S3 origin uses Origin
+  Access Control, so the bucket needs no public (`Principal: "*"`)
+  resource policy; the API Gateway origin is a plain public custom origin
+  (API Gateway's default endpoint is already public). This still means the
   frontend calls its API same-origin, so no CORS is needed, and there's
-  only one domain to remember.
+  only one domain to remember. Access control on the API is the app-level
+  `CUR_DASHBOARD_API_KEY` (below), not IAM signing.
 
-  (Why `AWS_IAM` instead of a plain public Function URL: some AWS
-  Organizations block resource-based policies with a wildcard principal
-  outright as a guardrail against public exposure — which is exactly what
-  a `NONE`-auth Function URL's invoke permission requires. Routing through
-  CloudFront's OAC sidesteps that; only CloudFront can ever invoke this
-  function.)
+  (Why API Gateway and not a Lambda Function URL: a `NONE`-auth Function
+  URL needs a public (`Principal: "*"`) resource policy, which this
+  account's setup rejected outright. Switching to `AuthType=AWS_IAM` +
+  CloudFront Origin Access Control — the documented fix for exactly that
+  case — still failed the same way: a controlled test proved a genuinely
+  SigV4-signed request straight to the Function URL succeeded, but
+  CloudFront's OAC-signed request to that same URL did not, isolating the
+  fault to CloudFront's OAC support for Lambda Function URL origins in
+  this account. API Gateway's Lambda proxy integration is a much older,
+  more battle-tested path that sidesteps that failure entirely.)
 
 ```bash
 # 1. Deploy the backend (builds + pushes a container image, creates the
-#    Lambda function and a Function URL only CloudFront can call)
+#    Lambda function and an API Gateway HTTP API in front of it)
 AWS_REGION=us-east-1 ./deploy/deploy_backend.sh
 
-# 2. Deploy the frontend -- this also wires the Lambda into the same
-#    CloudFront distribution and grants it permission scoped to that
-#    specific distribution
+# 2. Deploy the frontend -- this also wires the API Gateway endpoint into
+#    the same CloudFront distribution as the /api/* origin
 LAMBDA_FUNCTION_NAME=cur-dashboard-backend BUCKET=my-cur-dashboard-frontend \
   ./deploy/deploy_frontend.sh
 ```

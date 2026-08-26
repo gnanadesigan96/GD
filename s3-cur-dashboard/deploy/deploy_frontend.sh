@@ -2,13 +2,22 @@
 # Build the frontend, sync it to a private S3 bucket, and serve both the
 # frontend AND the backend API from one CloudFront distribution over HTTPS:
 # the default behavior serves the frontend from S3, and a /api/* behavior
-# forwards to the backend Lambda's Function URL. Both origins use Origin
-# Access Control, so CloudFront signs requests to each on the distribution's
-# behalf -- neither the S3 bucket nor the Lambda Function URL needs a public
-# ("Principal": "*") resource policy. (Some AWS Organizations block public
-# resource policies outright as a guardrail, which a bare public Function
-# URL would run into; this avoids that entirely, and also means the
-# frontend calls the API same-origin -- no CORS needed.)
+# forwards to the backend's API Gateway HTTP API endpoint. The S3 origin
+# uses Origin Access Control, so the bucket needs no public
+# ("Principal": "*") policy; the API Gateway origin is a plain public
+# custom origin (API Gateway's default endpoint is already public) --
+# access control there is the app-level CUR_DASHBOARD_API_KEY (see
+# require_api_key in main.py), not IAM signing. This still means the
+# frontend calls the API same-origin -- no CORS needed.
+#
+# (An earlier version of this script routed /api/* to the backend Lambda's
+# Function URL via a second Origin Access Control. That combination -- a
+# CloudFront OAC signing requests to a Lambda Function URL origin --
+# reproducibly returned Forbidden in this AWS account despite matching
+# AWS's documented config exactly (verified with a direct SigV4-signed
+# request to the same URL, which succeeded). deploy_backend.sh now stands
+# up an API Gateway HTTP API in front of the same Lambda instead, which is
+# what this script points at.)
 #
 # CloudFront's free tier (1TB transfer + 10M requests per month) is
 # permanent, so this stays $0 at low traffic; PriceClass_100 restricts edge
@@ -42,10 +51,16 @@ FRONTEND_DIR="$SCRIPT_DIR/../frontend"
 BUCKET_DOMAIN="${BUCKET}.s3.${AWS_REGION}.amazonaws.com"
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 
-echo "== Looking up the Lambda Function URL =="
-LAMBDA_FUNCTION_URL="$(aws lambda get-function-url-config --function-name "$LAMBDA_FUNCTION_NAME" --region "$AWS_REGION" --query 'FunctionUrl' --output text)"
-LAMBDA_DOMAIN="$(echo "$LAMBDA_FUNCTION_URL" | sed -E 's#^https://##; s#/$##')"
-LAMBDA_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:${LAMBDA_FUNCTION_NAME}"
+echo "== Looking up the API Gateway HTTP API endpoint =="
+API_NAME="${API_NAME:-${LAMBDA_FUNCTION_NAME}-api}"
+API_ID="$(aws apigatewayv2 get-apis --region "$AWS_REGION" \
+  --query "Items[?Name=='${API_NAME}'].ApiId | [0]" --output text)"
+if [ -z "$API_ID" ] || [ "$API_ID" = "None" ]; then
+  echo "No API Gateway HTTP API named '${API_NAME}' found -- run deploy_backend.sh first." >&2
+  exit 1
+fi
+API_ENDPOINT="$(aws apigatewayv2 get-api --api-id "$API_ID" --region "$AWS_REGION" --query 'ApiEndpoint' --output text)"
+API_DOMAIN="$(echo "$API_ENDPOINT" | sed -E 's#^https://##; s#/$##')"
 
 echo "== Installing dependencies =="
 (cd "$FRONTEND_DIR" && npm install)
@@ -73,31 +88,22 @@ if [ -z "$S3_OAC_ID" ] || [ "$S3_OAC_ID" = "None" ]; then
     --query 'OriginAccessControl.Id' --output text)"
 fi
 
-echo "== Ensuring Lambda Origin Access Control exists =="
-LAMBDA_OAC_ID="$(aws cloudfront list-origin-access-controls \
-  --query "OriginAccessControlList.Items[?Name=='${LAMBDA_FUNCTION_NAME}-oac'].Id | [0]" --output text)"
-if [ -z "$LAMBDA_OAC_ID" ] || [ "$LAMBDA_OAC_ID" = "None" ]; then
-  LAMBDA_OAC_ID="$(aws cloudfront create-origin-access-control --origin-access-control-config \
-    "Name=${LAMBDA_FUNCTION_NAME}-oac,SigningProtocol=sigv4,SigningBehavior=always,OriginAccessControlOriginType=lambda" \
-    --query 'OriginAccessControl.Id' --output text)"
-fi
-
 echo "== Ensuring CloudFront distribution exists =="
 DIST_ID="$(aws cloudfront list-distributions \
   --query "DistributionList.Items[?Origins.Items[?DomainName=='${BUCKET_DOMAIN}']].Id | [0]" --output text)"
 
 if [ -z "$DIST_ID" ] || [ "$DIST_ID" = "None" ]; then
   DIST_CONFIG="$(python3 "$SCRIPT_DIR/build_distribution_config.py" create \
-    "$BUCKET" "$BUCKET_DOMAIN" "$S3_OAC_ID" "$LAMBDA_DOMAIN" "$LAMBDA_OAC_ID" "$DOMAIN_NAME" "$ACM_CERT_ARN")"
+    "$BUCKET" "$BUCKET_DOMAIN" "$S3_OAC_ID" "$API_DOMAIN" "$DOMAIN_NAME" "$ACM_CERT_ARN")"
   CREATE_RESULT="$(aws cloudfront create-distribution --distribution-config "$DIST_CONFIG")"
   DIST_ID="$(echo "$CREATE_RESULT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["Distribution"]["Id"])')"
   echo "Created distribution $DIST_ID -- first-time edge propagation can take up to ~15 minutes."
 else
-  echo "== Wiring the Lambda origin / custom domain into the existing distribution =="
+  echo "== Wiring the API Gateway origin / custom domain into the existing distribution =="
   CURRENT="$(aws cloudfront get-distribution-config --id "$DIST_ID")"
   ETAG="$(echo "$CURRENT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["ETag"])')"
   MERGED_CONFIG="$(echo "$CURRENT" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["DistributionConfig"]))' \
-    | python3 "$SCRIPT_DIR/build_distribution_config.py" merge "$LAMBDA_DOMAIN" "$LAMBDA_OAC_ID" "$DOMAIN_NAME" "$ACM_CERT_ARN")"
+    | python3 "$SCRIPT_DIR/build_distribution_config.py" merge "$API_DOMAIN" "$DOMAIN_NAME" "$ACM_CERT_ARN")"
   aws cloudfront update-distribution --id "$DIST_ID" --if-match "$ETAG" --distribution-config "$MERGED_CONFIG" >/dev/null
   echo "== Invalidating cache so the new build is served immediately =="
   aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*" >/dev/null
@@ -125,21 +131,10 @@ EOF
 )
 aws s3api put-bucket-policy --bucket "$BUCKET" --policy "$BUCKET_POLICY"
 
-echo "== Restricting the Lambda Function URL to this distribution only =="
-ADD_PERMISSION_OUTPUT="$(aws lambda add-permission \
-  --function-name "$LAMBDA_FUNCTION_NAME" \
-  --statement-id "AllowCloudFront${DIST_ID}" \
-  --action lambda:InvokeFunctionUrl \
-  --principal cloudfront.amazonaws.com \
-  --source-arn "$DIST_ARN" \
-  --function-url-auth-type AWS_IAM \
-  --region "$AWS_REGION" 2>&1)" || {
-    if ! echo "$ADD_PERMISSION_OUTPUT" | grep -q "ResourceConflictException"; then
-      echo "$ADD_PERMISSION_OUTPUT" >&2
-      exit 1
-    fi
-    echo "(already granted on a prior run)"
-  }
+# No equivalent restriction needed on the API Gateway origin: it's already
+# public (access control is the app-level API key, not IAM/OAC), and
+# deploy_backend.sh's quick-create already granted API Gateway permission
+# to invoke the Lambda function.
 
 if [ -n "$DOMAIN_NAME" ]; then
   cat <<EOF

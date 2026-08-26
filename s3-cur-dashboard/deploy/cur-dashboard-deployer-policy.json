@@ -65,6 +65,17 @@
       "Resource": "arn:aws:lambda:*:*:function:cur-dashboard-backend"
     },
     {
+      "Sid": "ApiGateway",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET",
+        "apigateway:POST",
+        "apigateway:PATCH",
+        "apigateway:DELETE"
+      ],
+      "Resource": "arn:aws:apigateway:*::/apis*"
+    },
+    {
       "Sid": "FrontendBucket",
       "Effect": "Allow",
       "Action": [

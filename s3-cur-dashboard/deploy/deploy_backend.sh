@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
 # Build the backend as a container image, push it to ECR, and create/update
-# the Lambda function + a Function URL secured with AuthType=AWS_IAM (no API
-# Gateway -- Function URLs have no extra cost beyond Lambda itself).
+# the Lambda function + an API Gateway HTTP API in front of it.
 #
-# AWS_IAM (not NONE) because the Function URL is never called directly --
-# only CloudFront reaches it, signing requests via Origin Access Control
-# (set up in deploy_frontend.sh once the distribution exists). Some AWS
-# Organizations block resource-based policies with Principal:"*" outright
-# (a guardrail against public exposure), which a NONE-auth Function URL's
-# permission requires -- routing through CloudFront's OAC avoids needing
-# that wildcard principal at all.
+# Why API Gateway and not a Function URL: a Function URL with
+# AuthType=NONE needs a public (Principal:"*") resource policy, which this
+# account's setup rejected outright with Forbidden. Switching to
+# AuthType=AWS_IAM + CloudFront Origin Access Control (the documented fix
+# for exactly that problem) still failed the same way -- confirmed by a
+# controlled test: a genuinely SigV4-signed request straight to the
+# Function URL succeeded, but CloudFront's OAC-signed request to the same
+# URL did not, isolating the fault to CloudFront's OAC support for Lambda
+# Function URL origins in this account, not anything in this script's
+# config. API Gateway's Lambda proxy integration is a much older, more
+# battle-tested path that sidesteps that failure entirely -- the actual
+# access control is the app-level CUR_DASHBOARD_API_KEY (see main.py)
+# rather than IAM signing.
 #
 # Requires: docker, aws cli v2, credentials with permission to manage ECR,
-# Lambda, and IAM in the target account/region.
+# Lambda, API Gateway, and IAM in the target account/region.
 #
 # Usage: AWS_REGION=us-east-1 ./deploy_backend.sh
 set -euo pipefail
@@ -123,39 +128,43 @@ else
   aws lambda wait function-active --function-name "$FUNCTION_NAME" --region "$AWS_REGION"
 fi
 
-echo "== Ensuring Function URL exists (AuthType=AWS_IAM) =="
-if ! aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
-  aws lambda create-function-url-config \
-    --function-name "$FUNCTION_NAME" \
-    --auth-type AWS_IAM \
-    --region "$AWS_REGION" >/dev/null
+API_NAME="${API_NAME:-${FUNCTION_NAME}-api}"
+
+echo "== Ensuring API Gateway HTTP API exists (quick-create, Lambda proxy) =="
+# Quick-create wires a default $default route/stage AND grants API Gateway
+# permission to invoke the function -- no separate add-permission step
+# needed, unlike the old Function URL approach.
+API_ID="$(aws apigatewayv2 get-apis --region "$AWS_REGION" \
+  --query "Items[?Name=='${API_NAME}'].ApiId | [0]" --output text)"
+
+if [ "$API_ID" = "None" ] || [ -z "$API_ID" ]; then
+  LAMBDA_ARN="arn:aws:lambda:${AWS_REGION}:${ACCOUNT_ID}:function:${FUNCTION_NAME}"
+  API_ID="$(aws apigatewayv2 create-api \
+    --name "$API_NAME" \
+    --protocol-type HTTP \
+    --target "$LAMBDA_ARN" \
+    --region "$AWS_REGION" \
+    --query 'ApiId' --output text)"
+  echo "Created API Gateway HTTP API: $API_ID"
 else
-  CURRENT_AUTH_TYPE="$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" --query 'AuthType' --output text)"
-  if [ "$CURRENT_AUTH_TYPE" != "AWS_IAM" ]; then
-    echo "Migrating Function URL from $CURRENT_AUTH_TYPE to AWS_IAM"
-    aws lambda update-function-url-config \
-      --function-name "$FUNCTION_NAME" \
-      --auth-type AWS_IAM \
-      --region "$AWS_REGION" >/dev/null
-    # Drop the old public-invoke permission left over from AuthType=NONE, if any.
-    aws lambda remove-permission --function-name "$FUNCTION_NAME" \
-      --statement-id FunctionURLAllowPublicAccess --region "$AWS_REGION" 2>/dev/null || true
-  fi
+  echo "API Gateway HTTP API already exists: $API_ID"
 fi
 
-FUNCTION_URL="$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" --query 'FunctionUrl' --output text)"
+API_ENDPOINT="$(aws apigatewayv2 get-api --api-id "$API_ID" --region "$AWS_REGION" --query 'ApiEndpoint' --output text)"
 
 cat <<EOF
 
 Backend deployed.
 
-  Function URL: ${FUNCTION_URL}
-  (not directly invocable -- AuthType=AWS_IAM, only CloudFront can reach it)
+  API endpoint: ${API_ENDPOINT}
+  (public, but every route requires the app-level CUR_DASHBOARD_API_KEY --
+  see require_api_key in main.py; this replaced a Function URL + CloudFront
+  OAC approach that AWS confirmed does not work for Lambda origins in this
+  account -- see the comment at the top of this script)
 
 Next: run deploy_frontend.sh with LAMBDA_FUNCTION_NAME=$FUNCTION_NAME --
-it wires this function into the same CloudFront distribution as the
-frontend (via Origin Access Control) and grants it permission to invoke
-this URL, scoped to that specific distribution.
+it wires this API Gateway endpoint into the same CloudFront distribution
+as the frontend as the /api/* origin.
 
 Set CUR_DASHBOARD_CALLER_ACCESS_KEY_ID / _SECRET_ACCESS_KEY (or Azure Key
 Vault) on the function so it can actually assume customer roles -- see
@@ -163,5 +172,12 @@ backend/.env.example for the full list:
 
   aws lambda update-function-configuration --function-name "$FUNCTION_NAME" \\
     --environment "Variables={CUR_DASHBOARD_CALLER_ACCESS_KEY_ID=<...>,CUR_DASHBOARD_CALLER_SECRET_ACCESS_KEY=<...>}" \\
+    --region "$AWS_REGION"
+
+Set CUR_DASHBOARD_API_KEY on the function too, and pass the same value as
+API_KEY to deploy_frontend.sh, so the frontend's requests are accepted:
+
+  aws lambda update-function-configuration --function-name "$FUNCTION_NAME" \\
+    --environment "Variables={CUR_DASHBOARD_API_KEY=<...>}" \\
     --region "$AWS_REGION"
 EOF
