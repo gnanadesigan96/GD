@@ -284,6 +284,16 @@ through the same `DrilldownPanel` component (metric → dimension → search,
 with click-to-expand rows to reconcile totals across dimensions), just
 fed a different slice of rows.
 
+It also carries `part_files` — one `{key, size_bytes}` entry per part file
+in the manifest, resolved with one (occasionally a handful of) paginated
+`list_objects_v2` calls grouped by the part files' common S3 prefix rather
+than a `HeadObject` per file. Clicking the "Part files scanned" KPI in the
+UI opens a table of these. Selecting up to 10 accounts in "Cost by linked
+account" and choosing a cost metric lets the frontend build a CSV report
+from `drilldown` (account, product category, resource category, charge
+type, cost) entirely client-side and trigger a browser download — no
+extra request either, since the data's already loaded.
+
 ## Notes / follow-ups
 
 - The customer's role trust policy must allow the backend's AWS identity to

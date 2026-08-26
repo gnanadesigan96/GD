@@ -35,6 +35,11 @@ export interface DayDrilldownRow extends DimensionalCosts {
   date: string;
 }
 
+export interface PartFileInfo {
+  key: string;
+  size_bytes: number;
+}
+
 export interface CurLoadResponse {
   billing_period: string;
   currency: string | null;
@@ -48,6 +53,7 @@ export interface CurLoadResponse {
   available_cost_metrics: string[];
   drilldown: DrilldownRow[];
   day_drilldown: DayDrilldownRow[];
+  part_files: PartFileInfo[];
 }
 
 export interface CurJobStartedResponse {

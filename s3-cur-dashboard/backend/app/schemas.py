@@ -52,6 +52,11 @@ class DayDrilldownRow(BaseModel):
     costs: dict[str, float]  # cost metric name (e.g. "unblended_cost") -> amount
 
 
+class PartFileInfo(BaseModel):
+    key: str
+    size_bytes: int
+
+
 class CurLoadResponse(BaseModel):
     billing_period: str
     currency: Optional[str] = None
@@ -65,6 +70,7 @@ class CurLoadResponse(BaseModel):
     available_cost_metrics: list[str] = []
     drilldown: list[DrilldownRow] = []
     day_drilldown: list[DayDrilldownRow] = []
+    part_files: list[PartFileInfo] = []
 
 
 class CurJobStartedResponse(BaseModel):

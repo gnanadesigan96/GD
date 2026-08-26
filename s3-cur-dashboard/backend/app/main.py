@@ -11,6 +11,7 @@ from . import jobs
 from .aws_client import assume_role, resolve_bucket_region, s3_client_for
 from .cur_columns import resolve_columns, resolve_cost_metrics
 from .manifest import find_month_manifest_key, load_manifest, parse_s3_uri
+from .part_files import list_part_file_sizes
 from .readers.duckdb_reader import aggregate
 from .schemas import CurJobStartedResponse, CurJobStatusResponse, CurLoadRequest, CurLoadResponse
 
@@ -80,6 +81,7 @@ def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
     cost_metrics = resolve_cost_metrics(manifest["columns"])
 
     result = aggregate(creds, region, location.bucket, part_keys, file_format, columns, cost_metrics)
+    part_sizes = list_part_file_sizes(s3_client, location.bucket, part_keys)
 
     return CurLoadResponse(
         billing_period=req.month,
@@ -94,6 +96,7 @@ def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
         available_cost_metrics=result["available_cost_metrics"],
         drilldown=result["drilldown"],
         day_drilldown=result["day_drilldown"],
+        part_files=[{"key": k, "size_bytes": part_sizes.get(k, 0)} for k in part_keys],
     )
 
 

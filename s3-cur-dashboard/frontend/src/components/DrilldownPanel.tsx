@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
+import { metricLabel } from "../lib/format";
 import type { DimensionalCosts } from "../types";
 
 interface DrilldownPanelProps {
@@ -31,14 +32,6 @@ const UNKNOWN_EXPLANATIONS: Record<Dimension, string> = {
   charge_type:
     "“unknown” means AWS's CUR export didn't record a charge type for these line items.",
 };
-
-function metricLabel(metric: string): string {
-  // "net_unblended_cost" -> "Net Unblended Cost"
-  return metric
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 const OTHER_DIMENSIONS: Record<Dimension, { key: Dimension; label: string }[]> = {
   product_category: [DIMENSIONS[1], DIMENSIONS[2]],
