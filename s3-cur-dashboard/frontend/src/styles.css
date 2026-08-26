@@ -220,15 +220,26 @@ header h1 {
   background: #1a2333;
 }
 
+.account-table tbody tr.drilldown-row {
+  cursor: default;
+}
+
+.account-table tbody tr.drilldown-row:hover {
+  background: transparent;
+}
+
+.drilldown-cell {
+  padding: 0 !important;
+  background: #12151b;
+}
+
 .empty {
   color: #9aa1ab;
 }
 
 /* ---------- Account drill-down ---------- */
 .drilldown {
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid #262b35;
+  padding: 16px 14px 18px;
 }
 
 .drilldown-head {

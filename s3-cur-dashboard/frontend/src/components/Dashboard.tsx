@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { CurLoadResponse } from "../types";
 import { AccountDrilldown } from "./AccountDrilldown";
 import { BarChart } from "./BarChart";
@@ -70,28 +70,35 @@ export function Dashboard({ data }: DashboardProps) {
             </tr>
           </thead>
           <tbody>
-            {data.cost_by_account.map((a) => (
-              <tr
-                key={a.account_id}
-                onClick={hasDrilldown ? () => setSelectedAccount(a.account_id === selectedAccount ? null : a.account_id) : undefined}
-                className={a.account_id === selectedAccount ? "selected" : undefined}
-              >
-                <td>{a.account_id}</td>
-                <td>{money(a.cost)}</td>
-              </tr>
-            ))}
+            {data.cost_by_account.map((a) => {
+              const isSelected = a.account_id === selectedAccount;
+              return (
+                <Fragment key={a.account_id}>
+                  <tr
+                    onClick={hasDrilldown ? () => setSelectedAccount(isSelected ? null : a.account_id) : undefined}
+                    className={isSelected ? "selected" : undefined}
+                  >
+                    <td>{a.account_id}</td>
+                    <td>{money(a.cost)}</td>
+                  </tr>
+                  {hasDrilldown && isSelected && (
+                    <tr className="drilldown-row">
+                      <td colSpan={2} className="drilldown-cell">
+                        <AccountDrilldown
+                          accountId={a.account_id}
+                          rows={data.drilldown}
+                          availableCostMetrics={data.available_cost_metrics}
+                          formatMoney={money}
+                          onClose={() => setSelectedAccount(null)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
-
-        {hasDrilldown && selectedAccount && (
-          <AccountDrilldown
-            accountId={selectedAccount}
-            rows={data.drilldown}
-            availableCostMetrics={data.available_cost_metrics}
-            formatMoney={money}
-            onClose={() => setSelectedAccount(null)}
-          />
-        )}
       </div>
     </div>
   );
