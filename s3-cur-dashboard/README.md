@@ -257,9 +257,9 @@ by day, and cost by linked account for that billing period, plus
 and its cost are visible. A `job_id` not found (expired, or never existed)
 returns `404`.
 
-It also carries everything the per-account drill-down UI needs, computed
-in the same pass as everything else above (one extra `GROUP BY`, not a
-second read of the export):
+It also carries everything the per-account and per-day drill-down UIs
+need, computed in the same pass as everything else above (two extra
+`GROUP BY`s, not a second read of the export):
 
 - `available_cost_metrics` — whichever cost columns this specific export
   actually has (e.g. `["unblended_cost", "blended_cost"]`; `net_*` variants
@@ -272,10 +272,17 @@ second read of the export):
   `cost_by_service`'s `service`; `resource_category` resolves to
   `product/productFamily` and `charge_type` to `lineItem/LineItemType`
   when present, falling back to `"unknown"` for exports that lack them.
+- `day_drilldown` — the same idea, grouped by `(date, product_category,
+  resource_category, charge_type)` instead of by account. Account isn't
+  part of this grouping, so it stays bounded by day-count × distinct
+  combinations rather than also multiplying in account cardinality.
 
 The frontend fetches this all once and drills through it entirely
-client-side — clicking an account in "Cost by linked account" needs no
-further request.
+client-side — clicking an account in "Cost by linked account", or a date
+in "Cost by day", needs no further request. Both drill-downs render
+through the same `DrilldownPanel` component (metric → dimension → search,
+with click-to-expand rows to reconcile totals across dimensions), just
+fed a different slice of rows.
 
 ## Notes / follow-ups
 

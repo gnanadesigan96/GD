@@ -2,6 +2,7 @@ import { Fragment, useState } from "react";
 import type { CurLoadResponse } from "../types";
 import { AccountDrilldown } from "./AccountDrilldown";
 import { BarChart } from "./BarChart";
+import { DayDrilldown } from "./DayDrilldown";
 import { LineChart } from "./LineChart";
 
 interface DashboardProps {
@@ -23,7 +24,9 @@ function formatMoney(value: number, currency: string | null): string {
 export function Dashboard({ data }: DashboardProps) {
   const money = (v: number) => formatMoney(v, data.currency);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const hasDrilldown = data.drilldown.length > 0 && data.available_cost_metrics.length > 0;
+  const hasDayDrilldown = data.day_drilldown.length > 0 && data.available_cost_metrics.length > 0;
 
   return (
     <div className="dashboard">
@@ -57,6 +60,48 @@ export function Dashboard({ data }: DashboardProps) {
       <div className="panel">
         <h2>Daily cost trend</h2>
         <LineChart data={data.cost_by_day} />
+      </div>
+
+      <div className="panel">
+        <h2>Cost by day</h2>
+        {hasDayDrilldown && <p className="panel-hint">Click a day to see its cost broken down by product category, resource category, and charge type.</p>}
+        <table className={hasDayDrilldown ? "account-table clickable" : "account-table"}>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.cost_by_day.map((d) => {
+              const isSelected = d.date === selectedDay;
+              return (
+                <Fragment key={d.date}>
+                  <tr
+                    onClick={hasDayDrilldown ? () => setSelectedDay(isSelected ? null : d.date) : undefined}
+                    className={isSelected ? "selected" : undefined}
+                  >
+                    <td>{d.date}</td>
+                    <td>{money(d.cost)}</td>
+                  </tr>
+                  {hasDayDrilldown && isSelected && (
+                    <tr className="drilldown-row">
+                      <td colSpan={2} className="drilldown-cell">
+                        <DayDrilldown
+                          date={d.date}
+                          rows={data.day_drilldown}
+                          availableCostMetrics={data.available_cost_metrics}
+                          formatMoney={money}
+                          onClose={() => setSelectedDay(null)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <div className="panel">

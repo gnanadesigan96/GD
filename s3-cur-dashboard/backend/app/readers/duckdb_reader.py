@@ -224,6 +224,30 @@ def aggregate(
                     "charge_type": str(chg_type) if chg_type is not None else "unknown",
                     "costs": {name: float(v or 0) for name, v in zip(metric_names, metric_values)},
                 })
+
+        # Same idea as the account drill-down above, grouped by calendar day
+        # instead of account: one row per (day, product category, resource
+        # category, charge type) actually present. Account isn't part of the
+        # group here -- that keeps this bounded by day-count x distinct
+        # combinations rather than multiplying in account cardinality too,
+        # and the "cost by day" view this powers isn't per-account anyway.
+        day_drilldown = []
+        if cost_metrics:
+            metric_select = ", ".join(f"SUM(metric_{name}) AS metric_{name}" for name in cost_metrics)
+            rows = con.execute(
+                f"SELECT day, service, resource_category, charge_type, {metric_select} "
+                f"FROM cur_data WHERE day IS NOT NULL GROUP BY 1, 2, 3, 4"
+            ).fetchall()
+            metric_names = list(cost_metrics.keys())
+            for row in rows:
+                day_val, svc, res_cat, chg_type, *metric_values = row
+                day_drilldown.append({
+                    "date": str(day_val),
+                    "product_category": str(svc) if svc is not None else "unknown",
+                    "resource_category": str(res_cat) if res_cat is not None else "unknown",
+                    "charge_type": str(chg_type) if chg_type is not None else "unknown",
+                    "costs": {name: float(v or 0) for name, v in zip(metric_names, metric_values)},
+                })
     except duckdb.Error as exc:
         print(f"DuckDB query failed: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=502, detail=f"DuckDB query failed: {exc}") from exc
@@ -247,4 +271,5 @@ def aggregate(
         "cost_by_account": [{"account_id": str(a) if a is not None else "unknown", "cost": float(c or 0)} for a, c in by_account],
         "available_cost_metrics": list(cost_metrics.keys()),
         "drilldown": drilldown,
+        "day_drilldown": day_drilldown,
     }

@@ -20,12 +20,19 @@ export interface AccountCost {
   cost: number;
 }
 
-export interface DrilldownRow {
-  account_id: string;
+export interface DimensionalCosts {
   product_category: string;
   resource_category: string;
   charge_type: string;
   costs: Record<string, number>;
+}
+
+export interface DrilldownRow extends DimensionalCosts {
+  account_id: string;
+}
+
+export interface DayDrilldownRow extends DimensionalCosts {
+  date: string;
 }
 
 export interface CurLoadResponse {
@@ -40,6 +47,7 @@ export interface CurLoadResponse {
   load_time_ms: number;
   available_cost_metrics: string[];
   drilldown: DrilldownRow[];
+  day_drilldown: DayDrilldownRow[];
 }
 
 export interface CurJobStartedResponse {
