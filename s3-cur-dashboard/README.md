@@ -33,9 +33,19 @@ the page and it's gone.
    month, in whichever format the customer's export uses:
    - **Parquet** — columnar and splittable, read directly via DuckDB's
      `httpfs` extension with projection/predicate pushdown.
-   - **Gzip CSV** — a single gzip member isn't splittable, but a CUR export
-     is always many part files, so DuckDB still parallelizes across files
-     even though each one decompresses on a single thread.
+   - **Gzip or uncompressed CSV** — a single gzip member isn't splittable,
+     but a CUR export is always many part files, so DuckDB still
+     parallelizes across files even though each one decompresses (if
+     compressed at all — `compression='auto'` sniffs per file rather than
+     assuming) on a single thread.
+   - **ZIP-compressed CSV** (legacy CUR's other compression option) — a
+     real ZIP archive per part, which DuckDB can't read directly the way it
+     can sniff gzip or plain CSV from a stream. Each part is downloaded via
+     boto3 (in parallel) and its single CSV member extracted to a
+     per-request `/tmp` directory before DuckDB reads it locally; the
+     extracted files are deleted once the request finishes, success or
+     failure, so nothing from one request's data survives into another
+     request on a reused warm Lambda container.
 
    Column names differ between the two formats (Parquet uses Athena-style
    `line_item_unblended_cost`, CSV uses the raw manifest header
