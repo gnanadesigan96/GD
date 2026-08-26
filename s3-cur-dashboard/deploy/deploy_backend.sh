@@ -27,9 +27,9 @@ FUNCTION_NAME="${FUNCTION_NAME:-cur-dashboard-backend}"
 ECR_REPO_NAME="${ECR_REPO_NAME:-cur-dashboard-backend}"
 ROLE_NAME="${ROLE_NAME:-cur-dashboard-lambda-role}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
-MEMORY_MB="${MEMORY_MB:-2048}"     # more memory = more vCPU = faster DuckDB parallel scans
+MEMORY_MB="${MEMORY_MB:-4096}"     # more memory = more vCPU = faster DuckDB parallel scans; a real (small) test account's one-month ZIP-CUR export alone used 1.4GB RSS decompressing 3 part files, so 2048 left too little headroom
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-120}"
-EPHEMERAL_STORAGE_MB="${EPHEMERAL_STORAGE_MB:-1024}"  # default 512MB is tight once DuckDB caches its httpfs extension + any query spill files in /tmp
+EPHEMERAL_STORAGE_MB="${EPHEMERAL_STORAGE_MB:-10240}"  # max Lambda allows (10GB) -- the same real test hit "No space left on device" at 1024MB from just 3 extracted part files; a full month for a busier account, or ZIP-compressed CUR in general, can need much more /tmp than the 512MB default
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/../backend"
