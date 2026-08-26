@@ -198,27 +198,27 @@ def aggregate(
         cost_base_col = "" if cost_metric_alias else f", TRY_CAST({_col_ref(file_format, columns['cost'])} AS DOUBLE) AS cost_raw"
         cost_agg_source = f"metric_{cost_metric_alias}" if cost_metric_alias else "cost_raw"
 
-        # Every breakdown the dashboard needs -- the grand total, by
-        # service/day/account, and the account drill-down -- comes out of a
-        # single pass over the source with one multi-grouping-set hash
-        # aggregate (verified via EXPLAIN to be one HASH_GROUP_BY over one
-        # SEQ_SCAN, no intermediate materialization), instead of copying the
-        # full export into a temp table first and re-querying that copy
-        # multiple times. This is what actually fixed a large export's "Out
-        # of Memory... max_temp_directory_size" error -- there's no longer a
-        # full row-level copy of the month sitting in memory/spilled to
-        # /tmp at all, on top of reading the export exactly once either way.
+        # Only two grouping sets now: (day) for "cost by day", and
+        # (account_id, service, resource_category, charge_type) for the
+        # account drill-down -- both computed in one pass over the source
+        # with one multi-grouping-set hash aggregate (verified via EXPLAIN
+        # to be one HASH_GROUP_BY over one SEQ_SCAN, no intermediate
+        # materialization).
         #
-        # There used to be a sixth grouping set here, (day, service,
-        # resource_category, charge_type), powering a per-day product/
-        # resource/charge-type drill-down -- dropped because day-count x
-        # every other dimension's combinations made it by far the largest
-        # of the six hash-aggregate buckets, and cutting it measurably
-        # reduces peak memory for a large export. "Cost by day" still shows
-        # a per-metric breakdown (unblended/blended/net_unblended/etc, no
-        # further category dimension) -- that comes for free from the
-        # (day) grouping set below, since metric_sum_cols is already
-        # computed for every grouping set regardless.
+        # total_cost, cost_by_service, and cost_by_account used to each be
+        # their own grouping set, but none of them need to be: the account
+        # drill-down's grouping already includes account_id and service as
+        # two of its four dimensions, and SUM is associative, so summing
+        # its rows by account_id (or by service, or altogether) reproduces
+        # cost_by_account (or cost_by_service, or total_cost) exactly --
+        # GROUP BY (account_id, service, resource_category, charge_type) is
+        # a strict refinement of GROUP BY (account_id) alone, GROUP BY
+        # (service) alone, and GROUP BY () (the grand total). Deriving them
+        # in Python from data already being fetched, instead of computing
+        # them as three more grouping-set buckets, cut this query's peak
+        # memory further on top of the earlier 6-sets-to-5 cut (day-level
+        # category drill-down removed) -- verified against a real Flatiron
+        # load: 6106MB -> 4124MB -> 4202MB -> lower again with this change.
         #
         # GROUPING_ID(service, day, account_id, resource_category,
         # charge_type) tags each output row with which grouping set
@@ -226,30 +226,13 @@ def aggregate(
         # rolled up/not grouped, 0 = grouped) -- routing rows below by this
         # tag rather than by NULL-checking the columns themselves, since a
         # column's real value can legitimately be NULL too (e.g. service).
-        GID_TOTAL = 0b11111        # ()
-        GID_BY_SERVICE = 0b01111   # (service)
-        GID_BY_DAY = 0b10111       # (day)
-        GID_BY_ACCOUNT = 0b11011   # (account_id)
-        GID_DRILLDOWN = 0b01000    # (account_id, service, resource_category, charge_type)
+        GID_BY_DAY = 0b10111     # (day)
+        GID_DRILLDOWN = 0b01000  # (account_id, service, resource_category, charge_type)
 
         metric_names = list(cost_metrics.keys())
         metric_sum_cols = ", ".join(f"SUM(metric_{name}) AS metric_{name}" for name in metric_names)
-        # Always include the drill-down set, even when cost_metrics is
-        # empty (rare -- effectively every real CUR export has at least
-        # UnblendedCost): DuckDB requires every column passed to
-        # GROUPING_ID to appear in at least one grouping set, so
-        # resource_category/charge_type can't be conditionally dropped
-        # here without also dropping them from GROUPING_ID's argument list
-        # (and every GID constant with them). Cheaper to compute one extra
-        # always-tiny grouping-set bucket in that rare case than to carry
-        # two parallel bit-weight schemes. Whether cost_metrics is empty is
-        # instead handled where drilldown rows get appended below, matching
-        # the old behavior's "if cost_metrics:" gate exactly.
         grouping_sets = [
-            "()",
-            "(service)",
             "(day)",
-            "(account_id)",
             "(account_id, service, resource_category, charge_type)",
         ]
 
@@ -272,11 +255,8 @@ def aggregate(
             + f" GROUP BY GROUPING SETS ({', '.join(grouping_sets)})"
         ).fetchall()
 
-        total_cost = 0.0
         currency = None
-        by_service: list[tuple] = []
         by_day: list[tuple] = []
-        by_account: list[tuple] = []
         # The account drill-down: one row per (account, product category,
         # resource category, charge type) actually present, with every
         # detected cost metric alongside it -- e.g. "AmazonEC2 / Compute
@@ -285,34 +265,42 @@ def aggregate(
         # by how many distinct combinations occur, not by row count) and
         # the frontend can pivot through it entirely client-side without
         # another request.
-        drilldown = []
+        drilldown_all: list[tuple] = []
 
         for row in rows:
             svc, day_val, acct, res_cat, chg_type, gid, curr, cost_val, *metric_values = row
             cost_val = float(cost_val or 0)
-            metric_costs = {name: float(v or 0) for name, v in zip(metric_names, metric_values)}
-            if gid == GID_TOTAL:
-                total_cost = cost_val
+            if curr is not None and currency is None:
                 currency = curr
-            elif gid == GID_BY_SERVICE:
-                by_service.append((svc, cost_val))
-            elif gid == GID_BY_DAY:
-                by_day.append((day_val, cost_val, metric_costs))
-            elif gid == GID_BY_ACCOUNT:
-                by_account.append((acct, cost_val))
-            elif cost_metrics and gid == GID_DRILLDOWN:
-                drilldown.append({
-                    "account_id": str(acct) if acct is not None else "unknown",
-                    "product_category": str(svc) if svc is not None else "unknown",
-                    "resource_category": str(res_cat) if res_cat is not None else "unknown",
-                    "charge_type": str(chg_type) if chg_type is not None else "unknown",
-                    "costs": metric_costs,
-                })
+            if gid == GID_BY_DAY:
+                by_day.append((day_val, cost_val))
+            elif gid == GID_DRILLDOWN:
+                metric_costs = {name: float(v or 0) for name, v in zip(metric_names, metric_values)}
+                drilldown_all.append((acct, svc, res_cat, chg_type, cost_val, metric_costs))
 
-        by_service.sort(key=lambda x: -x[1])
-        by_account.sort(key=lambda x: -x[1])
-        by_day = [(d, c, costs) for d, c, costs in by_day if d is not None]
+        by_day = [(d, c) for d, c in by_day if d is not None]
         by_day.sort(key=lambda x: x[0])
+
+        total_cost = sum(cost_val for *_, cost_val, _ in drilldown_all)
+
+        by_service_totals: dict = {}
+        by_account_totals: dict = {}
+        for acct, svc, _res_cat, _chg_type, cost_val, _metric_costs in drilldown_all:
+            by_service_totals[svc] = by_service_totals.get(svc, 0.0) + cost_val
+            by_account_totals[acct] = by_account_totals.get(acct, 0.0) + cost_val
+        by_service = sorted(by_service_totals.items(), key=lambda x: -x[1])
+        by_account = sorted(by_account_totals.items(), key=lambda x: -x[1])
+
+        drilldown = [
+            {
+                "account_id": str(acct) if acct is not None else "unknown",
+                "product_category": str(svc) if svc is not None else "unknown",
+                "resource_category": str(res_cat) if res_cat is not None else "unknown",
+                "charge_type": str(chg_type) if chg_type is not None else "unknown",
+                "costs": metric_costs,
+            }
+            for acct, svc, res_cat, chg_type, _cost_val, metric_costs in drilldown_all
+        ] if cost_metrics else []
     except duckdb.Error as exc:
         print(f"DuckDB query failed: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=502, detail=f"DuckDB query failed: {exc}") from exc
@@ -332,7 +320,7 @@ def aggregate(
         "total_cost": float(total_cost),
         "currency": currency,
         "cost_by_service": [{"service": str(s) if s is not None else "unknown", "cost": float(c or 0)} for s, c in by_service],
-        "cost_by_day": [{"date": str(d), "cost": float(c or 0), "costs": costs} for d, c, costs in by_day if d is not None],
+        "cost_by_day": [{"date": str(d), "cost": float(c or 0)} for d, c in by_day],
         "cost_by_account": [{"account_id": str(a) if a is not None else "unknown", "cost": float(c or 0)} for a, c in by_account],
         "available_cost_metrics": list(cost_metrics.keys()),
         "drilldown": drilldown,

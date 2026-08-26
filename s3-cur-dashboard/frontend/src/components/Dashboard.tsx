@@ -3,7 +3,6 @@ import { downloadCsv, formatBytes, metricLabel, toCsv } from "../lib/format";
 import type { CurLoadResponse } from "../types";
 import { AccountDrilldown } from "./AccountDrilldown";
 import { BarChart } from "./BarChart";
-import { DayCostBreakdown } from "./DayCostBreakdown";
 import { LineChart } from "./LineChart";
 
 const MAX_REPORT_ACCOUNTS = 10;
@@ -27,7 +26,6 @@ function formatMoney(value: number, currency: string | null): string {
 export function Dashboard({ data }: DashboardProps) {
   const money = (v: number) => formatMoney(v, data.currency);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [showPartFiles, setShowPartFiles] = useState(false);
   const [reportAccounts, setReportAccounts] = useState<Set<string>>(new Set());
   const [reportMetric, setReportMetric] = useState(data.available_cost_metrics[0] ?? "");
@@ -38,7 +36,6 @@ export function Dashboard({ data }: DashboardProps) {
     ? reportMetric
     : data.available_cost_metrics[0] ?? "";
   const hasDrilldown = data.drilldown.length > 0 && data.available_cost_metrics.length > 0;
-  const hasDayCosts = data.available_cost_metrics.length > 0;
   const hasPartFiles = data.part_files.length > 0;
 
   const toggleReportAccount = (accountId: string) => {
@@ -134,8 +131,7 @@ export function Dashboard({ data }: DashboardProps) {
 
       <div className="panel">
         <h2>Cost by day</h2>
-        {hasDayCosts && <p className="panel-hint">Click a day to see its cost broken down by cost metric.</p>}
-        <table className={hasDayCosts ? "account-table clickable" : "account-table"}>
+        <table className="account-table">
           <thead>
             <tr>
               <th>Date</th>
@@ -143,33 +139,12 @@ export function Dashboard({ data }: DashboardProps) {
             </tr>
           </thead>
           <tbody>
-            {data.cost_by_day.map((d) => {
-              const isSelected = d.date === selectedDay;
-              return (
-                <Fragment key={d.date}>
-                  <tr
-                    onClick={hasDayCosts ? () => setSelectedDay(isSelected ? null : d.date) : undefined}
-                    className={isSelected ? "selected" : undefined}
-                  >
-                    <td>{d.date}</td>
-                    <td>{money(d.cost)}</td>
-                  </tr>
-                  {hasDayCosts && isSelected && (
-                    <tr className="drilldown-row">
-                      <td colSpan={2} className="drilldown-cell">
-                        <DayCostBreakdown
-                          date={d.date}
-                          costs={d.costs}
-                          availableCostMetrics={data.available_cost_metrics}
-                          formatMoney={money}
-                          onClose={() => setSelectedDay(null)}
-                        />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              );
-            })}
+            {data.cost_by_day.map((d) => (
+              <tr key={d.date}>
+                <td>{d.date}</td>
+                <td>{money(d.cost)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

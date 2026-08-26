@@ -13,7 +13,6 @@ export interface ServiceCost {
 export interface DailyCost {
   date: string;
   cost: number;
-  costs: Record<string, number>;
 }
 
 export interface AccountCost {

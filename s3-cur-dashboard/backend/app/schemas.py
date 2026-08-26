@@ -29,7 +29,6 @@ class ServiceCost(BaseModel):
 class DailyCost(BaseModel):
     date: str
     cost: float
-    costs: dict[str, float] = {}  # cost metric name (e.g. "unblended_cost") -> amount for that day
 
 
 class AccountCost(BaseModel):

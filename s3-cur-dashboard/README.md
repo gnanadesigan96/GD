@@ -257,9 +257,7 @@ by day, and cost by linked account for that billing period, plus
 and its cost are visible. A `job_id` not found (expired, or never existed)
 returns `404`.
 
-It also carries everything the per-account drill-down UI needs, computed
-in the same pass as everything else above (one extra `GROUP BY`, not a
-second read of the export):
+It also carries everything the per-account drill-down UI needs:
 
 - `available_cost_metrics` — whichever cost columns this specific export
   actually has (e.g. `["unblended_cost", "blended_cost"]`; `net_*` variants
@@ -273,21 +271,22 @@ second read of the export):
   `product/productFamily` and `charge_type` to `lineItem/LineItemType`
   when present, falling back to `"unknown"` for exports that lack them.
 
-`cost_by_day` entries also carry a `costs` map (cost per metric for that
-day) alongside the existing `date`/`cost` fields — no product/resource/
-charge-type dimension, just the metric breakdown. There used to be a
-separate `day_drilldown` array with the full category breakdown per day,
-mirroring the account one; it was removed because day-count × every other
-dimension's combinations made it by far the largest of the backend's
-grouping-set buckets, and cutting it measurably reduces peak memory on a
-large export. Clicking a day in the UI now shows a small per-metric table
-(`DayCostBreakdown`) instead of the full `DrilldownPanel`.
+`total_cost`, `cost_by_service`, and `cost_by_account` are all *derived*
+from `drilldown` server-side (summing its rows by nothing, by service, or
+by account respectively) rather than computed as their own `GROUP BY`s --
+see the memory note below. `cost_by_day` is just `{date, cost}`, one
+metric (whichever `columns["cost"]` resolves to), no category or
+per-metric breakdown -- there used to be a per-day category drill-down
+(mirroring the account one) and a per-day per-metric breakdown, both
+removed for the same reason: less computed per grouping-set bucket means
+less peak memory on a large export, and this dimension wasn't worth the
+memory it cost. "Cost by day" is a plain, non-interactive table.
 
-The frontend fetches this all once and drills through it entirely
-client-side — clicking an account in "Cost by linked account" needs no
-further request. It renders through the shared `DrilldownPanel` component
-(metric → dimension → search, with click-to-expand rows to reconcile
-totals across dimensions).
+The frontend fetches the account drill-down once and drills through it
+entirely client-side — clicking an account in "Cost by linked account"
+needs no further request. It renders through the shared `DrilldownPanel`
+component (metric → dimension → search, with click-to-expand rows to
+reconcile totals across dimensions).
 
 It also carries `part_files` — one `{key, size_bytes}` entry per part file
 in the manifest, resolved with one (occasionally a handful of) paginated
@@ -308,23 +307,38 @@ extra request either, since the data's already loaded.
 - Only the classic CUR manifest shape (`columns` + `reportKeys`) and the
   CUR 2.0 `dataFiles` key are handled; if AWS changes the manifest schema
   again, `manifest.py`/`main.py` are the places to extend.
-- A very large export can still outgrow Lambda's memory and its ephemeral
-  storage (already maxed at 10GB — see `deploy_backend.sh`), surfacing as a
-  DuckDB "Out of Memory" / `max_temp_directory_size` error, which is what
-  happened against a real large customer export. Three things address
-  this: Lambda's memory is set to its own max (10240MB); DuckDB's
-  `memory_limit` is pinned to ~80% of that (via the
-  `AWS_LAMBDA_FUNCTION_MEMORY_SIZE` env var Lambda provides) so it spills
-  to disk as late as possible; and — the main fix —
-  `duckdb_reader.aggregate()` no longer materializes a full row-level copy
-  of the export into a temp table at all. Every breakdown (total,
-  by-service, by-day, by-account, the account drill-down) comes out of a
-  single `GROUP BY GROUPING SETS (...)` query that runs as one
-  `HASH_GROUP_BY` over one scan of the source (confirmed via `EXPLAIN`),
-  tagging each output row's grouping set via `GROUPING_ID(...)` rather than
-  a temp table + separate re-queries of it -- and the day-level category
-  drill-down (by far the largest of the grouping-set buckets) was dropped
-  entirely in favor of a lighter per-metric-only breakdown, further cutting
-  peak memory. Verified against a 3,000-row randomized synthetic export
-  cross-checked row-for-row against an independent pure-Python reference
-  implementation.
+- A very large export can outgrow Lambda's memory and its ephemeral
+  storage (max 10GB — see `deploy_backend.sh`), surfacing as a DuckDB "Out
+  of Memory" / `max_temp_directory_size` error, which is what happened
+  against a real large customer export. What actually fixed it, in order
+  of impact:
+  1. `duckdb_reader.aggregate()` doesn't materialize a full row-level copy
+     of the export into a temp table at all. Every breakdown comes out of
+     one `GROUP BY GROUPING SETS (...)` query that runs as a single
+     `HASH_GROUP_BY` over one scan of the source (confirmed via
+     `EXPLAIN`), tagging each output row's grouping set via
+     `GROUPING_ID(...)`.
+  2. That query was pared down to just **two** grouping sets --
+     `(day)` and `(account_id, service, resource_category, charge_type)`
+     -- instead of one per breakdown. `total_cost`, `cost_by_service`, and
+     `cost_by_account` are derived from the drill-down grouping's rows in
+     Python instead (SUM is associative: a finer GROUP BY's rows, summed
+     by a subset of its dimensions, reproduce a coarser GROUP BY exactly).
+     A separate per-day category drill-down and per-day per-metric
+     breakdown were also dropped, in that order, once real testing showed
+     each was more memory than the feature was worth.
+  3. DuckDB's `memory_limit` is pinned to ~80% of whatever Lambda's
+     configured memory is (via the `AWS_LAMBDA_FUNCTION_MEMORY_SIZE` env
+     var Lambda provides), so it spills to `/tmp` as late as possible
+     rather than guessing.
+
+  Verified against a 3,000-row randomized synthetic export cross-checked
+  row-for-row against an independent pure-Python reference implementation,
+  and against real Flatiron loads while empirically tuning Lambda's
+  configured memory down: 10240MB (6106MB actually used) → 8192MB (4124MB)
+  → 6144MB (4202MB) → lower again after the two-grouping-set change, each
+  step verified via CloudWatch's `REPORT ... Max Memory Used` line rather
+  than assumed. Memory and duration trade off against each other (fewer
+  vCPUs at lower memory can slow an I/O-bound load down), so re-verify
+  duration alongside memory after any further change here, not memory
+  alone.
