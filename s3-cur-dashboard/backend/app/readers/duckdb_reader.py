@@ -45,9 +45,12 @@ def aggregate(
     # Lambda's filesystem is read-only outside /tmp, and there's no HOME env
     # var set by default -- DuckDB's INSTALL needs *some* home/extension
     # directory to cache extensions in, and fails with "Can't find the home
-    # directory at ''" if left to its own defaults. Point both explicitly at
-    # /tmp, the one writable location in Lambda's runtime.
-    con = duckdb.connect(config={"home_directory": "/tmp"})
+    # directory at ''" if left to its own defaults. home_directory can't be
+    # passed via connect(config=...) on this pinned duckdb version (1.1.1
+    # rejects it there with "Could not set option ... as a global option");
+    # it has to be a regular SET statement after connecting instead.
+    con = duckdb.connect()
+    con.execute("SET home_directory='/tmp'")
     con.execute("SET extension_directory='/tmp/duckdb_extensions'")
     con.execute("INSTALL httpfs")
     con.execute("LOAD httpfs")
