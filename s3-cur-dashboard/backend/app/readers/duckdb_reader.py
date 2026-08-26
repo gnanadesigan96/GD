@@ -144,28 +144,39 @@ def aggregate(
         service = _col_ref(file_format, columns["service"])
         day = f"TRY_CAST({_col_ref(file_format, columns['usage_start_date'])} AS TIMESTAMP)::DATE"
         account = _col_ref(file_format, columns["account_id"])
+        currency_expr = _col_ref(file_format, columns["currency"]) if "currency" in columns else "NULL"
 
-        total_cost = con.execute(f"SELECT SUM({cost}) FROM {source}").fetchone()[0] or 0.0
+        # A CUR export can be dozens of columns wide; without this, each of
+        # the four queries below re-parses every part file from scratch
+        # just to re-derive the same handful of values. Doing that scan
+        # once and aggregating against the (small, in-memory) result
+        # instead is the difference between four full-file reads and one --
+        # the gap that pushed a real request over API Gateway's hard,
+        # non-configurable 30-second integration timeout.
+        con.execute(
+            f"CREATE TEMP TABLE cur_data AS "
+            f"SELECT {cost} AS cost, {service} AS service, {day} AS day, "
+            f"{account} AS account_id, {currency_expr} AS currency "
+            f"FROM {source}"
+        )
+
+        total_cost = con.execute("SELECT SUM(cost) FROM cur_data").fetchone()[0] or 0.0
 
         by_service = con.execute(
-            f"SELECT {service} AS service, SUM({cost}) AS cost FROM {source} "
-            f"GROUP BY 1 ORDER BY 2 DESC"
+            "SELECT service, SUM(cost) AS cost FROM cur_data GROUP BY 1 ORDER BY 2 DESC"
         ).fetchall()
 
         by_day = con.execute(
-            f"SELECT {day} AS day, SUM({cost}) AS cost FROM {source} "
-            f"GROUP BY 1 ORDER BY 1"
+            "SELECT day, SUM(cost) AS cost FROM cur_data GROUP BY 1 ORDER BY 1"
         ).fetchall()
 
         by_account = con.execute(
-            f"SELECT {account} AS account, SUM({cost}) AS cost FROM {source} "
-            f"GROUP BY 1 ORDER BY 2 DESC"
+            "SELECT account_id, SUM(cost) AS cost FROM cur_data GROUP BY 1 ORDER BY 2 DESC"
         ).fetchall()
 
         currency = None
         if "currency" in columns:
-            currency_ref = _col_ref(file_format, columns["currency"])
-            row = con.execute(f"SELECT {currency_ref} FROM {source} LIMIT 1").fetchone()
+            row = con.execute("SELECT currency FROM cur_data LIMIT 1").fetchone()
             currency = row[0] if row else None
     except duckdb.Error as exc:
         print(f"DuckDB query failed: {type(exc).__name__}: {exc}")
