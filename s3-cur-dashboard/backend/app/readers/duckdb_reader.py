@@ -26,7 +26,13 @@ def _build_source(file_format: str, paths: list[str]) -> str:
     array_literal = "[" + ", ".join(f"'{p}'" for p in paths) + "]"
     if file_format == "parquet":
         return f"read_parquet({array_literal}, union_by_name=true)"
-    return f"read_csv({array_literal}, header=true, compression='gzip', all_varchar=true, union_by_name=true)"
+    # compression='auto' (not a hardcoded 'gzip'): CUR CSV exports aren't
+    # always gzip-compressed -- main.py's format detection only checks for
+    # ".parquet", so anything else lands here regardless of whether it's
+    # actually gzip, uncompressed, or something else DuckDB can sniff from
+    # the file itself. Hardcoding 'gzip' broke with "Input is not a GZIP
+    # stream" against a real, uncompressed CUR export.
+    return f"read_csv({array_literal}, header=true, compression='auto', all_varchar=true, union_by_name=true)"
 
 
 def _col_ref(file_format: str, column: ResolvedColumn) -> str:
