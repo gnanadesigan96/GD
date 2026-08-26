@@ -9,7 +9,23 @@ import type { CurJobStartedResponse, CurJobStatusResponse, CurLoadRequest, CurLo
 // origin at all.
 const API_KEY = import.meta.env.VITE_API_KEY || "";
 
-const POLL_INTERVAL_MS = 2000;
+// Polls fast at first (quick loads get quick feedback), then backs off --
+// a Flatiron-scale load can take minutes, and polling every 2s for all of
+// that is wasted API Gateway/DynamoDB/Lambda-invocation cost for zero
+// benefit (the elapsed-seconds counter is the only thing that'd notice).
+const POLL_BACKOFF_SCHEDULE: { afterSeconds: number; intervalMs: number }[] = [
+  { afterSeconds: 0, intervalMs: 2000 },
+  { afterSeconds: 20, intervalMs: 5000 },
+  { afterSeconds: 60, intervalMs: 10000 },
+];
+
+function pollIntervalFor(elapsedSeconds: number): number {
+  let interval = POLL_BACKOFF_SCHEDULE[0].intervalMs;
+  for (const step of POLL_BACKOFF_SCHEDULE) {
+    if (elapsedSeconds >= step.afterSeconds) interval = step.intervalMs;
+  }
+  return interval;
+}
 
 function authHeaders(): Record<string, string> {
   return API_KEY ? { "x-api-key": API_KEY } : {};
@@ -54,7 +70,8 @@ export async function loadCur(req: CurLoadRequest, onTick?: (elapsedSeconds: num
   const startedAt = Date.now();
 
   for (;;) {
-    await sleep(POLL_INTERVAL_MS);
+    const elapsedSeconds = Math.round((Date.now() - startedAt) / 1000);
+    await sleep(pollIntervalFor(elapsedSeconds));
     const status = await getCurJob(job_id);
     onTick?.(Math.round((Date.now() - startedAt) / 1000));
 
