@@ -38,11 +38,11 @@ export function CurForm({ onSubmit, loading }: CurFormProps) {
         <input value={externalId} onChange={(e) => setExternalId(e.target.value)} required />
       </label>
       <label>
-        S3 URI
+        S3 bucket or URI
         <input
           value={s3Uri}
           onChange={(e) => setS3Uri(e.target.value)}
-          placeholder="s3://my-cur-bucket/cur-reports/my-report"
+          placeholder="my-cur-bucket or s3://my-cur-bucket/cur-reports/my-report"
           required
         />
       </label>

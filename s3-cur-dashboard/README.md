@@ -13,9 +13,15 @@ the page and it's gone.
    for that one request only and are never persisted.
 2. **Locate the month**: CUR exports are partitioned into one folder per
    billing period (`<report>/<YYYYMMDD>-<YYYYMMDD>/` for legacy CUR, or
-   `<report>/BILLING_PERIOD=<YYYY-MM>/` for CUR 2.0/Data Exports). The
-   backend lists the report prefix once and picks the folder matching the
-   requested month, then reads that folder's manifest — never anything
+   `<report>/BILLING_PERIOD=<YYYY-MM>/` for CUR 2.0/Data Exports). `s3_uri`
+   only has to name the bucket (`my-cur-bucket`) or a bucket + `s3://`
+   scheme (`s3://my-cur-bucket`) — the report's own prefix inside the
+   bucket is optional. When it's given, the backend lists just that prefix;
+   when it's omitted, the backend scans the whole bucket for a manifest
+   matching the requested month instead (slower, since it's listing
+   everything in the bucket, but means the customer never has to hand us
+   their exact report path). Either way, it picks the folder matching the
+   requested month and reads that folder's manifest — never anything
    outside the selected month. AWS regenerates a billing period's report
    repeatedly as costs settle, and each regeneration is a full cumulative
    report for the month (not a delta), so when a customer's report history
@@ -198,7 +204,7 @@ bill forever.
 {
   "role_arn": "arn:aws:iam::123456789012:role/CurReaderRole",
   "external_id": "customer-supplied-external-id",
-  "s3_uri": "s3://my-cur-bucket/cur-reports/my-report",
+  "s3_uri": "my-cur-bucket",
   "month": "2026-06"
 }
 ```

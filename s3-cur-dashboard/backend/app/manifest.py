@@ -39,13 +39,19 @@ class S3Location:
 
 
 def parse_s3_uri(s3_uri: str) -> S3Location:
-    if not s3_uri.startswith("s3://"):
-        raise HTTPException(status_code=400, detail="s3_uri must start with s3://")
-    without_scheme = s3_uri[len("s3://"):]
-    parts = without_scheme.split("/", 1)
-    if len(parts) != 2 or not parts[1]:
-        raise HTTPException(status_code=400, detail="s3_uri must include a bucket and report prefix")
-    return S3Location(bucket=parts[0], key=parts[1].rstrip("/"))
+    """Accepts a bare bucket name, "bucket/prefix", or either of those with
+    an "s3://" scheme. The prefix is optional -- when it's omitted (just a
+    bucket), find_month_manifest_key scans the whole bucket to locate the
+    requested month's report instead of requiring the caller to already
+    know its exact path.
+    """
+    without_scheme = s3_uri[len("s3://"):] if s3_uri.startswith("s3://") else s3_uri
+    if not without_scheme:
+        raise HTTPException(status_code=400, detail="s3_uri must not be empty")
+    bucket, _, prefix = without_scheme.partition("/")
+    if not bucket:
+        raise HTTPException(status_code=400, detail="s3_uri must include a bucket name")
+    return S3Location(bucket=bucket, key=prefix.rstrip("/"))
 
 
 def _folder_matches_month(folder: str, month: str) -> bool:
@@ -62,24 +68,33 @@ def _folder_matches_month(folder: str, month: str) -> bool:
 
 
 def find_month_manifest_key(s3_client, bucket: str, report_prefix: str, month: str) -> str:
+    """report_prefix narrows the S3 listing when known, but isn't required:
+    the billing-period match is checked against the whole key (not just the
+    segment immediately after report_prefix), so passing "" scans the
+    entire bucket and auto-discovers the report's location -- useful when
+    the customer only gave us a bucket name. That full scan lists every
+    object in the bucket, so it's slower and costs more list-requests than
+    passing the report prefix when it's known.
+    """
     paginator = s3_client.get_paginator("list_objects_v2")
     matches = []  # (key, last_modified)
+    list_prefix = f"{report_prefix}/" if report_prefix else ""
     try:
-        for page in paginator.paginate(Bucket=bucket, Prefix=f"{report_prefix}/"):
+        for page in paginator.paginate(Bucket=bucket, Prefix=list_prefix):
             for obj in page.get("Contents", []):
                 key = obj["Key"]
                 if not (key.endswith("-Manifest.json") or key.endswith("Manifest.json")):
                     continue
-                folder = key[len(report_prefix):].strip("/")
-                if _folder_matches_month(folder, month):
+                if _folder_matches_month(key, month):
                     matches.append((key, obj["LastModified"]))
     except ClientError as exc:
         raise HTTPException(status_code=502, detail=f"Unable to list report files: {exc}") from exc
 
     if not matches:
+        location = f"s3://{bucket}/{report_prefix}" if report_prefix else f"s3://{bucket}"
         raise HTTPException(
             status_code=404,
-            detail=f"No CUR manifest found for billing period {month} under s3://{bucket}/{report_prefix}",
+            detail=f"No CUR manifest found for billing period {month} under {location}",
         )
 
     # Most recently regenerated report wins -- it already covers every day
