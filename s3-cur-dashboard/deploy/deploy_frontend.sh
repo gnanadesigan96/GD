@@ -1,23 +1,30 @@
 #!/usr/bin/env bash
-# Build the frontend, sync it to a private S3 bucket, and serve both the
-# frontend AND the backend API from one CloudFront distribution over HTTPS:
-# the default behavior serves the frontend from S3, and a /api/* behavior
-# forwards to the backend's API Gateway HTTP API endpoint. The S3 origin
-# uses Origin Access Control, so the bucket needs no public
-# ("Principal": "*") policy; the API Gateway origin is a plain public
-# custom origin (API Gateway's default endpoint is already public) --
-# access control there is the app-level CUR_DASHBOARD_API_KEY (see
-# require_api_key in main.py), not IAM signing. This still means the
-# frontend calls the API same-origin -- no CORS needed.
+# Build the frontend, sync it to a private S3 bucket, and serve it from a
+# CloudFront distribution over HTTPS.
 #
-# (An earlier version of this script routed /api/* to the backend Lambda's
-# Function URL via a second Origin Access Control. That combination -- a
-# CloudFront OAC signing requests to a Lambda Function URL origin --
-# reproducibly returned Forbidden in this AWS account despite matching
-# AWS's documented config exactly (verified with a direct SigV4-signed
-# request to the same URL, which succeeded). deploy_backend.sh now stands
-# up an API Gateway HTTP API in front of the same Lambda instead, which is
-# what this script points at.)
+# The frontend calls the backend two different ways depending on the call:
+# - /api/health (fast) goes through this same CloudFront distribution's
+#   /api/* behavior to the API Gateway HTTP API deploy_backend.sh creates.
+#   The S3 origin uses Origin Access Control (no public bucket policy
+#   needed); the API Gateway origin is a plain public custom origin
+#   (API Gateway's default endpoint is already public) -- access control
+#   there is the app-level CUR_DASHBOARD_API_KEY (see require_api_key in
+#   main.py), not IAM signing.
+# - /api/cur/load (slow -- a real CUR export can take minutes) is called
+#   DIRECTLY against the Lambda's Function URL, bypassing CloudFront and
+#   API Gateway entirely, because API Gateway's 30-second integration
+#   timeout is hard and not configurable, and a real 151-part CUR export
+#   already blew past it. A Function URL called directly has no such
+#   ceiling. This is baked into the frontend build via VITE_API_BASE_URL.
+#
+# (An earlier version of this script routed /api/* -- including the load
+# call -- to the Lambda's Function URL via CloudFront + a second Origin
+# Access Control. That combination -- CloudFront's OAC signing requests to
+# a Lambda Function URL origin -- reproducibly returned Forbidden in this
+# AWS account despite matching AWS's documented config exactly (verified
+# with a direct SigV4-signed request to the same URL, which succeeded).
+# Calling the Function URL directly, with no CloudFront/OAC/signing
+# involved at all, is a different code path from that failure.)
 #
 # CloudFront's free tier (1TB transfer + 10M requests per month) is
 # permanent, so this stays $0 at low traffic; PriceClass_100 restricts edge
@@ -62,11 +69,19 @@ fi
 API_ENDPOINT="$(aws apigatewayv2 get-api --api-id "$API_ID" --region "$AWS_REGION" --query 'ApiEndpoint' --output text)"
 API_DOMAIN="$(echo "$API_ENDPOINT" | sed -E 's#^https://##; s#/$##')"
 
+echo "== Looking up the Lambda Function URL (used directly for the slow /api/cur/load call) =="
+FUNCTION_URL="$(aws lambda get-function-url-config --function-name "$LAMBDA_FUNCTION_NAME" --region "$AWS_REGION" --query 'FunctionUrl' --output text 2>/dev/null || true)"
+if [ -z "$FUNCTION_URL" ] || [ "$FUNCTION_URL" = "None" ]; then
+  echo "No Function URL found on $LAMBDA_FUNCTION_NAME -- run deploy_backend.sh first." >&2
+  exit 1
+fi
+FUNCTION_URL="${FUNCTION_URL%/}"  # strip the trailing slash AWS always includes -- api.ts appends /api/cur/load itself
+
 echo "== Installing dependencies =="
 (cd "$FRONTEND_DIR" && npm install)
 
-echo "== Building (API calls are same-origin via /api/*, no base URL needed) =="
-(cd "$FRONTEND_DIR" && VITE_API_KEY="$API_KEY" npm run build)
+echo "== Building (/api/health same-origin via /api/*, /api/cur/load direct to the Function URL) =="
+(cd "$FRONTEND_DIR" && VITE_API_KEY="$API_KEY" VITE_API_BASE_URL="$FUNCTION_URL" npm run build)
 
 echo "== Ensuring bucket exists (private -- CloudFront reads it, the public internet does not) =="
 if ! aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
@@ -160,8 +175,9 @@ Frontend + API deployed.
   https://${DIST_DOMAIN}
 
 HTTPS via CloudFront's default certificate for that domain -- no ACM setup
-needed. The dashboard calls its own API at /api/* on this same domain, so
-there's nothing further to configure. To use your own domain, get a
+needed. The dashboard calls /api/health same-origin and /api/cur/load
+directly against ${FUNCTION_URL} -- both already baked into this build,
+nothing further to configure. To use your own domain, get a
 certificate imported/issued into ACM in us-east-1 (see
 import_certificate.sh for an existing cert/key) and re-run this script
 with DOMAIN_NAME and ACM_CERT_ARN set.

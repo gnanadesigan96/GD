@@ -1,20 +1,32 @@
 #!/usr/bin/env bash
 # Build the backend as a container image, push it to ECR, and create/update
-# the Lambda function + an API Gateway HTTP API in front of it.
+# the Lambda function + both an API Gateway HTTP API and a public Function
+# URL in front of it.
 #
-# Why API Gateway and not a Function URL: a Function URL with
-# AuthType=NONE needs a public (Principal:"*") resource policy, which this
-# account's setup rejected outright with Forbidden. Switching to
-# AuthType=AWS_IAM + CloudFront Origin Access Control (the documented fix
-# for exactly that problem) still failed the same way -- confirmed by a
-# controlled test: a genuinely SigV4-signed request straight to the
-# Function URL succeeded, but CloudFront's OAC-signed request to the same
-# URL did not, isolating the fault to CloudFront's OAC support for Lambda
-# Function URL origins in this account, not anything in this script's
-# config. API Gateway's Lambda proxy integration is a much older, more
-# battle-tested path that sidesteps that failure entirely -- the actual
-# access control is the app-level CUR_DASHBOARD_API_KEY (see main.py)
-# rather than IAM signing.
+# Why both: API Gateway's Lambda proxy integration is the reliable general
+# path in this account (see below for why a *CloudFront-fronted* Function
+# URL specifically doesn't work here) -- but API Gateway's 30-second
+# integration timeout is hard and not configurable. A real customer CUR
+# export (151 part files) blew past even Lambda's own 120s timeout, so
+# large loads need a call path with no 30-second ceiling. A Function URL
+# called directly (no CloudFront in front of it) has no such ceiling --
+# only the Lambda's own --timeout applies, which is why that's now set to
+# Lambda's max (900s). The frontend calls the Function URL directly for
+# /api/cur/load (the slow one) and can keep using either path for
+# /api/health.
+#
+# Why not route everything through a CloudFront-fronted Function URL
+# instead of API Gateway: AuthType=AWS_IAM + CloudFront Origin Access
+# Control (the documented pattern for that) failed in this account --
+# confirmed by a controlled test: a genuinely SigV4-signed request straight
+# to the Function URL succeeded, but CloudFront's OAC-signed request to the
+# same URL did not, isolating the fault to CloudFront's OAC support for
+# Lambda Function URL origins specifically, not anything in this script's
+# config. That's a different code path from calling the Function URL
+# directly (no CloudFront, no OAC, no signing at all) -- this script's
+# AuthType=NONE Function URL relies on the app-level CUR_DASHBOARD_API_KEY
+# for access control (see main.py) instead of IAM signing, same as the API
+# Gateway path already does.
 #
 # Requires: docker, aws cli v2, credentials with permission to manage ECR,
 # Lambda, API Gateway, and IAM in the target account/region.
@@ -28,7 +40,7 @@ ECR_REPO_NAME="${ECR_REPO_NAME:-cur-dashboard-backend}"
 ROLE_NAME="${ROLE_NAME:-cur-dashboard-lambda-role}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 MEMORY_MB="${MEMORY_MB:-4096}"     # more memory = more vCPU = faster DuckDB parallel scans; a real (small) test account's one-month ZIP-CUR export alone used 1.4GB RSS decompressing 3 part files, so 2048 left too little headroom
-TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-120}"
+TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-900}"  # Lambda's max -- a real 151-part CUR export already timed out at the old 120s default
 EPHEMERAL_STORAGE_MB="${EPHEMERAL_STORAGE_MB:-10240}"  # max Lambda allows (10GB) -- the same real test hit "No space left on device" at 1024MB from just 3 extracted part files; a full month for a busier account, or ZIP-compressed CUR in general, can need much more /tmp than the 512MB default
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -177,19 +189,67 @@ ADD_PERMISSION_OUTPUT="$(aws lambda add-permission \
 
 API_ENDPOINT="$(aws apigatewayv2 get-api --api-id "$API_ID" --region "$AWS_REGION" --query 'ApiEndpoint' --output text)"
 
+echo "== Ensuring Function URL exists (AuthType=NONE, for calls with no 30s ceiling) =="
+if ! aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
+  aws lambda create-function-url-config \
+    --function-name "$FUNCTION_NAME" \
+    --auth-type NONE \
+    --cors '{"AllowOrigins":["*"],"AllowMethods":["*"],"AllowHeaders":["*"]}' \
+    --region "$AWS_REGION" >/dev/null
+fi
+
+echo "== Ensuring the Function URL is publicly invocable =="
+ADD_URL_PERMISSION_OUTPUT="$(aws lambda add-permission \
+  --function-name "$FUNCTION_NAME" \
+  --statement-id FunctionURLAllowPublicAccess \
+  --action lambda:InvokeFunctionUrl \
+  --principal "*" \
+  --function-url-auth-type NONE \
+  --region "$AWS_REGION" 2>&1)" || {
+    if ! echo "$ADD_URL_PERMISSION_OUTPUT" | grep -q "ResourceConflictException"; then
+      echo "$ADD_URL_PERMISSION_OUTPUT" >&2
+      exit 1
+    fi
+    echo "(already granted on a prior run)"
+  }
+
+FUNCTION_URL="$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" --region "$AWS_REGION" --query 'FunctionUrl' --output text)"
+
+echo ""
+echo "== IMPORTANT: verify the Function URL is actually reachable before wiring the frontend to it =="
+echo "A public (AuthType=NONE) Function URL returned Forbidden the first time this was tried in this"
+echo "account, before CloudFront was ever involved -- that specific failure was never conclusively"
+echo "root-caused (attention shifted to the CloudFront+OAC case instead). Confirm this works on its"
+echo "own first:"
+echo ""
+echo "  curl -i -X POST ${FUNCTION_URL}api/cur/load -H 'Content-Type: application/json' -d '{}'"
+echo ""
+echo "Expect a 422 (FastAPI validation error for the empty body) or a real response -- NOT Forbidden."
+echo "If it's Forbidden, stop here and report back rather than proceeding to deploy_frontend.sh."
+echo ""
+
 cat <<EOF
 
 Backend deployed.
 
-  API endpoint: ${API_ENDPOINT}
-  (public, but every route requires the app-level CUR_DASHBOARD_API_KEY --
-  see require_api_key in main.py; this replaced a Function URL + CloudFront
-  OAC approach that AWS confirmed does not work for Lambda origins in this
-  account -- see the comment at the top of this script)
+  API endpoint (fast calls, e.g. /api/health):  ${API_ENDPOINT}
+  Function URL (slow calls, e.g. /api/cur/load): ${FUNCTION_URL}
+
+  Both require the app-level CUR_DASHBOARD_API_KEY -- see require_api_key
+  in main.py. The Function URL exists specifically because API Gateway's
+  30-second integration timeout is hard and not configurable, and a real
+  CUR export can take far longer than that to download/aggregate; calling
+  the Function URL directly (no CloudFront, no API Gateway) has no such
+  ceiling -- only the Lambda's own --timeout (900s, its max) applies.
+  VERIFY THE FUNCTION URL WORKS (see the curl command printed above)
+  before running deploy_frontend.sh -- a plain public Function URL
+  returned Forbidden the first time this was tried in this account,
+  before CloudFront was ever involved.
 
 Next: run deploy_frontend.sh with LAMBDA_FUNCTION_NAME=$FUNCTION_NAME --
-it wires this API Gateway endpoint into the same CloudFront distribution
-as the frontend as the /api/* origin.
+it wires the API endpoint into the CloudFront distribution as the /api/*
+origin, and builds the frontend to call the Function URL directly for
+/api/cur/load.
 
 Set CUR_DASHBOARD_CALLER_ACCESS_KEY_ID / _SECRET_ACCESS_KEY (or Azure Key
 Vault) on the function so it can actually assume customer roles -- see
