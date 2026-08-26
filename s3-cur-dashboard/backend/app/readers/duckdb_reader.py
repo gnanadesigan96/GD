@@ -68,6 +68,7 @@ def aggregate(
 
     paths = [f"s3://{bucket}/{key}" for key in part_keys]
     source = _build_source(file_format, paths)
+    print(f"aggregate: file_format={file_format!r} part_count={len(paths)} first_paths={paths[:3]!r}")
 
     cost = f"TRY_CAST({_col_ref(file_format, columns['cost'])} AS DOUBLE)"
     service = _col_ref(file_format, columns["service"])
