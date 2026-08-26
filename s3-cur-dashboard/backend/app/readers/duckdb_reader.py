@@ -119,6 +119,19 @@ def aggregate(
     # read-only outside /tmp, same class of problem as home_directory
     # above but only surfaces once the data is big enough to spill at all.
     con.execute("SET temp_directory='/tmp/duckdb_temp'")
+    # DuckDB auto-detects available memory from the container it's running
+    # in, but Lambda already tells us exactly how much it configured this
+    # invocation with -- using that directly (rather than trusting
+    # auto-detection inside a cgroup-limited container) keeps DuckDB from
+    # spilling to /tmp sooner than it needs to. Ephemeral storage is capped
+    # at Lambda's hard 10GB maximum (see deploy_backend.sh), so once a
+    # sufficiently large export starts spilling, there's no more disk to
+    # give it -- the only lever left is keeping more of the working set in
+    # RAM in the first place. Reserve ~20% of configured memory for the
+    # Python process, boto3, and the Lambda runtime itself.
+    lambda_memory_mb = os.environ.get("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
+    if lambda_memory_mb:
+        con.execute(f"SET memory_limit='{int(int(lambda_memory_mb) * 0.8)}MB'")
 
     zip_tmp_dir = f"/tmp/cur-{uuid.uuid4().hex}" if file_format == "csv_zip" else None
 
@@ -148,7 +161,6 @@ def aggregate(
         source = _build_source(file_format, paths)
         print(f"aggregate: file_format={file_format!r} part_count={len(paths)} first_paths={paths[:3]!r}")
 
-        cost = f"TRY_CAST({_col_ref(file_format, columns['cost'])} AS DOUBLE)"
         service = _col_ref(file_format, columns["service"])
         day = f"TRY_CAST({_col_ref(file_format, columns['usage_start_date'])} AS TIMESTAMP)::DATE"
         account = _col_ref(file_format, columns["account_id"])
@@ -163,6 +175,18 @@ def aggregate(
             for name, col in cost_metrics.items()
         )
 
+        # "cost" (used for total/by-service/by-day/by-account) and one of
+        # the drill-down's cost_metrics columns are, in the overwhelming
+        # common case, the exact same source column (both prefer
+        # lineItem/UnblendedCost first) -- materializing it twice would
+        # double that column's contribution to cur_data's footprint for no
+        # reason. Reuse the matching metric_<name> column when one exists;
+        # only fall back to a separate "cost" column in the rare case where
+        # it doesn't (e.g. an export with a cost/UnblendedCost column but no
+        # lineItem/Blended|UnblendedCost at all).
+        cost_metric_alias = next((name for name, col in cost_metrics.items() if col == columns["cost"]), None)
+        cost_select = f", metric_{cost_metric_alias} AS cost" if cost_metric_alias else f", TRY_CAST({_col_ref(file_format, columns['cost'])} AS DOUBLE) AS cost"
+
         # A CUR export can be dozens of columns wide; without this, each of
         # the queries below re-parses every part file from scratch just to
         # re-derive the same handful of values. Doing that scan once and
@@ -172,11 +196,12 @@ def aggregate(
         # 30-second integration timeout.
         con.execute(
             f"CREATE TEMP TABLE cur_data AS "
-            f"SELECT {cost} AS cost, {service} AS service, {day} AS day, "
+            f"SELECT {service} AS service, {day} AS day, "
             f"{account} AS account_id, {currency_expr} AS currency, "
             f"COALESCE({resource_category_expr}, 'unknown') AS resource_category, "
             f"COALESCE({charge_type_expr}, 'unknown') AS charge_type"
             + (f", {metric_cols}" if metric_cols else "")
+            + cost_select
             + f" FROM {source}"
         )
 

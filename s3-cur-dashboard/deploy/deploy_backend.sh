@@ -35,7 +35,7 @@ FUNCTION_NAME="${FUNCTION_NAME:-cur-dashboard-backend}"
 ECR_REPO_NAME="${ECR_REPO_NAME:-cur-dashboard-backend}"
 ROLE_NAME="${ROLE_NAME:-cur-dashboard-lambda-role}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
-MEMORY_MB="${MEMORY_MB:-4096}"     # more memory = more vCPU = faster DuckDB parallel scans; a real (small) test account's one-month ZIP-CUR export alone used 1.4GB RSS decompressing 3 part files, so 2048 left too little headroom
+MEMORY_MB="${MEMORY_MB:-10240}"     # Lambda's max -- more memory = more vCPU (up to 6) *and* more RAM for DuckDB to aggregate in without spilling to /tmp. A real (small) test account's one-month ZIP-CUR export alone used 1.4GB RSS decompressing 3 part files, and a larger customer export hit "Out of Memory" spilling past EPHEMERAL_STORAGE_MB's already-maxed 10GB -- once disk is maxed, more RAM is the only remaining lever
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-900}"  # Lambda's max -- a real 151-part CUR export already timed out at the old 120s default
 EPHEMERAL_STORAGE_MB="${EPHEMERAL_STORAGE_MB:-10240}"  # max Lambda allows (10GB) -- the same real test hit "No space left on device" at 1024MB from just 3 extracted part files; a full month for a busier account, or ZIP-compressed CUR in general, can need much more /tmp than the 512MB default
 
