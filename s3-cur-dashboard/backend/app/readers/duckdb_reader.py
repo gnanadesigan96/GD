@@ -42,7 +42,13 @@ def aggregate(
     file_format: str,
     columns: dict[str, ResolvedColumn],
 ) -> dict:
-    con = duckdb.connect()
+    # Lambda's filesystem is read-only outside /tmp, and there's no HOME env
+    # var set by default -- DuckDB's INSTALL needs *some* home/extension
+    # directory to cache extensions in, and fails with "Can't find the home
+    # directory at ''" if left to its own defaults. Point both explicitly at
+    # /tmp, the one writable location in Lambda's runtime.
+    con = duckdb.connect(config={"home_directory": "/tmp"})
+    con.execute("SET extension_directory='/tmp/duckdb_extensions'")
     con.execute("INSTALL httpfs")
     con.execute("LOAD httpfs")
     con.execute(f"SET s3_region='{region}'")
