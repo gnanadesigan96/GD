@@ -303,18 +303,20 @@ extra request either, since the data's already loaded.
 - Only the classic CUR manifest shape (`columns` + `reportKeys`) and the
   CUR 2.0 `dataFiles` key are handled; if AWS changes the manifest schema
   again, `manifest.py`/`main.py` are the places to extend.
-- For a very large export, `duckdb_reader.aggregate()`'s single
-  `CREATE TEMP TABLE cur_data` can outgrow both Lambda's memory and its
-  ephemeral storage (already maxed at 10GB — see `deploy_backend.sh`),
-  surfacing as a DuckDB "Out of Memory" / `max_temp_directory_size` error.
-  Lambda's memory is set to its own max (10240MB) and DuckDB's
+- A very large export can still outgrow Lambda's memory and its ephemeral
+  storage (already maxed at 10GB — see `deploy_backend.sh`), surfacing as a
+  DuckDB "Out of Memory" / `max_temp_directory_size` error, which is what
+  happened against a real large customer export. Three things address
+  this: Lambda's memory is set to its own max (10240MB); DuckDB's
   `memory_limit` is pinned to ~80% of that (via the
   `AWS_LAMBDA_FUNCTION_MEMORY_SIZE` env var Lambda provides) so it spills
-  to disk as late as possible, and the redundant `cost` column is no
-  longer materialized separately from the matching `cost_metrics` column
-  when they're the same source column (the common case). If an export is
-  large enough to still hit this ceiling, the durable fix is restructuring
-  the aggregation to avoid materializing the full row-level table at all —
-  e.g. a single `GROUP BY GROUPING SETS (...)` query computing every
-  breakdown (total, by-service, by-day, by-account, both drill-downs) in
-  one streaming pass over the source instead.
+  to disk as late as possible; and — the main fix —
+  `duckdb_reader.aggregate()` no longer materializes a full row-level copy
+  of the export into a temp table at all. Every breakdown (total,
+  by-service, by-day, by-account, both drill-downs) comes out of a single
+  `GROUP BY GROUPING SETS (...)` query that runs as one `HASH_GROUP_BY`
+  over one scan of the source (confirmed via `EXPLAIN`), tagging each
+  output row's grouping set via `GROUPING_ID(...)` rather than a temp
+  table + six separate re-queries of it. Verified against a 3,000-row
+  randomized synthetic export cross-checked row-for-row against an
+  independent pure-Python reference implementation.
