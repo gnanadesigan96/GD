@@ -17,6 +17,20 @@ const DIMENSIONS: { key: Dimension; label: string }[] = [
   { key: "charge_type", label: "Charge Type" },
 ];
 
+// AWS's own CUR export, not this dashboard, leaves these fields blank for
+// certain charge types that aren't tied to one specific service -- most
+// often enterprise/negotiated discounts, credits, refunds, and support fee
+// credits applied account-wide. Shown only when "unknown" actually appears
+// in the current view, since it usually doesn't.
+const UNKNOWN_EXPLANATIONS: Record<Dimension, string> = {
+  product_category:
+    "“unknown” means AWS's CUR export didn't record a product/service name for these line items -- typically account-wide discounts, credits, or refunds rather than usage of a specific AWS service.",
+  resource_category:
+    "“unknown” means AWS's CUR export didn't record a resource category for these line items -- typically account-wide discounts, credits, or refunds rather than a specific resource type.",
+  charge_type:
+    "“unknown” means AWS's CUR export didn't record a charge type for these line items.",
+};
+
 function metricLabel(metric: string): string {
   // "net_unblended_cost" -> "Net Unblended Cost"
   return metric
@@ -50,6 +64,7 @@ export function AccountDrilldown({ accountId, rows, availableCostMetrics, format
 
   const visibleTotal = visible.reduce((sum, g) => sum + g.cost, 0);
   const dimensionLabel = DIMENSIONS.find((d) => d.key === dimension)?.label ?? "";
+  const unknownRow = visible.find((g) => g.label === "unknown");
 
   return (
     <div className="drilldown">
@@ -129,6 +144,13 @@ export function AccountDrilldown({ accountId, rows, availableCostMetrics, format
           ))}
         </tbody>
       </table>
+
+      {unknownRow && (
+        <p className="drilldown-note">
+          <strong>“unknown”</strong> ({formatMoney(unknownRow.cost)}): {UNKNOWN_EXPLANATIONS[dimension]}{" "}
+          {dimension !== "charge_type" && 'Switch to "Charge Type" above to see what kind of charges these are.'}
+        </p>
+      )}
     </div>
   );
 }

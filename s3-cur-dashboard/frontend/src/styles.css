@@ -378,6 +378,21 @@ header h1 {
   text-align: right;
 }
 
+.drilldown-note {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  background: #1a1d13;
+  border: 1px solid #3a3a1f;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #c9c48a;
+}
+
+.drilldown-note strong {
+  color: #e0d98f;
+}
+
 @media (max-width: 640px) {
   .cur-form {
     grid-template-columns: 1fr;
