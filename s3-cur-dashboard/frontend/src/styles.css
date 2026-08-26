@@ -280,11 +280,23 @@ header h1 {
   color: #e6e8eb;
 }
 
-.drilldown-metrics {
+.drilldown-step {
+  margin-bottom: 14px;
+}
+
+.drilldown-step-label {
+  display: block;
+  font-size: 0.72rem;
+  color: #767c8c;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 7px;
+}
+
+.drilldown-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 14px;
 }
 
 .metric-pill {
@@ -322,13 +334,21 @@ header h1 {
   letter-spacing: 0.03em;
 }
 
-.drilldown-filter select {
+.drilldown-filter select,
+.drilldown-filter input[type="text"] {
   background: #0f1115;
   border: 1px solid #2c313c;
   border-radius: 6px;
   padding: 6px 10px;
   color: #e6e8eb;
   font-size: 0.85rem;
+  min-width: 220px;
+}
+
+.drilldown-filter input[type="text"]:focus,
+.drilldown-filter select:focus {
+  outline: none;
+  border-color: #3b82f6;
 }
 
 .drilldown-total {

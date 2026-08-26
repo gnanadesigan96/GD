@@ -9,6 +9,14 @@ interface AccountDrilldownProps {
   onClose: () => void;
 }
 
+type Dimension = "product_category" | "resource_category" | "charge_type";
+
+const DIMENSIONS: { key: Dimension; label: string }[] = [
+  { key: "product_category", label: "Product Category" },
+  { key: "resource_category", label: "Resource Category" },
+  { key: "charge_type", label: "Charge Type" },
+];
+
 function metricLabel(metric: string): string {
   // "net_unblended_cost" -> "Net Unblended Cost"
   return metric
@@ -19,28 +27,36 @@ function metricLabel(metric: string): string {
 
 export function AccountDrilldown({ accountId, rows, availableCostMetrics, formatMoney, onClose }: AccountDrilldownProps) {
   const [metric, setMetric] = useState(availableCostMetrics[0] ?? "");
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [dimension, setDimension] = useState<Dimension>("product_category");
+  const [search, setSearch] = useState("");
 
   const accountRows = useMemo(() => rows.filter((r) => r.account_id === accountId), [rows, accountId]);
 
-  const categories = useMemo(
-    () => Array.from(new Set(accountRows.map((r) => r.product_category))).sort(),
-    [accountRows]
-  );
+  const grouped = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of accountRows) {
+      const key = row[dimension];
+      totals.set(key, (totals.get(key) ?? 0) + (row.costs[metric] ?? 0));
+    }
+    return Array.from(totals.entries())
+      .map(([label, cost]) => ({ label, cost }))
+      .sort((a, b) => b.cost - a.cost);
+  }, [accountRows, dimension, metric]);
 
-  const visibleRows = useMemo(() => {
-    const filtered = categoryFilter ? accountRows.filter((r) => r.product_category === categoryFilter) : accountRows;
-    return [...filtered].sort((a, b) => (b.costs[metric] ?? 0) - (a.costs[metric] ?? 0));
-  }, [accountRows, categoryFilter, metric]);
+  const visible = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return term ? grouped.filter((g) => g.label.toLowerCase().includes(term)) : grouped;
+  }, [grouped, search]);
 
-  const total = visibleRows.reduce((sum, r) => sum + (r.costs[metric] ?? 0), 0);
+  const visibleTotal = visible.reduce((sum, g) => sum + g.cost, 0);
+  const dimensionLabel = DIMENSIONS.find((d) => d.key === dimension)?.label ?? "";
 
   return (
     <div className="drilldown">
       <div className="drilldown-head">
         <div>
           <span className="drilldown-title">Account {accountId}</span>
-          <span className="drilldown-sub">{visibleRows.length} charge combination{visibleRows.length === 1 ? "" : "s"}</span>
+          <span className="drilldown-sub">{accountRows.length} charge combination{accountRows.length === 1 ? "" : "s"}</span>
         </div>
         <button className="drilldown-close" onClick={onClose} aria-label="Close drill-down">
           Close
@@ -48,59 +64,67 @@ export function AccountDrilldown({ accountId, rows, availableCostMetrics, format
       </div>
 
       {availableCostMetrics.length > 0 && (
-        <div className="drilldown-metrics">
-          {availableCostMetrics.map((m) => (
-            <button
-              key={m}
-              className={m === metric ? "metric-pill active" : "metric-pill"}
-              onClick={() => setMetric(m)}
-            >
-              {metricLabel(m)}
-            </button>
-          ))}
+        <div className="drilldown-step">
+          <span className="drilldown-step-label">1. Cost metric</span>
+          <div className="drilldown-pills">
+            {availableCostMetrics.map((m) => (
+              <button key={m} className={m === metric ? "metric-pill active" : "metric-pill"} onClick={() => setMetric(m)}>
+                {metricLabel(m)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
+      <div className="drilldown-step">
+        <span className="drilldown-step-label">2. View by</span>
+        <div className="drilldown-pills">
+          {DIMENSIONS.map((d) => (
+            <button
+              key={d.key}
+              className={d.key === dimension ? "metric-pill active" : "metric-pill"}
+              onClick={() => setDimension(d.key)}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="drilldown-filter">
         <label>
-          Product category
-          <select value={categoryFilter ?? ""} onChange={(e) => setCategoryFilter(e.target.value || null)}>
-            <option value="">All categories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          Search {dimensionLabel.toLowerCase()}
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Filter by ${dimensionLabel.toLowerCase()}...`}
+          />
         </label>
         <span className="drilldown-total">
-          {metric ? metricLabel(metric) : "Cost"} total: <strong>{formatMoney(total)}</strong>
+          {metricLabel(metric || "cost")} total: <strong>{formatMoney(visibleTotal)}</strong>
         </span>
       </div>
 
       <table className="drilldown-table">
         <thead>
           <tr>
-            <th>Product category</th>
-            <th>Resource category</th>
-            <th>Charge type</th>
+            <th>{dimensionLabel}</th>
             <th>{metric ? metricLabel(metric) : "Cost"}</th>
           </tr>
         </thead>
         <tbody>
-          {visibleRows.length === 0 && (
+          {visible.length === 0 && (
             <tr>
-              <td colSpan={4} className="empty">
-                No line items for this account.
+              <td colSpan={2} className="empty">
+                {search ? "No matches for that search." : "No line items for this account."}
               </td>
             </tr>
           )}
-          {visibleRows.map((r, i) => (
-            <tr key={`${r.product_category}-${r.resource_category}-${r.charge_type}-${i}`}>
-              <td>{r.product_category}</td>
-              <td>{r.resource_category}</td>
-              <td>{r.charge_type}</td>
-              <td>{formatMoney(r.costs[metric] ?? 0)}</td>
+          {visible.map((g) => (
+            <tr key={g.label}>
+              <td>{g.label}</td>
+              <td>{formatMoney(g.cost)}</td>
             </tr>
           ))}
         </tbody>
