@@ -393,6 +393,64 @@ header h1 {
   color: #e0d98f;
 }
 
+.drilldown-row-hint {
+  margin: -6px 0 8px;
+  font-size: 0.76rem;
+  color: #767c8c;
+}
+
+.drilldown-table tbody tr.drilldown-row-clickable {
+  cursor: pointer;
+}
+
+.drilldown-table tbody tr.drilldown-row-clickable:hover {
+  background: #1c2027;
+}
+
+.drilldown-breakdown-cell {
+  padding: 0 !important;
+  background: #0f1115;
+}
+
+.drilldown-breakdown {
+  padding: 12px 14px 14px 26px;
+  border-left: 2px solid #2c313c;
+  margin-left: 10px;
+}
+
+.drilldown-breakdown-hint {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  color: #9aa1ab;
+}
+
+.drilldown-breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.drilldown-breakdown-col-label {
+  display: block;
+  font-size: 0.72rem;
+  color: #767c8c;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.drilldown-breakdown-col .drilldown-table th,
+.drilldown-breakdown-col .drilldown-table td {
+  padding: 5px 8px;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 640px) {
+  .drilldown-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
   .cur-form {
     grid-template-columns: 1fr;

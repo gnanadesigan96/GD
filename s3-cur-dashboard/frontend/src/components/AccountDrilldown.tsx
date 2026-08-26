@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { DrilldownRow } from "../types";
 
 interface AccountDrilldownProps {
@@ -39,10 +39,17 @@ function metricLabel(metric: string): string {
     .join(" ");
 }
 
+const OTHER_DIMENSIONS: Record<Dimension, { key: Dimension; label: string }[]> = {
+  product_category: [DIMENSIONS[1], DIMENSIONS[2]],
+  resource_category: [DIMENSIONS[0], DIMENSIONS[2]],
+  charge_type: [DIMENSIONS[0], DIMENSIONS[1]],
+};
+
 export function AccountDrilldown({ accountId, rows, availableCostMetrics, formatMoney, onClose }: AccountDrilldownProps) {
   const [metric, setMetric] = useState(availableCostMetrics[0] ?? "");
   const [dimension, setDimension] = useState<Dimension>("product_category");
   const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const accountRows = useMemo(() => rows.filter((r) => r.account_id === accountId), [rows, accountId]);
 
@@ -65,6 +72,23 @@ export function AccountDrilldown({ accountId, rows, availableCostMetrics, format
   const visibleTotal = visible.reduce((sum, g) => sum + g.cost, 0);
   const dimensionLabel = DIMENSIONS.find((d) => d.key === dimension)?.label ?? "";
   const unknownRow = visible.find((g) => g.label === "unknown");
+  const otherDims = OTHER_DIMENSIONS[dimension];
+
+  const breakdown = useMemo(() => {
+    if (!expanded) return null;
+    const matching = accountRows.filter((r) => r[dimension] === expanded);
+    return otherDims.map((d) => {
+      const totals = new Map<string, number>();
+      for (const row of matching) {
+        const key = row[d.key];
+        totals.set(key, (totals.get(key) ?? 0) + (row.costs[metric] ?? 0));
+      }
+      const entries = Array.from(totals.entries())
+        .map(([label, cost]) => ({ label, cost }))
+        .sort((a, b) => b.cost - a.cost);
+      return { dim: d, entries };
+    });
+  }, [expanded, accountRows, dimension, otherDims, metric]);
 
   return (
     <div className="drilldown">
@@ -83,7 +107,14 @@ export function AccountDrilldown({ accountId, rows, availableCostMetrics, format
           <span className="drilldown-step-label">1. Cost metric</span>
           <div className="drilldown-pills">
             {availableCostMetrics.map((m) => (
-              <button key={m} className={m === metric ? "metric-pill active" : "metric-pill"} onClick={() => setMetric(m)}>
+              <button
+                key={m}
+                className={m === metric ? "metric-pill active" : "metric-pill"}
+                onClick={() => {
+                  setMetric(m);
+                  setExpanded(null);
+                }}
+              >
                 {metricLabel(m)}
               </button>
             ))}
@@ -98,7 +129,10 @@ export function AccountDrilldown({ accountId, rows, availableCostMetrics, format
             <button
               key={d.key}
               className={d.key === dimension ? "metric-pill active" : "metric-pill"}
-              onClick={() => setDimension(d.key)}
+              onClick={() => {
+                setDimension(d.key);
+                setExpanded(null);
+              }}
             >
               {d.label}
             </button>
@@ -112,7 +146,10 @@ export function AccountDrilldown({ accountId, rows, availableCostMetrics, format
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setExpanded(null);
+            }}
             placeholder={`Filter by ${dimensionLabel.toLowerCase()}...`}
           />
         </label>
@@ -120,6 +157,8 @@ export function AccountDrilldown({ accountId, rows, availableCostMetrics, format
           {metricLabel(metric || "cost")} total: <strong>{formatMoney(visibleTotal)}</strong>
         </span>
       </div>
+
+      <p className="drilldown-row-hint">Click a row to break it down by {otherDims.map((d) => d.label).join(" and ")}.</p>
 
       <table className="drilldown-table">
         <thead>
@@ -136,12 +175,48 @@ export function AccountDrilldown({ accountId, rows, availableCostMetrics, format
               </td>
             </tr>
           )}
-          {visible.map((g) => (
-            <tr key={g.label}>
-              <td>{g.label}</td>
-              <td>{formatMoney(g.cost)}</td>
-            </tr>
-          ))}
+          {visible.map((g) => {
+            const isExpanded = g.label === expanded;
+            return (
+              <Fragment key={g.label}>
+                <tr
+                  className="drilldown-row-clickable"
+                  onClick={() => setExpanded(isExpanded ? null : g.label)}
+                >
+                  <td>{g.label}</td>
+                  <td>{formatMoney(g.cost)}</td>
+                </tr>
+                {isExpanded && breakdown && (
+                  <tr className="drilldown-row">
+                    <td colSpan={2} className="drilldown-breakdown-cell">
+                      <div className="drilldown-breakdown">
+                        <p className="drilldown-breakdown-hint">
+                          Breakdown of “{g.label}” ({formatMoney(g.cost)}) by the other two dimensions:
+                        </p>
+                        <div className="drilldown-breakdown-grid">
+                          {breakdown.map(({ dim, entries }) => (
+                            <div key={dim.key} className="drilldown-breakdown-col">
+                              <span className="drilldown-breakdown-col-label">{dim.label}</span>
+                              <table className="drilldown-table">
+                                <tbody>
+                                  {entries.map((e) => (
+                                    <tr key={e.label}>
+                                      <td>{e.label}</td>
+                                      <td>{formatMoney(e.cost)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
 
