@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { CurLoadResponse } from "../types";
+import { AccountDrilldown } from "./AccountDrilldown";
 import { BarChart } from "./BarChart";
 import { LineChart } from "./LineChart";
 
@@ -20,6 +22,8 @@ function formatMoney(value: number, currency: string | null): string {
 
 export function Dashboard({ data }: DashboardProps) {
   const money = (v: number) => formatMoney(v, data.currency);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const hasDrilldown = data.drilldown.length > 0 && data.available_cost_metrics.length > 0;
 
   return (
     <div className="dashboard">
@@ -57,7 +61,8 @@ export function Dashboard({ data }: DashboardProps) {
 
       <div className="panel">
         <h2>Cost by linked account</h2>
-        <table className="account-table">
+        {hasDrilldown && <p className="panel-hint">Click an account to see its cost broken down by product category, resource category, and charge type.</p>}
+        <table className={hasDrilldown ? "account-table clickable" : "account-table"}>
           <thead>
             <tr>
               <th>Account ID</th>
@@ -66,13 +71,27 @@ export function Dashboard({ data }: DashboardProps) {
           </thead>
           <tbody>
             {data.cost_by_account.map((a) => (
-              <tr key={a.account_id}>
+              <tr
+                key={a.account_id}
+                onClick={hasDrilldown ? () => setSelectedAccount(a.account_id === selectedAccount ? null : a.account_id) : undefined}
+                className={a.account_id === selectedAccount ? "selected" : undefined}
+              >
                 <td>{a.account_id}</td>
                 <td>{money(a.cost)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+
+        {hasDrilldown && selectedAccount && (
+          <AccountDrilldown
+            accountId={selectedAccount}
+            rows={data.drilldown}
+            availableCostMetrics={data.available_cost_metrics}
+            formatMoney={money}
+            onClose={() => setSelectedAccount(null)}
+          />
+        )}
       </div>
     </div>
   );

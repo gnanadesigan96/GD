@@ -36,6 +36,14 @@ class AccountCost(BaseModel):
     cost: float
 
 
+class DrilldownRow(BaseModel):
+    account_id: str
+    product_category: str
+    resource_category: str
+    charge_type: str
+    costs: dict[str, float]  # cost metric name (e.g. "unblended_cost") -> amount
+
+
 class CurLoadResponse(BaseModel):
     billing_period: str
     currency: Optional[str] = None
@@ -46,6 +54,8 @@ class CurLoadResponse(BaseModel):
     file_format: str
     part_file_count: int
     load_time_ms: float
+    available_cost_metrics: list[str] = []
+    drilldown: list[DrilldownRow] = []
 
 
 class CurJobStartedResponse(BaseModel):

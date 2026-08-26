@@ -20,6 +20,14 @@ export interface AccountCost {
   cost: number;
 }
 
+export interface DrilldownRow {
+  account_id: string;
+  product_category: string;
+  resource_category: string;
+  charge_type: string;
+  costs: Record<string, number>;
+}
+
 export interface CurLoadResponse {
   billing_period: string;
   currency: string | null;
@@ -30,6 +38,8 @@ export interface CurLoadResponse {
   file_format: string;
   part_file_count: number;
   load_time_ms: number;
+  available_cost_metrics: string[];
+  drilldown: DrilldownRow[];
 }
 
 export interface CurJobStartedResponse {

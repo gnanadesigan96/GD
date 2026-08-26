@@ -21,8 +21,20 @@ deployed DynamoDB table and no separate Lambda invocation to fire either --
 see main.py's _dispatch_job), this falls back to a plain in-process dict.
 That's fine there: main.py runs the job inline in that case, so nothing
 ever needs to survive across processes or requests.
+
+The result is gzip-compressed before it's written to DynamoDB (stored as a
+Binary attribute, not String -- no base64 overhead). The per-account
+drill-down added to the result is grouped, not raw line items, but a bill
+with many linked accounts can still produce a few thousand small rows, and
+DynamoDB caps a single item at 400KB; the result JSON is repetitive enough
+(the same handful of category/charge-type strings recur across every
+account) that gzip alone cuts it by roughly 6-8x in practice, which is the
+difference between comfortably fitting and not for a real multi-account
+bill. get_job transparently decompresses it back to a plain JSON string,
+so callers never need to know which path a given job came from.
 """
 
+import gzip
 import json
 import os
 import time
@@ -51,13 +63,14 @@ def mark_done(job_id: str, result: dict) -> None:
     if not _TABLE_NAME:
         _local_jobs[job_id] = {**_local_jobs.get(job_id, {}), "status": "done", "result": json.dumps(result)}
         return
+    compressed = gzip.compress(json.dumps(result).encode("utf-8"))
     _table().update_item(
         Key={"job_id": job_id},
         UpdateExpression="SET #s = :s, #r = :r, #t = :t",
         ExpressionAttributeNames={"#s": "status", "#r": "result", "#t": "ttl"},
         ExpressionAttributeValues={
             ":s": "done",
-            ":r": json.dumps(result),
+            ":r": compressed,
             ":t": int(time.time()) + JOB_TTL_SECONDS,
         },
     )
@@ -83,4 +96,9 @@ def get_job(job_id: str) -> dict | None:
     if not _TABLE_NAME:
         return _local_jobs.get(job_id)
     resp = _table().get_item(Key={"job_id": job_id})
-    return resp.get("Item")
+    item = resp.get("Item")
+    if item is not None and "result" in item:
+        # boto3's DynamoDB resource returns Binary attributes wrapped in
+        # its own Binary type -- bytes(...) unwraps it either way.
+        item["result"] = gzip.decompress(bytes(item["result"])).decode("utf-8")
+    return item

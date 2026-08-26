@@ -257,6 +257,26 @@ by day, and cost by linked account for that billing period, plus
 and its cost are visible. A `job_id` not found (expired, or never existed)
 returns `404`.
 
+It also carries everything the per-account drill-down UI needs, computed
+in the same pass as everything else above (one extra `GROUP BY`, not a
+second read of the export):
+
+- `available_cost_metrics` — whichever cost columns this specific export
+  actually has (e.g. `["unblended_cost", "blended_cost"]`; `net_*` variants
+  only show up once an account has Reserved Instances or Savings Plans).
+- `drilldown` — one row per `(account_id, product_category,
+  resource_category, charge_type)` combination that occurs in the bill,
+  each carrying every metric in `available_cost_metrics`. Still grouped,
+  not raw line items — bounded by how many distinct combinations exist,
+  not by row count. `product_category` is the same value as
+  `cost_by_service`'s `service`; `resource_category` resolves to
+  `product/productFamily` and `charge_type` to `lineItem/LineItemType`
+  when present, falling back to `"unknown"` for exports that lack them.
+
+The frontend fetches this all once and drills through it entirely
+client-side — clicking an account in "Cost by linked account" needs no
+further request.
+
 ## Notes / follow-ups
 
 - The customer's role trust policy must allow the backend's AWS identity to

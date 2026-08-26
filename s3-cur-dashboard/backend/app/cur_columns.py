@@ -20,9 +20,27 @@ _CANDIDATES = {
     "usage_start_date": [("lineItem", "UsageStartDate")],
     "account_id": [("lineItem", "UsageAccountId"), ("bill", "PayerAccountId")],
     "currency": [("lineItem", "CurrencyCode")],
+    # Drill-down dimensions (optional -- not every export has these, so they
+    # aren't in _REQUIRED). "Product Category" reuses "service" above rather
+    # than resolving separately, since they're the same field.
+    "resource_category": [("product", "productFamily")],
+    "charge_type": [("lineItem", "LineItemType")],
 }
 
 _REQUIRED = {"cost", "service", "usage_start_date", "account_id"}
+
+# Every column CUR commonly uses for "cost", in priority/display order. Not
+# all of these exist in every export (Net* columns usually only appear once
+# an account has Reserved Instances or Savings Plans) -- resolve_cost_metrics
+# returns whichever subset is actually present, so the drill-down UI only
+# ever offers metrics that exist in this specific bill.
+_COST_METRIC_CANDIDATES = [
+    ("unblended_cost", ("lineItem", "UnblendedCost")),
+    ("blended_cost", ("lineItem", "BlendedCost")),
+    ("net_unblended_cost", ("lineItem", "NetUnblendedCost")),
+    ("net_amortized_cost", ("lineItem", "NetAmortizedCost")),
+    ("amortized_cost", ("lineItem", "AmortizedCost")),
+]
 
 
 @dataclass
@@ -62,3 +80,22 @@ def resolve_columns(manifest_columns: list[dict]) -> dict[str, ResolvedColumn]:
             detail=f"CUR manifest is missing required column(s) for: {', '.join(sorted(missing))}",
         )
     return resolved
+
+
+def resolve_cost_metrics(manifest_columns: list[dict]) -> dict[str, ResolvedColumn]:
+    """Every cost-like column this specific export actually has, keyed by a
+    stable metric name (e.g. "net_unblended_cost") for the drill-down view.
+    Unlike resolve_columns' "cost" field (which picks one winner to display
+    everywhere else), this returns however many of them exist -- a bill
+    without Reserved Instances/Savings Plans typically only has
+    unblended_cost and blended_cost; one that does usually adds the Net*
+    variants too.
+    """
+    lookup = {(c["category"].lower(), c["name"].lower()): c for c in manifest_columns}
+
+    metrics: dict[str, ResolvedColumn] = {}
+    for metric_name, (category, name) in _COST_METRIC_CANDIDATES:
+        match = lookup.get((category.lower(), name.lower()))
+        if match:
+            metrics[metric_name] = ResolvedColumn(category=match["category"], name=match["name"])
+    return metrics

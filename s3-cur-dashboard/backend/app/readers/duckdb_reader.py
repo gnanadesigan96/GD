@@ -100,6 +100,7 @@ def aggregate(
     part_keys: list[str],
     file_format: str,
     columns: dict[str, ResolvedColumn],
+    cost_metrics: dict[str, ResolvedColumn],
 ) -> dict:
     # Lambda's filesystem is read-only outside /tmp, and there's no HOME env
     # var set by default -- DuckDB's INSTALL needs *some* home/extension
@@ -152,19 +153,31 @@ def aggregate(
         day = f"TRY_CAST({_col_ref(file_format, columns['usage_start_date'])} AS TIMESTAMP)::DATE"
         account = _col_ref(file_format, columns["account_id"])
         currency_expr = _col_ref(file_format, columns["currency"]) if "currency" in columns else "NULL"
+        # Optional drill-down dimensions: not every export has these
+        # columns (productFamily/LineItemType), so anything missing just
+        # falls back to a literal 'unknown' instead of failing the load.
+        resource_category_expr = _col_ref(file_format, columns["resource_category"]) if "resource_category" in columns else "'unknown'"
+        charge_type_expr = _col_ref(file_format, columns["charge_type"]) if "charge_type" in columns else "'unknown'"
+        metric_cols = ", ".join(
+            f"TRY_CAST({_col_ref(file_format, col)} AS DOUBLE) AS metric_{name}"
+            for name, col in cost_metrics.items()
+        )
 
         # A CUR export can be dozens of columns wide; without this, each of
-        # the four queries below re-parses every part file from scratch
-        # just to re-derive the same handful of values. Doing that scan
-        # once and aggregating against the (small, in-memory) result
-        # instead is the difference between four full-file reads and one --
-        # the gap that pushed a real request over API Gateway's hard,
-        # non-configurable 30-second integration timeout.
+        # the queries below re-parses every part file from scratch just to
+        # re-derive the same handful of values. Doing that scan once and
+        # aggregating against the (small, in-memory) result instead is the
+        # difference between many full-file reads and one -- the gap that
+        # pushed a real request over API Gateway's hard, non-configurable
+        # 30-second integration timeout.
         con.execute(
             f"CREATE TEMP TABLE cur_data AS "
             f"SELECT {cost} AS cost, {service} AS service, {day} AS day, "
-            f"{account} AS account_id, {currency_expr} AS currency "
-            f"FROM {source}"
+            f"{account} AS account_id, {currency_expr} AS currency, "
+            f"COALESCE({resource_category_expr}, 'unknown') AS resource_category, "
+            f"COALESCE({charge_type_expr}, 'unknown') AS charge_type"
+            + (f", {metric_cols}" if metric_cols else "")
+            + f" FROM {source}"
         )
 
         total_cost = con.execute("SELECT SUM(cost) FROM cur_data").fetchone()[0] or 0.0
@@ -185,6 +198,32 @@ def aggregate(
         if "currency" in columns:
             row = con.execute("SELECT currency FROM cur_data LIMIT 1").fetchone()
             currency = row[0] if row else None
+
+        # The account drill-down: one row per (account, product category,
+        # resource category, charge type) actually present, with every
+        # detected cost metric alongside it -- e.g. "AmazonEC2 / Compute
+        # Instance / Usage: {unblended_cost: 12.3, net_unblended_cost:
+        # 11.8}". Grouped, not raw line items, so this stays small (bounded
+        # by how many distinct combinations occur, not by row count) and
+        # the frontend can pivot through it entirely client-side without
+        # another request.
+        drilldown = []
+        if cost_metrics:
+            metric_select = ", ".join(f"SUM(metric_{name}) AS metric_{name}" for name in cost_metrics)
+            rows = con.execute(
+                f"SELECT account_id, service, resource_category, charge_type, {metric_select} "
+                f"FROM cur_data GROUP BY 1, 2, 3, 4"
+            ).fetchall()
+            metric_names = list(cost_metrics.keys())
+            for row in rows:
+                acct, svc, res_cat, chg_type, *metric_values = row
+                drilldown.append({
+                    "account_id": str(acct) if acct is not None else "unknown",
+                    "product_category": str(svc) if svc is not None else "unknown",
+                    "resource_category": str(res_cat) if res_cat is not None else "unknown",
+                    "charge_type": str(chg_type) if chg_type is not None else "unknown",
+                    "costs": {name: float(v or 0) for name, v in zip(metric_names, metric_values)},
+                })
     except duckdb.Error as exc:
         print(f"DuckDB query failed: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=502, detail=f"DuckDB query failed: {exc}") from exc
@@ -206,4 +245,6 @@ def aggregate(
         "cost_by_service": [{"service": str(s) if s is not None else "unknown", "cost": float(c or 0)} for s, c in by_service],
         "cost_by_day": [{"date": str(d), "cost": float(c or 0)} for d, c in by_day if d is not None],
         "cost_by_account": [{"account_id": str(a) if a is not None else "unknown", "cost": float(c or 0)} for a, c in by_account],
+        "available_cost_metrics": list(cost_metrics.keys()),
+        "drilldown": drilldown,
     }

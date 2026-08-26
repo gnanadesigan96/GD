@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import jobs
 from .aws_client import assume_role, resolve_bucket_region, s3_client_for
-from .cur_columns import resolve_columns
+from .cur_columns import resolve_columns, resolve_cost_metrics
 from .manifest import find_month_manifest_key, load_manifest, parse_s3_uri
 from .readers.duckdb_reader import aggregate
 from .schemas import CurJobStartedResponse, CurJobStatusResponse, CurLoadRequest, CurLoadResponse
@@ -77,8 +77,9 @@ def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
     else:
         file_format = "csv_gz"
     columns = resolve_columns(manifest["columns"])
+    cost_metrics = resolve_cost_metrics(manifest["columns"])
 
-    result = aggregate(creds, region, location.bucket, part_keys, file_format, columns)
+    result = aggregate(creds, region, location.bucket, part_keys, file_format, columns, cost_metrics)
 
     return CurLoadResponse(
         billing_period=req.month,
@@ -90,6 +91,8 @@ def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
         file_format=file_format,
         part_file_count=len(part_keys),
         load_time_ms=(time.perf_counter() - started) * 1000,
+        available_cost_metrics=result["available_cost_metrics"],
+        drilldown=result["drilldown"],
     )
 
 

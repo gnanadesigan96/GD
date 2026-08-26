@@ -202,8 +202,149 @@ header h1 {
   border-bottom: 1px solid #262b35;
 }
 
+.panel-hint {
+  margin: -6px 0 12px;
+  font-size: 0.8rem;
+  color: #9aa1ab;
+}
+
+.account-table.clickable tbody tr {
+  cursor: pointer;
+}
+
+.account-table.clickable tbody tr:hover {
+  background: #1c2027;
+}
+
+.account-table tbody tr.selected {
+  background: #1a2333;
+}
+
 .empty {
   color: #9aa1ab;
+}
+
+/* ---------- Account drill-down ---------- */
+.drilldown {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #262b35;
+}
+
+.drilldown-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.drilldown-title {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e6e8eb;
+}
+
+.drilldown-sub {
+  display: block;
+  font-size: 0.78rem;
+  color: #9aa1ab;
+  margin-top: 2px;
+}
+
+.drilldown-close {
+  background: transparent;
+  border: 1px solid #2c313c;
+  border-radius: 6px;
+  color: #b7bdc7;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.drilldown-close:hover {
+  border-color: #3b82f6;
+  color: #e6e8eb;
+}
+
+.drilldown-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.metric-pill {
+  background: #0f1115;
+  border: 1px solid #2c313c;
+  border-radius: 20px;
+  color: #b7bdc7;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.metric-pill.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.drilldown-filter {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.drilldown-filter label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: #9aa1ab;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.drilldown-filter select {
+  background: #0f1115;
+  border: 1px solid #2c313c;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #e6e8eb;
+  font-size: 0.85rem;
+}
+
+.drilldown-total {
+  font-size: 0.85rem;
+  color: #b7bdc7;
+}
+
+.drilldown-total strong {
+  color: #e6e8eb;
+}
+
+.drilldown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.drilldown-table th,
+.drilldown-table td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid #262b35;
+}
+
+.drilldown-table th:last-child,
+.drilldown-table td:last-child {
+  text-align: right;
 }
 
 @media (max-width: 640px) {
