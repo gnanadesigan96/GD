@@ -131,19 +131,18 @@ def aggregate(
     # Python process, boto3, and the Lambda runtime itself.
     lambda_memory_mb = os.environ.get("AWS_LAMBDA_FUNCTION_MEMORY_SIZE")
     if lambda_memory_mb:
-        mb = int(lambda_memory_mb)
-        con.execute(f"SET memory_limit='{int(mb * 0.8)}MB'")
-        # Lambda allocates vCPU proportional to configured memory, up to 6
-        # at 10,240MB -- DuckDB's own thread auto-detection can be
-        # unreliable inside Lambda's virtualized/cgroup sandbox (tools that
-        # read host-level core counts rather than the container's actual
-        # allocation are a known failure mode there), so set it explicitly
-        # from Lambda's own documented allocation instead of trusting
-        # auto-detection. Deliberately conservative (floor, not round):
-        # asking for fewer threads than are actually available just leaves
-        # some parallelism on the table, but asking for more risks
-        # oversubscription/contention instead of real speedup.
-        con.execute(f"SET threads={6 if mb >= 10240 else max(1, mb // 1770)}")
+        con.execute(f"SET memory_limit='{int(int(lambda_memory_mb) * 0.8)}MB'")
+    # A prior version of this function also pinned `threads` to Lambda's
+    # documented vCPU-per-memory-tier allocation, reasoning that DuckDB's
+    # own auto-detection might be unreliable inside Lambda's sandbox. A/B'd
+    # against real Flatiron loads, that reasoning didn't hold: this
+    # workload is I/O-bound (downloading/scanning 150+ part files over the
+    # network), where extra threads beyond the "real" vCPU count still help
+    # since they're mostly blocked on I/O rather than competing for CPU --
+    # pinning to the conservative vCPU-floor measurably increased duration
+    # (317s -> 393s at a lower memory tier) enough to erase the cost saving
+    # from the memory cut entirely. Reverted; leave thread count on
+    # DuckDB's own default.
 
     zip_tmp_dir = f"/tmp/cur-{uuid.uuid4().hex}" if file_format == "csv_zip" else None
 
