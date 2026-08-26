@@ -29,6 +29,7 @@ ROLE_NAME="${ROLE_NAME:-cur-dashboard-lambda-role}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 MEMORY_MB="${MEMORY_MB:-2048}"     # more memory = more vCPU = faster DuckDB parallel scans
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-120}"
+EPHEMERAL_STORAGE_MB="${EPHEMERAL_STORAGE_MB:-1024}"  # default 512MB is tight once DuckDB caches its httpfs extension + any query spill files in /tmp
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/../backend"
@@ -115,6 +116,7 @@ if aws lambda get-function --function-name "$FUNCTION_NAME" --region "$AWS_REGIO
     --function-name "$FUNCTION_NAME" \
     --memory-size "$MEMORY_MB" \
     --timeout "$TIMEOUT_SECONDS" \
+    --ephemeral-storage "Size=${EPHEMERAL_STORAGE_MB}" \
     --region "$AWS_REGION" >/dev/null
 else
   aws lambda create-function \
@@ -124,6 +126,7 @@ else
     --role "$ROLE_ARN" \
     --memory-size "$MEMORY_MB" \
     --timeout "$TIMEOUT_SECONDS" \
+    --ephemeral-storage "Size=${EPHEMERAL_STORAGE_MB}" \
     --region "$AWS_REGION" >/dev/null
   aws lambda wait function-active --function-name "$FUNCTION_NAME" --region "$AWS_REGION"
 fi

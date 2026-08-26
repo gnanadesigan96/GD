@@ -17,6 +17,7 @@ request finishes, matching the "wiped on refresh" requirement.
 """
 
 import duckdb
+from fastapi import HTTPException
 
 from ..cur_columns import ResolvedColumn
 
@@ -67,30 +68,39 @@ def aggregate(
     day = f"TRY_CAST({_col_ref(file_format, columns['usage_start_date'])} AS TIMESTAMP)::DATE"
     account = _col_ref(file_format, columns["account_id"])
 
-    total_cost = con.execute(f"SELECT SUM({cost}) FROM {source}").fetchone()[0] or 0.0
+    # duckdb.Error is caught (and its message logged ourselves, via print --
+    # captured by CloudWatch same as any stdout write) rather than left to
+    # propagate: a Lambda invocation that saw one has, in practice, cut off
+    # the exception's own message before it reached CloudWatch, leaving only
+    # a bare 500 with no way to tell what actually failed.
+    try:
+        total_cost = con.execute(f"SELECT SUM({cost}) FROM {source}").fetchone()[0] or 0.0
 
-    by_service = con.execute(
-        f"SELECT {service} AS service, SUM({cost}) AS cost FROM {source} "
-        f"GROUP BY 1 ORDER BY 2 DESC"
-    ).fetchall()
+        by_service = con.execute(
+            f"SELECT {service} AS service, SUM({cost}) AS cost FROM {source} "
+            f"GROUP BY 1 ORDER BY 2 DESC"
+        ).fetchall()
 
-    by_day = con.execute(
-        f"SELECT {day} AS day, SUM({cost}) AS cost FROM {source} "
-        f"GROUP BY 1 ORDER BY 1"
-    ).fetchall()
+        by_day = con.execute(
+            f"SELECT {day} AS day, SUM({cost}) AS cost FROM {source} "
+            f"GROUP BY 1 ORDER BY 1"
+        ).fetchall()
 
-    by_account = con.execute(
-        f"SELECT {account} AS account, SUM({cost}) AS cost FROM {source} "
-        f"GROUP BY 1 ORDER BY 2 DESC"
-    ).fetchall()
+        by_account = con.execute(
+            f"SELECT {account} AS account, SUM({cost}) AS cost FROM {source} "
+            f"GROUP BY 1 ORDER BY 2 DESC"
+        ).fetchall()
 
-    currency = None
-    if "currency" in columns:
-        currency_ref = _col_ref(file_format, columns["currency"])
-        row = con.execute(f"SELECT {currency_ref} FROM {source} LIMIT 1").fetchone()
-        currency = row[0] if row else None
-
-    con.close()
+        currency = None
+        if "currency" in columns:
+            currency_ref = _col_ref(file_format, columns["currency"])
+            row = con.execute(f"SELECT {currency_ref} FROM {source} LIMIT 1").fetchone()
+            currency = row[0] if row else None
+    except duckdb.Error as exc:
+        print(f"DuckDB query failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(status_code=502, detail=f"DuckDB query failed: {exc}") from exc
+    finally:
+        con.close()
 
     return {
         "total_cost": float(total_cost),
