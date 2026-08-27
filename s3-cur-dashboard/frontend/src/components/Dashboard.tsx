@@ -11,6 +11,11 @@ interface DashboardProps {
   data: CurLoadResponse;
 }
 
+function formatDateLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(d);
+}
+
 function formatMoney(value: number, currency: string | null): string {
   try {
     return new Intl.NumberFormat("en-US", {
@@ -27,6 +32,7 @@ export function Dashboard({ data }: DashboardProps) {
   const money = (v: number) => formatMoney(v, data.currency);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [showPartFiles, setShowPartFiles] = useState(false);
+  const [showCostByDay, setShowCostByDay] = useState(false);
   const [reportAccounts, setReportAccounts] = useState<Set<string>>(new Set());
   const [reportMetric, setReportMetric] = useState(data.available_cost_metrics[0] ?? "");
   // Falls back to the new dataset's first metric if a previously loaded
@@ -37,6 +43,13 @@ export function Dashboard({ data }: DashboardProps) {
     : data.available_cost_metrics[0] ?? "";
   const hasDrilldown = data.drilldown.length > 0 && data.available_cost_metrics.length > 0;
   const hasPartFiles = data.part_files.length > 0;
+  // cost_by_day is sorted ascending by the backend, so the first/last
+  // entries give the actual date range covered -- useful when the billing
+  // period is the current, still-in-progress month.
+  const dayRangeLabel =
+    data.cost_by_day.length > 0
+      ? `${formatDateLabel(data.cost_by_day[0].date)} – ${formatDateLabel(data.cost_by_day[data.cost_by_day.length - 1].date)} (${data.cost_by_day.length} day${data.cost_by_day.length === 1 ? "" : "s"})`
+      : null;
 
   const toggleReportAccount = (accountId: string) => {
     setReportAccounts((prev) => {
@@ -97,6 +110,11 @@ export function Dashboard({ data }: DashboardProps) {
               Close
             </button>
           </div>
+          {dayRangeLabel && (
+            <p className="panel-hint">
+              Billing period {data.billing_period} · processing {dayRangeLabel} of cost data
+            </p>
+          )}
           <table className="drilldown-table">
             <thead>
               <tr>
@@ -130,23 +148,30 @@ export function Dashboard({ data }: DashboardProps) {
       </div>
 
       <div className="panel">
-        <h2>Cost by day</h2>
-        <table className="account-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Cost</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.cost_by_day.map((d) => (
-              <tr key={d.date}>
-                <td>{d.date}</td>
-                <td>{money(d.cost)}</td>
+        <div className="drilldown-head">
+          <span className="drilldown-title">Cost by day</span>
+          <button className="drilldown-close" onClick={() => setShowCostByDay((v) => !v)}>
+            {showCostByDay ? "Hide details" : "View details"}
+          </button>
+        </div>
+        {showCostByDay && (
+          <table className="account-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Cost</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.cost_by_day.map((d) => (
+                <tr key={d.date}>
+                  <td>{d.date}</td>
+                  <td>{money(d.cost)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="panel">
