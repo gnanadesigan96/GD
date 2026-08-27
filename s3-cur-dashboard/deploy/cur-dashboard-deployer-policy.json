@@ -121,7 +121,7 @@
     {
       "Sid": "ACMImport",
       "Effect": "Allow",
-      "Action": "acm:ImportCertificate",
+      "Action": ["acm:ImportCertificate", "acm:DescribeCertificate"],
       "Resource": "*"
     }
   ]
