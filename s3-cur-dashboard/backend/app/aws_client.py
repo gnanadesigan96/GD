@@ -76,8 +76,15 @@ def s3_client_for(creds: dict, region: str | None = None):
 def resolve_bucket_region(s3_client, bucket: str, fallback: str = "us-east-1") -> str:
     try:
         location = s3_client.get_bucket_location(Bucket=bucket).get("LocationConstraint")
-    except ClientError:
-        return fallback
+    except ClientError as exc:
+        # s3:GetBucketLocation is a separate permission from GetObject/ListBucket
+        # and customers commonly omit it. A wrong guess here still lets boto3's
+        # own S3 calls work (it silently follows the region redirect), but
+        # DuckDB's httpfs does not and fails outright -- so before falling
+        # back, check for the bucket's real region in the error response:
+        # S3 echoes it in this header even when the request itself was denied.
+        region = exc.response.get("ResponseMetadata", {}).get("HTTPHeaders", {}).get("x-amz-bucket-region")
+        return region or fallback
     # AWS returns None/"" for us-east-1, and "EU" for legacy eu-west-1 buckets.
     if not location:
         return fallback
