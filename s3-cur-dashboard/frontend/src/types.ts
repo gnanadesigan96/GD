@@ -3,6 +3,7 @@ export interface CurLoadRequest {
   external_id: string;
   s3_uri: string;
   month: string;
+  region?: string;
 }
 
 export interface ServiceCost {

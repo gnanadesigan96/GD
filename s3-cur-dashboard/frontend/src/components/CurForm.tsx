@@ -17,10 +17,11 @@ export function CurForm({ onSubmit, loading, elapsedSeconds }: CurFormProps) {
   const [externalId, setExternalId] = useState("");
   const [s3Uri, setS3Uri] = useState("");
   const [month, setMonth] = useState(currentMonth());
+  const [region, setRegion] = useState("");
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    onSubmit({ role_arn: roleArn, external_id: externalId, s3_uri: s3Uri, month });
+    onSubmit({ role_arn: roleArn, external_id: externalId, s3_uri: s3Uri, month, region: region || undefined });
   }
 
   return (
@@ -50,6 +51,14 @@ export function CurForm({ onSubmit, loading, elapsedSeconds }: CurFormProps) {
       <label>
         Month
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} required />
+      </label>
+      <label>
+        Region <span className="field-optional">(optional — auto-detected if left blank)</span>
+        <input
+          value={region}
+          onChange={(e) => setRegion(e.target.value)}
+          placeholder="e.g. eu-west-1 -- set this if a load fails with a DuckDB HTTP 400"
+        />
       </label>
       <button type="submit" disabled={loading}>
         {loading ? `Loading... (${elapsedSeconds}s -- large reports can take several minutes)` : "Load report"}

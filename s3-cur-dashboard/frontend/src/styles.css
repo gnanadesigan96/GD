@@ -35,6 +35,11 @@ header h1 {
   padding: 20px;
 }
 
+.field-optional {
+  font-weight: 400;
+  color: #7a828f;
+}
+
 .cur-form label {
   display: flex;
   flex-direction: column;
