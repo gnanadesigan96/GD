@@ -21,6 +21,8 @@ so the key material itself never has to live in code or a committed file.
 """
 
 import os
+import urllib.error
+import urllib.request
 
 import boto3
 from botocore.exceptions import ClientError
@@ -73,6 +75,25 @@ def s3_client_for(creds: dict, region: str | None = None):
     return boto3.client("s3", region_name=region, **creds)
 
 
+def _region_from_unsigned_head(bucket: str) -> str | None:
+    """S3's front-end routing layer stamps every response to a bucket's
+    endpoint with the bucket's true region in this header -- even a plain
+    403 to a completely unauthenticated request -- because region routing
+    happens before any credential or permission check. Used as a last
+    resort when GetBucketLocation is denied without a usable region hint
+    of its own (a flat AccessDenied, as opposed to a redirect-style error),
+    since this needs no IAM permission and no credentials at all.
+    """
+    request = urllib.request.Request(f"https://{bucket}.s3.amazonaws.com", method="HEAD")
+    try:
+        with urllib.request.urlopen(request, timeout=5) as resp:
+            return resp.headers.get("x-amz-bucket-region")
+    except urllib.error.HTTPError as exc:
+        return exc.headers.get("x-amz-bucket-region")
+    except OSError:
+        return None
+
+
 def resolve_bucket_region(s3_client, bucket: str, fallback: str = "us-east-1") -> str:
     try:
         location = s3_client.get_bucket_location(Bucket=bucket).get("LocationConstraint")
@@ -84,7 +105,7 @@ def resolve_bucket_region(s3_client, bucket: str, fallback: str = "us-east-1") -
         # back, check for the bucket's real region in the error response:
         # S3 echoes it in this header even when the request itself was denied.
         region = exc.response.get("ResponseMetadata", {}).get("HTTPHeaders", {}).get("x-amz-bucket-region")
-        return region or fallback
+        return region or _region_from_unsigned_head(bucket) or fallback
     # AWS returns None/"" for us-east-1, and "EU" for legacy eu-west-1 buckets.
     if not location:
         return fallback
