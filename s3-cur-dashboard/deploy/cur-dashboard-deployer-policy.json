@@ -82,7 +82,9 @@
       "Action": [
         "dynamodb:CreateTable",
         "dynamodb:DescribeTable",
-        "dynamodb:UpdateTimeToLive"
+        "dynamodb:UpdateTimeToLive",
+        "dynamodb:Scan",
+        "dynamodb:GetItem"
       ],
       "Resource": "arn:aws:dynamodb:*:*:table/cur-dashboard-backend-jobs"
     },
