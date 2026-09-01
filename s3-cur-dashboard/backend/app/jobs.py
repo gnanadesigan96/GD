@@ -32,6 +32,14 @@ account) that gzip alone cuts it by roughly 6-8x in practice, which is the
 difference between comfortably fitting and not for a real multi-account
 bill. get_job transparently decompresses it back to a plain JSON string,
 so callers never need to know which path a given job came from.
+
+A bill with enough linked accounts can still exceed DynamoDB's 400KB cap
+even gzip-compressed, though -- when CUR_DASHBOARD_JOBS_BUCKET is set,
+mark_done falls back to spilling the compressed blob to S3 (auto-expired by
+the bucket's own lifecycle rule, same "nothing is kept around" spirit as
+the jobs table's own short TTL) and stores just the object key in DynamoDB
+instead. get_job follows that pointer transparently, so this is invisible
+to every other caller.
 """
 
 import gzip
@@ -40,15 +48,21 @@ import os
 import time
 
 import boto3
+from botocore.exceptions import ClientError
 
 JOB_TTL_SECONDS = 1800  # 30 minutes
 
 _TABLE_NAME = os.environ.get("CUR_DASHBOARD_JOBS_TABLE", "")
+_RESULTS_BUCKET = os.environ.get("CUR_DASHBOARD_JOBS_BUCKET", "")
 _local_jobs: dict[str, dict] = {}
 
 
 def _table():
     return boto3.resource("dynamodb").Table(_TABLE_NAME)
+
+
+def _s3():
+    return boto3.client("s3")
 
 
 def create_job(job_id: str) -> None:
@@ -64,16 +78,32 @@ def mark_done(job_id: str, result: dict) -> None:
         _local_jobs[job_id] = {**_local_jobs.get(job_id, {}), "status": "done", "result": json.dumps(result)}
         return
     compressed = gzip.compress(json.dumps(result).encode("utf-8"))
-    _table().update_item(
-        Key={"job_id": job_id},
-        UpdateExpression="SET #s = :s, #r = :r, #t = :t",
-        ExpressionAttributeNames={"#s": "status", "#r": "result", "#t": "ttl"},
-        ExpressionAttributeValues={
-            ":s": "done",
-            ":r": compressed,
-            ":t": int(time.time()) + JOB_TTL_SECONDS,
-        },
-    )
+    try:
+        _table().update_item(
+            Key={"job_id": job_id},
+            UpdateExpression="SET #s = :s, #r = :r, #t = :t",
+            ExpressionAttributeNames={"#s": "status", "#r": "result", "#t": "ttl"},
+            ExpressionAttributeValues={
+                ":s": "done",
+                ":r": compressed,
+                ":t": int(time.time()) + JOB_TTL_SECONDS,
+            },
+        )
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") != "ValidationException" or not _RESULTS_BUCKET:
+            raise
+        key = f"{job_id}.gz"
+        _s3().put_object(Bucket=_RESULTS_BUCKET, Key=key, Body=compressed)
+        _table().update_item(
+            Key={"job_id": job_id},
+            UpdateExpression="SET #s = :s, #k = :k, #t = :t",
+            ExpressionAttributeNames={"#s": "status", "#k": "result_s3_key", "#t": "ttl"},
+            ExpressionAttributeValues={
+                ":s": "done",
+                ":k": key,
+                ":t": int(time.time()) + JOB_TTL_SECONDS,
+            },
+        )
 
 
 def mark_error(job_id: str, detail: str) -> None:
@@ -97,8 +127,13 @@ def get_job(job_id: str) -> dict | None:
         return _local_jobs.get(job_id)
     resp = _table().get_item(Key={"job_id": job_id})
     item = resp.get("Item")
-    if item is not None and "result" in item:
+    if item is None:
+        return item
+    if "result" in item:
         # boto3's DynamoDB resource returns Binary attributes wrapped in
         # its own Binary type -- bytes(...) unwraps it either way.
         item["result"] = gzip.decompress(bytes(item["result"])).decode("utf-8")
+    elif "result_s3_key" in item:
+        obj = _s3().get_object(Bucket=_RESULTS_BUCKET, Key=item.pop("result_s3_key"))
+        item["result"] = gzip.decompress(obj["Body"].read()).decode("utf-8")
     return item

@@ -206,7 +206,31 @@ if ! aws dynamodb describe-table --table-name "$JOBS_TABLE_NAME" --region "$AWS_
 fi
 JOBS_TABLE_ARN="arn:aws:dynamodb:${AWS_REGION}:${ACCOUNT_ID}:table/${JOBS_TABLE_NAME}"
 
-echo "== Ensuring the Lambda execution role can use the jobs table and invoke itself =="
+JOBS_RESULTS_BUCKET_NAME="${JOBS_RESULTS_BUCKET_NAME:-${FUNCTION_NAME}-job-results}"
+
+echo "== Ensuring the S3 bucket for oversized job results exists =="
+if ! aws s3api head-bucket --bucket "$JOBS_RESULTS_BUCKET_NAME" --region "$AWS_REGION" >/dev/null 2>&1; then
+  if [ "$AWS_REGION" = "us-east-1" ]; then
+    aws s3api create-bucket --bucket "$JOBS_RESULTS_BUCKET_NAME" --region "$AWS_REGION" >/dev/null
+  else
+    aws s3api create-bucket --bucket "$JOBS_RESULTS_BUCKET_NAME" --region "$AWS_REGION" \
+      --create-bucket-configuration "LocationConstraint=${AWS_REGION}" >/dev/null
+  fi
+  # Only used when a result is too big to fit in a single DynamoDB item even
+  # gzip-compressed (see jobs.py) -- objects here auto-expire in a day, the
+  # same "nothing is kept around" spirit as the jobs table's own 30-minute
+  # TTL, just longer since S3 lifecycle rules can't run more often than daily.
+  aws s3api put-bucket-lifecycle-configuration \
+    --bucket "$JOBS_RESULTS_BUCKET_NAME" \
+    --lifecycle-configuration '{"Rules":[{"ID":"ExpireJobResults","Status":"Enabled","Filter":{},"Expiration":{"Days":1}}]}' \
+    --region "$AWS_REGION"
+  aws s3api put-public-access-block --bucket "$JOBS_RESULTS_BUCKET_NAME" \
+    --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true \
+    --region "$AWS_REGION"
+fi
+JOBS_RESULTS_BUCKET_ARN="arn:aws:s3:::${JOBS_RESULTS_BUCKET_NAME}"
+
+echo "== Ensuring the Lambda execution role can use the jobs table/results bucket and invoke itself =="
 JOB_POLICY_DOC=$(cat <<EOF
 {
   "Version": "2012-10-17",
@@ -215,6 +239,11 @@ JOB_POLICY_DOC=$(cat <<EOF
       "Effect": "Allow",
       "Action": ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem"],
       "Resource": "${JOBS_TABLE_ARN}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "${JOBS_RESULTS_BUCKET_ARN}/*"
     },
     {
       "Effect": "Allow",
@@ -237,6 +266,7 @@ MERGED_ENV_JSON="$(echo "$EXISTING_ENV_JSON" | python3 -c "
 import json, sys
 existing = json.load(sys.stdin) or {}
 existing['CUR_DASHBOARD_JOBS_TABLE'] = '${JOBS_TABLE_NAME}'
+existing['CUR_DASHBOARD_JOBS_BUCKET'] = '${JOBS_RESULTS_BUCKET_NAME}'
 print(json.dumps({'Variables': existing}))
 ")"
 aws lambda update-function-configuration \
@@ -251,6 +281,7 @@ Backend deployed.
 
   API endpoint: ${API_ENDPOINT}
   Jobs table:   ${JOBS_TABLE_NAME}
+  Job results bucket (oversized results only): ${JOBS_RESULTS_BUCKET_NAME}
 
   Every route requires the app-level CUR_DASHBOARD_API_KEY -- see
   require_api_key in main.py. POST /api/cur/load starts a job and returns

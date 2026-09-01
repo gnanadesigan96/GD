@@ -89,6 +89,19 @@
       "Resource": "arn:aws:dynamodb:*:*:table/cur-dashboard-backend-jobs"
     },
     {
+      "Sid": "JobResultsBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:ListBucket",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutLifecycleConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:s3:::cur-dashboard-backend-job-results*"
+      ]
+    },
+    {
       "Sid": "FrontendBucket",
       "Effect": "Allow",
       "Action": [
