@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/">&larr; Back to dashboard</a></p>
+
+<h1>{{ job.title }}</h1>
+<p class="meta">{{ job.company }} — {{ job.location }} — via {{ job.source }} — match score {{ job.score }}</p>
+<p><a href="{{ job.url }}" target="_blank" rel="noopener">View original posting &amp; apply →</a></p>
+
+<form method="post" action="/jobs/{{ job.id }}/status" class="inline-form">
+  <label>Status
+    <select name="status" onchange="this.form.submit()">
+      {% for s in status_choices %}
+      <option value="{{ s }}" {{ "selected" if job.application and job.application.status == s else "" }}>{{ s.replace('_',' ') }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</form>
+
+<h2>Job description</h2>
+<div class="description">{{ job.description|truncate(4000) }}</div>
+
+<h2>Tailored application materials</h2>
+
+{% if not has_resume %}
+<div class="banner warn">Upload a resume in <a href="/settings">Profile &amp; Resume</a> first.</div>
+{% elif not has_api_key %}
+<div class="banner warn">Set ANTHROPIC_API_KEY in your .env file to enable tailoring.</div>
+{% else %}
+<form method="post" action="/jobs/{{ job.id }}/tailor">
+  <button type="submit" class="primary">{{ "Re-tailor" if tailored else "Tailor resume + cover letter to this job" }}</button>
+</form>
+{% endif %}
+
+{% if tailored %}
+<div class="tailored">
+  <p>
+    <a href="/applications/{{ job.id }}/resume">Download tailored resume (.docx)</a> &middot;
+    <a href="/applications/{{ job.id }}/cover-letter">Download cover letter (.docx)</a>
+  </p>
+  <h3>{{ tailored.headline }}</h3>
+  <p>{{ tailored.summary }}</p>
+  <p><strong>Skills emphasized:</strong> {{ tailored.skills|join(', ') }}</p>
+  <p class="hint">Review the generated files before applying — verify every claim is accurate, then submit through the link above.</p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Profile &amp; Resume</h1>
+
+{% if saved %}<div class="banner ok">Saved.</div>{% endif %}
+
+<div class="banner info">
+  Anthropic API key: {{ "configured ✓" if has_api_key else "not set — add ANTHROPIC_API_KEY to .env to enable tailoring" }}
+</div>
+
+<form method="post" action="/settings" enctype="multipart/form-data" class="form">
+  <label>Full name
+    <input type="text" name="full_name" value="{{ profile.full_name }}">
+  </label>
+  <label>Email
+    <input type="email" name="email" value="{{ profile.email }}">
+  </label>
+  <label>Phone
+    <input type="text" name="phone" value="{{ profile.phone }}">
+  </label>
+  <label>Years of experience
+    <input type="number" name="experience_years" value="{{ profile.experience_years }}">
+  </label>
+  <label>Target roles (comma-separated)
+    <input type="text" name="target_roles" value="{{ profile.target_roles }}">
+  </label>
+  <label>Target locations (comma-separated)
+    <input type="text" name="target_locations" value="{{ profile.target_locations }}">
+    <small>e.g. Chennai, India, Dubai, UAE, Europe, Germany, UK, Netherlands</small>
+  </label>
+  <label>Resume file (PDF, DOCX, or TXT)
+    <input type="file" name="resume_file" accept=".pdf,.docx,.txt,.md">
+  </label>
+  {% if profile.resume_filename %}
+  <p>Current resume: <strong>{{ profile.resume_filename }}</strong> ({{ profile.resume_raw_text|length }} characters extracted)</p>
+  {% endif %}
+  <button type="submit" class="primary">Save</button>
+</form>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if not resume_ready %}
+<div class="banner warn">
+  No resume uploaded yet. <a href="/settings">Go to Profile &amp; Resume</a> to upload one before fetching or tailoring jobs.
+</div>
+{% endif %}
+
+<div class="banner info">
+  Sources configured:
+  {% for name, ok in connector_status.items() %}
+    <span class="{{ 'ok' if ok else 'off' }}">{{ name }}{{ ' ✓' if ok else ' (no API key)' }}</span>
+  {% endfor %}
+  — add missing API keys to your <code>.env</code> file to enable them.
+</div>
+
+<div class="toolbar">
+  <form method="post" action="/jobs/fetch">
+    <button type="submit" class="primary">Fetch new jobs</button>
+  </form>
+
+  <form method="get" action="/">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All statuses</option>
+      {% for s in status_choices %}
+      <option value="{{ s }}" {{ "selected" if s == selected_status else "" }}>{{ s.replace('_',' ') }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<table class="jobs">
+  <thead>
+    <tr>
+      <th>Score</th>
+      <th>Title</th>
+      <th>Company</th>
+      <th>Location</th>
+      <th>Source</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for job in jobs %}
+    <tr>
+      <td>{{ job.score }}</td>
+      <td><a href="/jobs/{{ job.id }}">{{ job.title }}</a></td>
+      <td>{{ job.company }}</td>
+      <td>{{ job.location }}</td>
+      <td>{{ job.source }}</td>
+      <td><span class="status status-{{ job.application.status if job.application else 'new' }}">
+        {{ (job.application.status if job.application else 'new').replace('_',' ') }}
+      </span></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">No jobs yet. Set your target roles/locations in Profile &amp; Resume, then click "Fetch new jobs".</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

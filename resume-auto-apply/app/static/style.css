@@ -1,0 +1,142 @@
+:root {
+  color-scheme: light;
+  --bg: #f7f7f5;
+  --ink: #1f1f1d;
+  --muted: #6b6b66;
+  --border: #ddd9d0;
+  --accent: #b5602c;
+  --ok: #3a7d44;
+  --warn: #b5602c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.topnav {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 14px 24px;
+  background: white;
+  border-bottom: 1px solid var(--border);
+}
+
+.topnav .brand {
+  font-weight: 700;
+  margin-right: auto;
+}
+
+.topnav a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.topnav a:hover { color: var(--accent); }
+
+main {
+  max-width: 960px;
+  margin: 24px auto;
+  padding: 0 24px;
+}
+
+.banner {
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+.banner.info { background: #eef1ee; color: var(--muted); }
+.banner.warn { background: #fbeee3; color: var(--warn); }
+.banner.ok { background: #e7f3e8; color: var(--ok); }
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+button, input[type=submit] {
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+table.jobs {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+table.jobs th, table.jobs td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.status {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #eee;
+  font-size: 12px;
+}
+.status-applied, .status-interview, .status-offer { background: #e7f3e8; color: var(--ok); }
+.status-rejected { background: #fbeee3; color: #a33; }
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 520px;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.form input, select {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.form small { color: var(--muted); }
+
+.description {
+  white-space: pre-wrap;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.tailored {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.hint { color: var(--muted); font-size: 13px; }
+
+.meta { color: var(--muted); }
