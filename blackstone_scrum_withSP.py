@@ -30,6 +30,7 @@ import base64
 import json
 import datetime
 import io
+import time
 import requests
 import matplotlib
 matplotlib.use("Agg")
@@ -80,31 +81,46 @@ def _get_drive_id(token: str, site_id: str) -> str:
     return resp.json()["id"]
 
 
-def upload_file(local_path: str, sharepoint_folder: str, filename: str) -> str:
-    """Upload a local file to SharePoint. Returns the SharePoint file URL."""
+def upload_file(local_path: str, sharepoint_folder: str, filename: str,
+                 max_retries: int = 3) -> str:
+    """Upload a local file to SharePoint. Returns the SharePoint file URL.
+
+    Retries on HTTP 423 (Locked) — SharePoint briefly locks a file right
+    after a write while it runs indexing/virus-scan, so a same-named file
+    uploaded moments earlier can trip this transiently.
+    """
     token = _get_graph_token()
     site_url = os.environ["SHAREPOINT_SITE_URL"]
     site_id = _get_site_id(token, site_url)
     drive_id = _get_drive_id(token, site_id)
 
-    # Ensure folder path starts without leading slash
-    folder = sharepoint_folder.lstrip("/")
+    # Strip leading/trailing slashes so a trailing "/" in the folder config
+    # doesn't produce a double slash before the filename.
+    folder = sharepoint_folder.strip("/")
     upload_url = f"{GRAPH_BASE}/drives/{drive_id}/root:/{folder}/{filename}:/content"
 
     with open(local_path, "rb") as fh:
         file_bytes = fh.read()
 
-    resp = requests.put(
-        upload_url,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/octet-stream",
-        },
-        data=file_bytes,
-        timeout=120,
-    )
-    resp.raise_for_status()
-    return resp.json().get("webUrl", "")
+    delay = 5
+    for attempt in range(1, max_retries + 1):
+        resp = requests.put(
+            upload_url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/octet-stream",
+            },
+            data=file_bytes,
+            timeout=120,
+        )
+        if resp.status_code == 423 and attempt < max_retries:
+            print(f"  [SharePoint] File locked (423) — retrying in {delay}s "
+                  f"(attempt {attempt}/{max_retries})…")
+            time.sleep(delay)
+            delay *= 2
+            continue
+        resp.raise_for_status()
+        return resp.json().get("webUrl", "")
 
 
 def fmt_day(dt) -> str:
