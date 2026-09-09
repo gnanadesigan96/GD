@@ -133,6 +133,7 @@ def fmt_month_day(ms) -> str:
 
 ADO_ORG     = "CoreStack-Tech"
 ADO_PROJECT = "Product_Mgmt"
+CUSTOMER_NAME_FIELD = "Custom.CustomerName"   # ADO reference name for the "Customer Name" field
 ADO_PAT       = os.environ.get("ADO_PAT", "")
 PENDO_API_KEY = os.environ.get("PENDO_API_KEY", "")
 
@@ -222,14 +223,23 @@ def fetch_ado_blackstone_incidents():
         return []
 
     # Batch fetch details (max 200 per call)
-    details_url = (
-        f"https://dev.azure.com/{ADO_ORG}/{ADO_PROJECT}/_apis/wit/workitems"
-        f"?ids={','.join(ids[:200])}"
-        f"&fields=System.Id,System.Title,System.AssignedTo,System.State,"
-        f"Microsoft.VSTS.Common.Priority,System.Tags,System.WorkItemType,System.AreaPath"
-        f"&api-version=7.1"
+    # "Customer Name" custom field — reference name guessed as Custom.CustomerName;
+    # if your ADO org uses a different reference name, update CUSTOMER_NAME_FIELD below.
+    base_fields = (
+        "System.Id,System.Title,System.AssignedTo,System.State,"
+        "Microsoft.VSTS.Common.Priority,System.Tags,System.WorkItemType,System.AreaPath"
     )
-    resp2 = requests.get(details_url, headers=ado_headers())
+    details_url_base = (
+        f"https://dev.azure.com/{ADO_ORG}/{ADO_PROJECT}/_apis/wit/workitems"
+        f"?ids={','.join(ids[:200])}&api-version=7.1"
+    )
+    resp2 = requests.get(f"{details_url_base}&fields={base_fields},{CUSTOMER_NAME_FIELD}",
+                         headers=ado_headers())
+    if resp2.status_code == 400:
+        # Field reference name not valid for this org — retry without it.
+        print(f"  [ADO] Warning: '{CUSTOMER_NAME_FIELD}' field not recognized — "
+              f"skipping customer name. Update CUSTOMER_NAME_FIELD if the reference name is different.")
+        resp2 = requests.get(f"{details_url_base}&fields={base_fields}", headers=ado_headers())
     resp2.raise_for_status()
 
     results = []
@@ -245,6 +255,7 @@ def fetch_ado_blackstone_incidents():
             "tags":         f.get("System.Tags", ""),
             "workItemType": f.get("System.WorkItemType", ""),
             "areaPath":     f.get("System.AreaPath", ""),
+            "customerName": f.get(CUSTOMER_NAME_FIELD, "") or "—",
         })
     return results
 
@@ -260,6 +271,7 @@ def _fake_ado_data():
             "tags": "Blackstone; Analytics",
             "workItemType": "Bug",
             "areaPath": "Product_Mgmt\\Analytics",
+            "customerName": "Blackstone",
         },
         {
             "id": 131077,
@@ -270,6 +282,7 @@ def _fake_ado_data():
             "tags": "Blackstone; FinOps",
             "workItemType": "Bug",
             "areaPath": "Product_Mgmt\\FinOps",
+            "customerName": "Blackstone",
         },
         {
             "id": 131076,
@@ -280,6 +293,7 @@ def _fake_ado_data():
             "tags": "Blackstone; Core",
             "workItemType": "Bug",
             "areaPath": "Product_Mgmt\\Core",
+            "customerName": "Blackstone",
         },
     ]
 
@@ -1392,18 +1406,19 @@ def render_docx(ado_items, eu_visitors, useast_visitors, other_visitors, pages, 
             str(item["id"]),
             item["title"],
             item["assignedTo"],
+            item.get("customerName", "") or "—",
             item.get("areaPath", "").split("\\")[-1] or "—",
             pri,
             item["state"],
             item["workItemType"],
         ))
     if not ado_rows:
-        ado_rows = [("—", "No active Blackstone incidents found.", "", "", "", "", "")]
+        ado_rows = [("—", "No active Blackstone incidents found.", "", "", "", "", "", "")]
 
     _add_table(doc,
-        headers=["ID", "Title", "Assigned to", "Bundle", "Pri", "State", "Classification"],
+        headers=["ID", "Title", "Assigned to", "Customer", "Bundle", "Pri", "State", "Classification"],
         rows=ado_rows,
-        col_widths=[0.6, 2.8, 1.4, 0.9, 0.4, 1.0, 0.7],
+        col_widths=[0.6, 2.3, 1.3, 0.9, 0.9, 0.4, 1.0, 0.7],
     )
     doc.add_paragraph()
 
