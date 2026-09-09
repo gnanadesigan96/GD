@@ -216,14 +216,15 @@ def fetch_ado_blackstone_incidents():
     url = f"https://dev.azure.com/{ADO_ORG}/{ADO_PROJECT}/_apis/wit/wiql?api-version=7.1"
 
     wiql = {
-        "query": """
+        "query": f"""
             SELECT [System.Id], [System.Title], [System.AssignedTo],
                    [System.State], [Microsoft.VSTS.Common.Priority],
                    [System.Tags], [System.WorkItemType],
                    [System.AreaPath]
             FROM WorkItems
             WHERE [System.TeamProject] = @project
-              AND [System.Tags] CONTAINS 'Blackstone'
+              AND ([System.Tags] CONTAINS 'Blackstone'
+                   OR [{CUSTOMER_NAME_FIELD}] = 'Blackstone')
               AND [System.WorkItemType] = 'Incident'
               AND [System.State] IN ('New', 'In Progress', 'Awaiting Deployment')
             ORDER BY [Microsoft.VSTS.Common.Priority] ASC,
