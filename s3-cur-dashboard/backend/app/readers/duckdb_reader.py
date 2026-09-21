@@ -93,6 +93,19 @@ def _col_ref(file_format: str, column: ResolvedColumn) -> str:
     return f'"{column.csv_header()}"'
 
 
+# AWS's own charge-type tags for each discount mechanism, bucketed into
+# the categories the UI shows. lineItem/LineItemType is free-text and varies
+# a little across CUR versions/programs, so this only recognizes the
+# well-documented, standard values -- anything else just isn't bucketed
+# (falls through to no discount-type attribution, same as today).
+_EDP_CHARGE_TYPES = {"EdpDiscount"}
+_SPP_CHARGE_TYPES = {"DistributorDiscount", "SppDiscount"}
+_PRIVATE_RATE_CHARGE_TYPES = {"PrivateRateDiscount"}
+_BUNDLED_CHARGE_TYPES = {"BundledDiscount"}
+_RI_CHARGE_TYPES = {"DiscountedUsage", "RIFee", "RIUpfrontFee"}
+_SAVINGS_PLAN_CHARGE_TYPES = {"SavingsPlanCoveredUsage", "SavingsPlanRecurringFee", "SavingsPlanUpfrontFee"}
+
+
 def aggregate(
     creds: dict,
     region: str,
@@ -101,6 +114,7 @@ def aggregate(
     file_format: str,
     columns: dict[str, ResolvedColumn],
     cost_metrics: dict[str, ResolvedColumn],
+    public_on_demand_column: ResolvedColumn | None = None,
 ) -> dict:
     # Lambda's filesystem is read-only outside /tmp, and there's no HOME env
     # var set by default -- DuckDB's INSTALL needs *some* home/extension
@@ -198,6 +212,13 @@ def aggregate(
         cost_base_col = "" if cost_metric_alias else f", TRY_CAST({_col_ref(file_format, columns['cost'])} AS DOUBLE) AS cost_raw"
         cost_agg_source = f"metric_{cost_metric_alias}" if cost_metric_alias else "cost_raw"
 
+        # Always selected (as a literal NULL when this export has no such
+        # column) so the result row shape is the same either way -- see
+        # discount_by_type below, which treats a NULL sum as "can't tell"
+        # rather than "zero savings".
+        pod_expr = _col_ref(file_format, public_on_demand_column) if public_on_demand_column else "NULL"
+        pod_base_col = f", TRY_CAST({pod_expr} AS DOUBLE) AS public_on_demand_cost"
+
         # Only two grouping sets now: (day) for "cost by day", and
         # (account_id, service, resource_category, charge_type) for the
         # account drill-down -- both computed in one pass over the source
@@ -243,13 +264,15 @@ def aggregate(
             f"COALESCE({charge_type_expr}, 'unknown') AS charge_type"
             + (f", {metric_base_cols}" if metric_base_cols else "")
             + cost_base_col
+            + pod_base_col
             + f" FROM {source}"
         )
 
         rows = con.execute(
             f"SELECT service, day, account_id, resource_category, charge_type, "
             f"GROUPING_ID(service, day, account_id, resource_category, charge_type) AS gid, "
-            f"MAX(currency) AS currency, SUM({cost_agg_source}) AS cost"
+            f"MAX(currency) AS currency, SUM({cost_agg_source}) AS cost, "
+            f"SUM(public_on_demand_cost) AS public_on_demand_cost"
             + (f", {metric_sum_cols}" if metric_sum_cols else "")
             + f" FROM ({base_select}) AS base"
             + f" GROUP BY GROUPING SETS ({', '.join(grouping_sets)})"
@@ -268,7 +291,7 @@ def aggregate(
         drilldown_all: list[tuple] = []
 
         for row in rows:
-            svc, day_val, acct, res_cat, chg_type, gid, curr, cost_val, *metric_values = row
+            svc, day_val, acct, res_cat, chg_type, gid, curr, cost_val, pod_val, *metric_values = row
             cost_val = float(cost_val or 0)
             if curr is not None and currency is None:
                 currency = curr
@@ -276,16 +299,16 @@ def aggregate(
                 by_day.append((day_val, cost_val))
             elif gid == GID_DRILLDOWN:
                 metric_costs = {name: float(v or 0) for name, v in zip(metric_names, metric_values)}
-                drilldown_all.append((acct, svc, res_cat, chg_type, cost_val, metric_costs))
+                drilldown_all.append((acct, svc, res_cat, chg_type, cost_val, pod_val, metric_costs))
 
         by_day = [(d, c) for d, c in by_day if d is not None]
         by_day.sort(key=lambda x: x[0])
 
-        total_cost = sum(cost_val for *_, cost_val, _ in drilldown_all)
+        total_cost = sum(cost_val for *_, cost_val, _, _ in drilldown_all)
 
         by_service_totals: dict = {}
         by_account_totals: dict = {}
-        for acct, svc, _res_cat, _chg_type, cost_val, _metric_costs in drilldown_all:
+        for acct, svc, _res_cat, _chg_type, cost_val, _pod_val, _metric_costs in drilldown_all:
             by_service_totals[svc] = by_service_totals.get(svc, 0.0) + cost_val
             by_account_totals[acct] = by_account_totals.get(acct, 0.0) + cost_val
         by_service = sorted(by_service_totals.items(), key=lambda x: -x[1])
@@ -299,8 +322,66 @@ def aggregate(
                 "charge_type": str(chg_type) if chg_type is not None else "unknown",
                 "costs": metric_costs,
             }
-            for acct, svc, res_cat, chg_type, _cost_val, metric_costs in drilldown_all
+            for acct, svc, res_cat, chg_type, _cost_val, _pod_val, metric_costs in drilldown_all
         ] if cost_metrics else []
+
+        # Bucket each charge type into which discount mechanism it reflects.
+        # EDP/SPP/private-rate/bundled discount line items already *are* the
+        # discount amount (a negative cost credited back), so summing and
+        # negating gives the dollar figure directly. RI/Savings Plan savings
+        # aren't recorded that way -- covered usage is billed near-zero and
+        # the real cost sits in a separate Fee line -- so those need
+        # public_on_demand_cost (what the same usage would've cost on
+        # demand) minus what was actually paid, and are only computable at
+        # all when this export has that column.
+        direct_discount_totals: dict[str, float] = {}
+        ri_actual = ri_pod = sp_actual = sp_pod = 0.0
+        ri_pod_seen = sp_pod_seen = False
+        for _acct, _svc, _res_cat, chg_type, cost_val, pod_val, _metric_costs in drilldown_all:
+            if chg_type in _EDP_CHARGE_TYPES:
+                direct_discount_totals["edp"] = direct_discount_totals.get("edp", 0.0) - cost_val
+            elif chg_type in _SPP_CHARGE_TYPES:
+                direct_discount_totals["spp"] = direct_discount_totals.get("spp", 0.0) - cost_val
+            elif chg_type in _PRIVATE_RATE_CHARGE_TYPES:
+                direct_discount_totals["private_rate"] = direct_discount_totals.get("private_rate", 0.0) - cost_val
+            elif chg_type in _BUNDLED_CHARGE_TYPES:
+                direct_discount_totals["bundled"] = direct_discount_totals.get("bundled", 0.0) - cost_val
+            elif chg_type in _RI_CHARGE_TYPES:
+                ri_actual += cost_val
+                if pod_val is not None:
+                    ri_pod += float(pod_val)
+                    ri_pod_seen = True
+            elif chg_type in _SAVINGS_PLAN_CHARGE_TYPES:
+                sp_actual += cost_val
+                if pod_val is not None:
+                    sp_pod += float(pod_val)
+                    sp_pod_seen = True
+
+        discount_by_type = []
+        _DIRECT_LABELS = {
+            "edp": "Enterprise Discount Program (EDP)",
+            "spp": "Solution Provider Program (SPP) / distributor discount",
+            "private_rate": "Private Pricing Agreement",
+            "bundled": "Bundled discount",
+        }
+        for key, label in _DIRECT_LABELS.items():
+            amount = direct_discount_totals.get(key, 0.0)
+            if amount:
+                discount_by_type.append({"type": key, "label": label, "amount": amount, "estimated": False})
+        if ri_pod_seen:
+            discount_by_type.append({
+                "type": "ri",
+                "label": "Reserved Instances",
+                "amount": ri_pod - ri_actual,
+                "estimated": True,
+            })
+        if sp_pod_seen:
+            discount_by_type.append({
+                "type": "savings_plan",
+                "label": "Savings Plans",
+                "amount": sp_pod - sp_actual,
+                "estimated": True,
+            })
     except duckdb.Error as exc:
         print(f"DuckDB query failed: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=502, detail=f"DuckDB query failed: {exc}") from exc
@@ -324,4 +405,5 @@ def aggregate(
         "cost_by_account": [{"account_id": str(a) if a is not None else "unknown", "cost": float(c or 0)} for a, c in by_account],
         "available_cost_metrics": list(cost_metrics.keys()),
         "drilldown": drilldown,
+        "discount_by_type": discount_by_type,
     }

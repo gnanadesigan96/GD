@@ -134,6 +134,26 @@ export function Dashboard({ data }: DashboardProps) {
         </div>
       )}
 
+      {data.discount_by_type.length > 0 && (
+        <div className="panel">
+          <h2>Discount by type</h2>
+          <p className="panel-hint">
+            Which program each dollar of discount came from, identified from AWS's own line-item charge types.
+          </p>
+          <BarChart
+            data={data.discount_by_type.map((d) => ({ label: d.label, value: d.amount }))}
+            formatValue={money}
+          />
+          {data.discount_by_type.some((d) => d.estimated) && (
+            <p className="panel-hint">
+              Reserved Instance and Savings Plan figures are estimated as list-price-equivalent cost minus what was
+              actually paid for that covered usage; the other types above are the exact discount amount AWS recorded
+              for that program.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="panel">
         <h2>Cost by service</h2>
         <BarChart

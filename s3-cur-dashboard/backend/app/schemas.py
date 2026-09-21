@@ -49,6 +49,17 @@ class PartFileInfo(BaseModel):
     size_bytes: int
 
 
+class DiscountByType(BaseModel):
+    type: str  # stable key, e.g. "edp", "ri", "savings_plan"
+    label: str
+    amount: float
+    # True for RI/Savings Plans: their amount is list-price-equivalent minus
+    # what was actually paid (the standard way to size RI/SP savings), not a
+    # discount line item's own dollar value like the other types -- see
+    # duckdb_reader.aggregate's discount_by_type.
+    estimated: bool
+
+
 class CurLoadResponse(BaseModel):
     billing_period: str
     currency: Optional[str] = None
@@ -62,6 +73,7 @@ class CurLoadResponse(BaseModel):
     available_cost_metrics: list[str] = []
     drilldown: list[DrilldownRow] = []
     part_files: list[PartFileInfo] = []
+    discount_by_type: list[DiscountByType] = []
 
 
 class CurJobStartedResponse(BaseModel):

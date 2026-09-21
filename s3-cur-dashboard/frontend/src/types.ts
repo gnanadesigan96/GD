@@ -37,6 +37,13 @@ export interface PartFileInfo {
   size_bytes: number;
 }
 
+export interface DiscountByType {
+  type: string;
+  label: string;
+  amount: number;
+  estimated: boolean;
+}
+
 export interface CurLoadResponse {
   billing_period: string;
   currency: string | null;
@@ -50,6 +57,7 @@ export interface CurLoadResponse {
   available_cost_metrics: string[];
   drilldown: DrilldownRow[];
   part_files: PartFileInfo[];
+  discount_by_type: DiscountByType[];
 }
 
 export interface CurJobStartedResponse {

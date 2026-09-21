@@ -42,6 +42,16 @@ _COST_METRIC_CANDIDATES = [
     ("amortized_cost", ("lineItem", "AmortizedCost")),
 ]
 
+# What the same usage would have cost at the public on-demand rate -- CUR
+# populates this on every usage line item regardless of how it was actually
+# billed, which is what makes it possible to tell how much of a discount
+# came from RI/Savings Plan coverage specifically (see discount_by_type in
+# duckdb_reader.aggregate): on-demand-equivalent minus what was actually
+# paid for that same usage. Only present once an account has ever used RI or
+# a Savings Plan, so this is resolved as optional, like the Net* metrics
+# above.
+_PUBLIC_ON_DEMAND_COST_CANDIDATE = ("pricing", "publicOnDemandCost")
+
 
 @dataclass
 class ResolvedColumn:
@@ -99,3 +109,10 @@ def resolve_cost_metrics(manifest_columns: list[dict]) -> dict[str, ResolvedColu
         if match:
             metrics[metric_name] = ResolvedColumn(category=match["category"], name=match["name"])
     return metrics
+
+
+def resolve_public_on_demand_cost(manifest_columns: list[dict]) -> ResolvedColumn | None:
+    lookup = {(c["category"].lower(), c["name"].lower()): c for c in manifest_columns}
+    category, name = _PUBLIC_ON_DEMAND_COST_CANDIDATE
+    match = lookup.get((category.lower(), name.lower()))
+    return ResolvedColumn(category=match["category"], name=match["name"]) if match else None

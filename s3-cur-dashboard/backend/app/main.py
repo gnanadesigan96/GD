@@ -10,7 +10,7 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from . import jobs
 from .aws_client import assume_role, resolve_bucket_region, s3_client_for
-from .cur_columns import resolve_columns, resolve_cost_metrics
+from .cur_columns import resolve_columns, resolve_cost_metrics, resolve_public_on_demand_cost
 from .manifest import find_month_manifest_key, load_manifest, parse_s3_uri
 from .part_files import list_part_file_sizes
 from .readers.duckdb_reader import aggregate
@@ -90,8 +90,9 @@ def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
         file_format = "csv_gz"
     columns = resolve_columns(manifest["columns"])
     cost_metrics = resolve_cost_metrics(manifest["columns"])
+    public_on_demand_column = resolve_public_on_demand_cost(manifest["columns"])
 
-    result = aggregate(creds, region, location.bucket, part_keys, file_format, columns, cost_metrics)
+    result = aggregate(creds, region, location.bucket, part_keys, file_format, columns, cost_metrics, public_on_demand_column)
     part_sizes = list_part_file_sizes(s3_client, location.bucket, part_keys)
 
     return CurLoadResponse(
@@ -107,6 +108,7 @@ def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
         available_cost_metrics=result["available_cost_metrics"],
         drilldown=result["drilldown"],
         part_files=[{"key": k, "size_bytes": part_sizes.get(k, 0)} for k in part_keys],
+        discount_by_type=result["discount_by_type"],
     )
 
 
