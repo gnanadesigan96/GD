@@ -328,8 +328,14 @@ def aggregate(
                 "resource_category": str(res_cat) if res_cat is not None else "unknown",
                 "charge_type": str(chg_type) if chg_type is not None else "unknown",
                 "costs": metric_costs,
+                # Carried per-row (rather than folded into "costs") so the
+                # frontend can redo the same RI/Savings-Plan-savings math as
+                # discount_by_type below, scoped to whichever account/
+                # resource category it's currently drilled into -- without
+                # this showing up as a selectable "cost metric" pill itself.
+                "public_on_demand_cost": float(pod_val) if pod_val is not None else None,
             }
-            for acct, svc, res_cat, chg_type, _cost_val, _pod_val, metric_costs in drilldown_all
+            for acct, svc, res_cat, chg_type, _cost_val, pod_val, metric_costs in drilldown_all
         ] if cost_metrics else []
 
         # Bucket each charge type into which discount mechanism it reflects.

@@ -213,6 +213,12 @@ header h1 {
   color: #9aa1ab;
 }
 
+.panel-note {
+  margin: 14px 0 0;
+  font-size: 0.8rem;
+  color: #9aa1ab;
+}
+
 .account-table.clickable tbody tr {
   cursor: pointer;
 }
@@ -431,7 +437,10 @@ header h1 {
 
 .drilldown-breakdown-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Usually 2 columns (the other two dimensions), sometimes 3 when the
+     Discount Type column is also shown -- auto-fit sizes evenly either way
+     instead of always reserving exactly 2 tracks. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
 }
 

@@ -42,6 +42,10 @@ class DrilldownRow(BaseModel):
     resource_category: str
     charge_type: str
     costs: dict[str, float]  # cost metric name (e.g. "unblended_cost") -> amount
+    # What this row's usage would have cost on demand -- lets the frontend
+    # size RI/Savings Plan savings for whichever account/resource category
+    # it's currently looking at. None when this export has no such column.
+    public_on_demand_cost: Optional[float] = None
 
 
 class PartFileInfo(BaseModel):

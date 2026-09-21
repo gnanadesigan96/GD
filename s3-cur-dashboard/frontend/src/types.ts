@@ -26,6 +26,7 @@ export interface DimensionalCosts {
   resource_category: string;
   charge_type: string;
   costs: Record<string, number>;
+  public_on_demand_cost: number | null;
 }
 
 export interface DrilldownRow extends DimensionalCosts {

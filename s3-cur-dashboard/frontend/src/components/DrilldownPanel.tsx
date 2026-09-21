@@ -48,6 +48,84 @@ const OTHER_DIMENSIONS: Record<Dimension, { key: Dimension; label: string }[]> =
 // whose only negotiated agreement is EDP, that's the same thing in practice.
 const DISCOUNT_METRICS_REQUIRED = ["unblended_cost", "net_unblended_cost"] as const;
 
+// Mirrors duckdb_reader.aggregate's discount_by_type bucketing exactly, so
+// a resource category's breakdown here matches the whole-bill "Discount by
+// type" panel's logic -- see that function's comments for why each bucket
+// is grouped the way it is (EDP/SPP/private-rate/bundled discount lines
+// already carry the discount amount directly; RI/Savings Plan savings need
+// public_on_demand_cost minus what was actually paid instead).
+const EDP_CHARGE_TYPES = new Set(["EdpDiscount"]);
+const SPP_CHARGE_TYPES = new Set(["DistributorDiscount", "SppDiscount"]);
+const PRIVATE_RATE_CHARGE_TYPES = new Set(["PrivateRateDiscount"]);
+const BUNDLED_CHARGE_TYPES = new Set(["BundledDiscount"]);
+const RI_CHARGE_TYPES = new Set(["DiscountedUsage", "RIFee", "RIUpfrontFee"]);
+const SAVINGS_PLAN_CHARGE_TYPES = new Set([
+  "SavingsPlanCoveredUsage",
+  "SavingsPlanNegation",
+  "SavingsPlanRecurringFee",
+  "SavingsPlanUpfrontFee",
+]);
+
+const DISCOUNT_TYPE_LABELS: Record<string, string> = {
+  edp: "Enterprise Discount Program (EDP)",
+  spp: "SPP / distributor discount",
+  private_rate: "Private Pricing Agreement",
+  bundled: "Bundled discount",
+  ri: "Reserved Instances",
+  savings_plan: "Savings Plans",
+};
+
+interface DiscountTypeEntry {
+  label: string;
+  amount: number;
+  estimated: boolean;
+}
+
+function bucketDiscountByType(rows: DimensionalCosts[]): DiscountTypeEntry[] {
+  const direct: Record<string, number> = {};
+  let riActual = 0;
+  let riPod = 0;
+  let riPodSeen = false;
+  let spActual = 0;
+  let spPod = 0;
+  let spPodSeen = false;
+
+  for (const row of rows) {
+    const cost = row.costs.unblended_cost ?? 0;
+    const pod = row.public_on_demand_cost;
+    const chargeType = row.charge_type;
+    if (EDP_CHARGE_TYPES.has(chargeType)) {
+      direct.edp = (direct.edp ?? 0) - cost;
+    } else if (SPP_CHARGE_TYPES.has(chargeType)) {
+      direct.spp = (direct.spp ?? 0) - cost;
+    } else if (PRIVATE_RATE_CHARGE_TYPES.has(chargeType)) {
+      direct.private_rate = (direct.private_rate ?? 0) - cost;
+    } else if (BUNDLED_CHARGE_TYPES.has(chargeType)) {
+      direct.bundled = (direct.bundled ?? 0) - cost;
+    } else if (RI_CHARGE_TYPES.has(chargeType)) {
+      riActual += cost;
+      if (pod !== null) {
+        riPod += pod;
+        riPodSeen = true;
+      }
+    } else if (SAVINGS_PLAN_CHARGE_TYPES.has(chargeType)) {
+      spActual += cost;
+      if (pod !== null) {
+        spPod += pod;
+        spPodSeen = true;
+      }
+    }
+  }
+
+  const entries: DiscountTypeEntry[] = [];
+  for (const [key, amount] of Object.entries(direct)) {
+    if (amount) entries.push({ label: DISCOUNT_TYPE_LABELS[key] ?? key, amount, estimated: false });
+  }
+  if (riPodSeen) entries.push({ label: DISCOUNT_TYPE_LABELS.ri, amount: riPod - riActual, estimated: true });
+  if (spPodSeen) entries.push({ label: DISCOUNT_TYPE_LABELS.savings_plan, amount: spPod - spActual, estimated: true });
+  return entries;
+}
+
 export function DrilldownPanel({ title, subtitle, rows, availableCostMetrics, formatMoney, onClose }: DrilldownPanelProps) {
   const [metric, setMetric] = useState(availableCostMetrics[0] ?? "");
   const [dimension, setDimension] = useState<Dimension>("product_category");
@@ -88,7 +166,7 @@ export function DrilldownPanel({ title, subtitle, rows, availableCostMetrics, fo
   const breakdown = useMemo(() => {
     if (!expanded) return null;
     const matching = rows.filter((r) => r[dimension] === expanded);
-    return otherDims.map((d) => {
+    const dims = otherDims.map((d) => {
       const totals = new Map<string, number>();
       for (const row of matching) {
         const key = row[d.key];
@@ -99,6 +177,13 @@ export function DrilldownPanel({ title, subtitle, rows, availableCostMetrics, fo
         .sort((a, b) => b.cost - a.cost);
       return { dim: d, entries };
     });
+    // Which discount program applied is only meaningful broken out by
+    // resource category (EDP/SPP/private-rate/bundled discount lines are
+    // account-wide and carry no resource category of their own -- they'll
+    // show up under "unknown" -- so this stays scoped to that dimension
+    // rather than showing an always-empty column elsewhere).
+    const discountByType = dimension === "resource_category" ? bucketDiscountByType(matching) : [];
+    return { dims, discountByType };
   }, [expanded, rows, dimension, otherDims, metric]);
 
   return (
@@ -204,10 +289,10 @@ export function DrilldownPanel({ title, subtitle, rows, availableCostMetrics, fo
                     <td colSpan={hasDiscountMetrics ? 3 : 2} className="drilldown-breakdown-cell">
                       <div className="drilldown-breakdown">
                         <p className="drilldown-breakdown-hint">
-                          Breakdown of “{g.label}” ({formatMoney(g.cost)}) by the other two dimensions:
+                          Breakdown of "{g.label}" ({formatMoney(g.cost)}) by the other two dimensions:
                         </p>
                         <div className="drilldown-breakdown-grid">
-                          {breakdown.map(({ dim, entries }) => (
+                          {breakdown.dims.map(({ dim, entries }) => (
                             <div key={dim.key} className="drilldown-breakdown-col">
                               <span className="drilldown-breakdown-col-label">{dim.label}</span>
                               <table className="drilldown-table">
@@ -222,7 +307,31 @@ export function DrilldownPanel({ title, subtitle, rows, availableCostMetrics, fo
                               </table>
                             </div>
                           ))}
+                          {breakdown.discountByType.length > 0 && (
+                            <div className="drilldown-breakdown-col">
+                              <span className="drilldown-breakdown-col-label">Discount Type</span>
+                              <table className="drilldown-table">
+                                <tbody>
+                                  {breakdown.discountByType.map((e) => (
+                                    <tr key={e.label}>
+                                      <td>
+                                        {e.label}
+                                        {e.estimated ? " *" : ""}
+                                      </td>
+                                      <td>{formatMoney(e.amount)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                         </div>
+                        {breakdown.discountByType.some((e) => e.estimated) && (
+                          <p className="drilldown-breakdown-hint">
+                            * Reserved Instance / Savings Plan figures are estimated as list-price-equivalent cost
+                            minus what was actually paid for this resource category's covered usage.
+                          </p>
+                        )}
                       </div>
                     </td>
                   </tr>

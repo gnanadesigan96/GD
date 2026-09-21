@@ -145,7 +145,7 @@ export function Dashboard({ data }: DashboardProps) {
             formatValue={money}
           />
           {data.discount_by_type.some((d) => d.estimated) && (
-            <p className="panel-hint">
+            <p className="panel-note">
               Reserved Instance and Savings Plan figures are estimated as list-price-equivalent cost minus what was
               actually paid for that covered usage; the other types above are the exact discount amount AWS recorded
               for that program.
