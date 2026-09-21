@@ -39,22 +39,41 @@ const OTHER_DIMENSIONS: Record<Dimension, { key: Dimension; label: string }[]> =
   charge_type: [DIMENSIONS[0], DIMENSIONS[1]],
 };
 
+// NetUnblendedCost is AWS's post-discount equivalent of UnblendedCost,
+// computed per line item rather than only in aggregate -- so unlike the
+// "EdpDiscount" charge type (which usually carries no resource category of
+// its own), unblended-vs-net-unblended can be compared at any dimension,
+// including resource category. The gap between them reflects any negotiated
+// pricing on the bill, not exclusively EDP specifically, but for an account
+// whose only negotiated agreement is EDP, that's the same thing in practice.
+const DISCOUNT_METRICS_REQUIRED = ["unblended_cost", "net_unblended_cost"] as const;
+
 export function DrilldownPanel({ title, subtitle, rows, availableCostMetrics, formatMoney, onClose }: DrilldownPanelProps) {
   const [metric, setMetric] = useState(availableCostMetrics[0] ?? "");
   const [dimension, setDimension] = useState<Dimension>("product_category");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
+  const hasDiscountMetrics = DISCOUNT_METRICS_REQUIRED.every((m) => availableCostMetrics.includes(m));
+
   const grouped = useMemo(() => {
-    const totals = new Map<string, number>();
+    const totals = new Map<string, { cost: number; unblended: number; netUnblended: number }>();
     for (const row of rows) {
       const key = row[dimension];
-      totals.set(key, (totals.get(key) ?? 0) + (row.costs[metric] ?? 0));
+      const entry = totals.get(key) ?? { cost: 0, unblended: 0, netUnblended: 0 };
+      entry.cost += row.costs[metric] ?? 0;
+      entry.unblended += row.costs.unblended_cost ?? 0;
+      entry.netUnblended += row.costs.net_unblended_cost ?? 0;
+      totals.set(key, entry);
     }
     return Array.from(totals.entries())
-      .map(([label, cost]) => ({ label, cost }))
+      .map(([label, { cost, unblended, netUnblended }]) => ({
+        label,
+        cost,
+        discountPct: hasDiscountMetrics && unblended > 0 ? ((unblended - netUnblended) / unblended) * 100 : null,
+      }))
       .sort((a, b) => b.cost - a.cost);
-  }, [rows, dimension, metric]);
+  }, [rows, dimension, metric, hasDiscountMetrics]);
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -157,12 +176,13 @@ export function DrilldownPanel({ title, subtitle, rows, availableCostMetrics, fo
           <tr>
             <th>{dimensionLabel}</th>
             <th>{metric ? metricLabel(metric) : "Cost"}</th>
+            {hasDiscountMetrics && <th>Discount %</th>}
           </tr>
         </thead>
         <tbody>
           {visible.length === 0 && (
             <tr>
-              <td colSpan={2} className="empty">
+              <td colSpan={hasDiscountMetrics ? 3 : 2} className="empty">
                 {search ? "No matches for that search." : "No line items for this selection."}
               </td>
             </tr>
@@ -177,10 +197,11 @@ export function DrilldownPanel({ title, subtitle, rows, availableCostMetrics, fo
                 >
                   <td>{g.label}</td>
                   <td>{formatMoney(g.cost)}</td>
+                  {hasDiscountMetrics && <td>{g.discountPct === null ? "—" : `${g.discountPct.toFixed(1)}%`}</td>}
                 </tr>
                 {isExpanded && breakdown && (
                   <tr className="drilldown-row">
-                    <td colSpan={2} className="drilldown-breakdown-cell">
+                    <td colSpan={hasDiscountMetrics ? 3 : 2} className="drilldown-breakdown-cell">
                       <div className="drilldown-breakdown">
                         <p className="drilldown-breakdown-hint">
                           Breakdown of “{g.label}” ({formatMoney(g.cost)}) by the other two dimensions:
@@ -216,6 +237,14 @@ export function DrilldownPanel({ title, subtitle, rows, availableCostMetrics, fo
         <p className="drilldown-note">
           <strong>“unknown”</strong> ({formatMoney(unknownRow.cost)}): {UNKNOWN_EXPLANATIONS[dimension]}{" "}
           {dimension !== "charge_type" && 'Switch to "Charge Type" above to see what kind of charges these are.'}
+        </p>
+      )}
+
+      {hasDiscountMetrics && (
+        <p className="drilldown-note">
+          <strong>Discount %</strong> is (unblended cost − net unblended cost) ÷ unblended cost for each row --
+          AWS computes net unblended cost per line item after negotiated pricing, so this reflects any negotiated
+          discount on the bill (EDP included) at whichever level you're viewing, not just the overall total.
         </p>
       )}
     </div>
