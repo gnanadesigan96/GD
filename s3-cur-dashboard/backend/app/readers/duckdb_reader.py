@@ -103,7 +103,14 @@ _SPP_CHARGE_TYPES = {"DistributorDiscount", "SppDiscount"}
 _PRIVATE_RATE_CHARGE_TYPES = {"PrivateRateDiscount"}
 _BUNDLED_CHARGE_TYPES = {"BundledDiscount"}
 _RI_CHARGE_TYPES = {"DiscountedUsage", "RIFee", "RIUpfrontFee"}
-_SAVINGS_PLAN_CHARGE_TYPES = {"SavingsPlanCoveredUsage", "SavingsPlanRecurringFee", "SavingsPlanUpfrontFee"}
+# SavingsPlanNegation is real, seen on a real customer export: some CUR
+# exports bill SavingsPlanCoveredUsage at the full on-demand-equivalent
+# price and then cancel it back out with a same-sized SavingsPlanNegation
+# line, rather than billing the covered usage near-zero directly the way RI
+# does -- omitting it here would double-count that usage's cost as "what
+# was actually paid" and badly overstate what SP costs, understating (or
+# inverting) its savings.
+_SAVINGS_PLAN_CHARGE_TYPES = {"SavingsPlanCoveredUsage", "SavingsPlanNegation", "SavingsPlanRecurringFee", "SavingsPlanUpfrontFee"}
 
 
 def aggregate(
