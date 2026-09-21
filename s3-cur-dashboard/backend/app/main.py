@@ -6,6 +6,7 @@ import uuid
 import boto3
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from . import jobs
 from .aws_client import assume_role, resolve_bucket_region, s3_client_for
@@ -23,6 +24,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# A drill-down result's JSON is highly repetitive (a handful of distinct
+# account IDs/services/resource categories/charge types repeated across many
+# rows), so it gzips down a lot -- large enough accounts push the raw JSON
+# past Lambda's own 6MB synchronous-invoke response limit before this was
+# added (LAMBDA_RUNTIME "Exceeded maximum allowed payload size"), which
+# crashed the poll endpoint even though the underlying CUR load had already
+# succeeded. Mangum passes the compressed bytes straight through as the
+# base64 Lambda response body, so this shrinks what actually counts against
+# that limit.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
 def require_api_key(x_api_key: str | None = Header(default=None)):
