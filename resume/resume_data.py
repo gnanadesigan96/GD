@@ -5,7 +5,7 @@ always carry identical, ATS-parsable text.
 """
 
 NAME = "ATHI SHREE V"
-TITLE = "L3 Active Directory & Microsoft Entra ID Administrator"
+TITLE = "Active Directory & Microsoft Entra ID (Azure AD) Administrator | Identity & Access Management (IAM)"
 CONTACT = [
     "Chennai, India",
     "+91 63795 44624",
@@ -15,21 +15,33 @@ CONTACT = [
 
 SUMMARY = (
     "Active Directory and Microsoft Entra ID (Azure AD) Administrator with 3.8 years of experience in "
-    "Identity and Access Management (IAM) for banking and life-sciences enterprises. Supports 10,000+ users "
-    "and 50+ Domain Controllers, specializing in AD replication, Group Policy, DNS, DHCP, hybrid identity, "
-    "SSO, MFA and Conditional Access. Microsoft Certified: Identity and Access Administrator (SC-300)."
+    "enterprise Identity and Access Management (IAM) for global banking and life-sciences clients, supporting "
+    "10,000+ users and 50+ Domain Controllers. L2/L3 expertise in AD DS, AD replication, Group Policy (GPO), "
+    "DNS, DHCP and LDAP, plus hybrid identity with Microsoft Entra Connect, SAML SSO, MFA, Conditional Access "
+    "and RBAC. SC-300 certified; uses PowerShell, ServiceNow and Splunk to deliver secure, well-controlled "
+    "incident and change management."
 )
 
 SKILLS = [
-    ("Active Directory",
-     "AD DS, Domain Controllers, AD Sites and Services, Replication, Group Policy (GPO), LDAP, Kerberos, "
-     "OUs, Delegation"),
-    ("Microsoft Entra ID",
-     "Azure AD, Entra Connect, Hybrid Identity, Conditional Access, MFA, SAML SSO, RBAC, Enterprise Apps"),
-    ("Infrastructure",
-     "Windows Server, DNS, DHCP, NTFS Permissions, Exchange Online, Microsoft 365"),
-    ("Tools & Processes",
-     "PowerShell, Incident Management, Change Management, Patching, Disaster Recovery"),
+    ("Identity & Directory",
+     "Active Directory (AD DS), Entra ID (Azure AD), Domain Controllers, AD Sites and Services, "
+     "AD Replication, LDAP, OUs, Security & Distribution Groups, Service Accounts, Delegation, ACLs, "
+     "SPN/Kerberos"),
+    ("Access & Security",
+     "IAM, Multi-Factor Authentication (MFA), Conditional Access, SAML, Single Sign-On (SSO), RBAC, "
+     "Enterprise Applications, Group-Based Licensing, Sign-in & Audit Logs, Least Privilege"),
+    ("Hybrid & Cloud",
+     "Microsoft Entra Connect (Azure AD Connect), Hybrid Identity, Microsoft 365, Exchange Online, "
+     "Azure"),
+    ("Windows Infrastructure",
+     "DNS (Zones, Records, Conditional Forwarders, Zone Transfers), DHCP (Scopes, Reservations, Failover), "
+     "Group Policy (GPO), File Share & NTFS Permissions"),
+    ("Tools & Platforms",
+     "ServiceNow, Splunk, New Relic, PagerDuty, SailPoint, Quest Change Auditor, Citrix, "
+     "PowerShell"),
+    ("IT Operations",
+     "Incident & Change Management, Patching, DR, Root Cause Analysis, "
+     "L2/L3 Troubleshooting"),
 ]
 
 JOB_TITLE = "Active Directory Administrator"
@@ -41,26 +53,34 @@ PROJECTS = [
     {
         "client": "Synchrony Bank",
         "role": "L3 Active Directory Administrator",
-        "dates": "Current",
+        "dates": "Current Project",
         "bullets": [
-            "Administer Active Directory for 10,000+ user accounts, resolving L3 identity and access escalations.",
-            "Monitor health and replication of 50+ Domain Controllers across multiple AD sites.",
-            "Optimize Group Policy processing and security baselines for domain-joined users and computers.",
-            "Resolve LDAP, Kerberos/SPN, ACL and service-account issues that block application sign-in.",
-            "Deliver Entra ID feature requests for enterprise apps, Conditional Access and RBAC, from design "
-            "to closure.",
+            "Deliver L3 Active Directory administration for 10,000+ users, resolving identity and access "
+            "escalations.",
+            "Manage health, replication and authentication across 50+ Domain Controllers and core AD DS services.",
+            "Administer Group Policy (GPO): troubleshoot, validate and optimize policy application and "
+            "security settings.",
+            "Maintain AD Sites and Services, subnets and replication topology for reliable connectivity across "
+            "locations.",
+            "Troubleshoot LDAP authentication, ACLs, delegation, service accounts and SPN / Kerberos access issues.",
+            "Support Microsoft Entra ID enterprise application access, Conditional Access policies and RBAC roles.",
+            "Handle incident and change activities for security access requests, from validation to closure.",
         ],
     },
     {
         "client": "Gilead Sciences",
         "role": "L2 Active Directory Administrator",
-        "dates": "Previous",
+        "dates": "Previous Project",
         "bullets": [
-            "Provisioned user and service accounts, groups and OUs using least-privilege delegation.",
-            "Maintained Domain Controllers, AD-integrated DNS and replication; diagnosed authentication failures.",
-            "Rolled out MFA, Conditional Access and group-based licensing in Microsoft Entra ID.",
-            "Configured SAML single sign-on and Entra Connect hybrid synchronization.",
-            "Ran DNS and DHCP operations: zones, forwarders, scopes, reservations and failover.",
+            "Provisioned AD user/service accounts, security and distribution groups, OUs and delegated access.",
+            "Administered Domain Controllers, DNS integration and AD replication; resolved authentication and "
+            "replication issues.",
+            "Created, maintained and troubleshot Group Policy Objects (GPOs) to enforce security standards.",
+            "Managed Microsoft Entra ID users and groups; implemented MFA, Conditional Access and group-based "
+            "licensing.",
+            "Configured SAML SSO and Microsoft Entra Connect for hybrid identity; reviewed audit and sign-in logs.",
+            "Ran DNS and DHCP operations (records, forwarders, zone transfers, scopes, reservations, failover).",
+            "Managed file-share and RBAC permissions and Exchange Online mailboxes, access and mail flow.",
         ],
     },
 ]
@@ -70,14 +90,17 @@ CERTIFICATIONS = [
     "Microsoft Certified: Azure Data Fundamentals (DP-900)",
 ]
 
-# (degree, school, year, grade)
+# (degree, school, dates, grade)
 EDUCATION = [
     ("B.E., Computer Science and Engineering",
-     "Sri Venkateswara College of Engineering", "2018 – 2022", "CGPA 9.23/10"),
+     "Sri Venkateswara College of Engineering", "2018 – 2022", "CGPA: 9.23 / 10"),
+    ("Higher Secondary (HSLC)",
+     "Holy Cross Anglo Indian Higher Secondary School", "2016 – 2018", "Score: 86%"),
 ]
 
 ACHIEVEMENTS = [
-    "Rising Star special mention for ticket resolution and team collaboration.",
-    "Top ticket-closure contributor in the core IT support team.",
-    "Mentored new IT support hires on procedures and support workflows.",
+    "Top ticket-closure contributor in the core IT support team for fast, effective issue resolution.",
+    "Received the Women Rising Star special mention for ticket resolution and team collaboration.",
+    "Collaborated with automation teams to streamline recurring service requests and improve efficiency.",
+    "Trained and mentored new IT support hires on technical procedures and support workflows.",
 ]

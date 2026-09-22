@@ -44,10 +44,11 @@ def e(text):
 class DatedLine(Flowable):
     """One line with bold text on the left and a right-aligned date."""
 
-    def __init__(self, left, right, size, color, space_before=0):
+    def __init__(self, left, right, size, color, space_before=0, rest=""):
         super().__init__()
         self.left, self.right, self.size, self.color = left, right, size, color
         self.spaceBefore = space_before
+        self.rest = rest  # optional regular-weight text after the bold part
 
     def wrap(self, avail_w, avail_h):
         self.width = avail_w
@@ -58,6 +59,10 @@ class DatedLine(Flowable):
         c.setFont("Helvetica-Bold", self.size)
         c.setFillColor(self.color)
         c.drawString(0, 2, self.left)
+        if self.rest:
+            c.setFont("Helvetica", self.size)
+            c.drawString(c.stringWidth(self.left, "Helvetica-Bold", self.size), 2, self.rest)
+            c.setFont("Helvetica-Bold", self.size)
         c.setFillColor(colors.HexColor("#333333"))
         c.drawRightString(self.width, 2, self.right)
 
@@ -65,26 +70,26 @@ class DatedLine(Flowable):
 def build_pdf(pdf_path):
     accent = colors.HexColor("#" + ACCENT)
     ink = colors.HexColor("#1a1a1a")
-    base = dict(fontName="Helvetica", fontSize=10, leading=13.4, textColor=ink)
+    base = dict(fontName="Helvetica", fontSize=9.4, leading=12.1, textColor=ink)
     st = {
         "name": ParagraphStyle("name", fontName="Helvetica-Bold", fontSize=22, leading=26,
                                alignment=TA_CENTER, textColor=accent),
-        "title": ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=11.5, leading=15,
+        "title": ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=10.4, leading=14,
                                 alignment=TA_CENTER, textColor=colors.HexColor("#333333")),
         "contact": ParagraphStyle("contact", **{**base, "fontSize": 9.6}, alignment=TA_CENTER,
                                   spaceAfter=2),
         "h2": ParagraphStyle("h2", fontName="Helvetica-Bold", fontSize=10.8, leading=13,
-                             textColor=accent, spaceBefore=10),
+                             textColor=accent, spaceBefore=6),
         "body": ParagraphStyle("body", **base),
-        "skill": ParagraphStyle("skill", **base, spaceAfter=2),
+        "skill": ParagraphStyle("skill", **base, spaceAfter=1.2),
         "sub": ParagraphStyle("sub", **{**base, "textColor": colors.HexColor("#444444")}, spaceBefore=1,
                               spaceAfter=2),
-        "bullet": ParagraphStyle("bullet", **base, leftIndent=12, bulletIndent=2, spaceAfter=2),
+        "bullet": ParagraphStyle("bullet", **base, leftIndent=12, bulletIndent=2, spaceAfter=1.6),
     }
 
     def heading(text):
         return [Paragraph(text.upper(), st["h2"]),
-                HRFlowable(width="100%", thickness=1, color=accent, spaceBefore=1, spaceAfter=5)]
+                HRFlowable(width="100%", thickness=1, color=accent, spaceBefore=1, spaceAfter=4)]
 
     def bullets(items):
         return [Paragraph(e(t), st["bullet"], bulletText="\u2022") for t in items]
@@ -101,21 +106,20 @@ def build_pdf(pdf_path):
         story.append(Paragraph(f'<font name="Helvetica-Bold" color="#{ACCENT}">{e(k)}:</font> {e(v)}',
                                st["skill"]))
     story += heading("Professional Experience")
-    story.append(DatedLine(R.JOB_TITLE, R.EMPLOYER_DATES, 10.4, ink))
+    story.append(DatedLine(R.JOB_TITLE, R.EMPLOYER_DATES, 10, ink))
     story.append(Paragraph(f"{e(R.EMPLOYER)} | {e(R.EMPLOYER_DETAIL)}", st["sub"]))
     for p in R.PROJECTS:
-        story.append(DatedLine(f"Client: {p['client']} | {p['role']}", p["dates"], 10, accent,
-                               space_before=6))
+        story.append(DatedLine(f"Client: {p['client']} | {p['role']}", p["dates"], 9.5, accent,
+                               space_before=4))
         story += bullets(p["bullets"])
     story += heading("Certifications") + bullets(R.CERTIFICATIONS)
     story += heading("Education")
     for d, s_, y, g in R.EDUCATION:
-        story.append(DatedLine(d, y, 10, ink, space_before=1))
-        story.append(Paragraph(f"{e(s_)} | {e(g)}", st["sub"]))
+        story.append(DatedLine(d, y, 9.4, ink, space_before=1, rest=f" | {s_} | {g}"))
     story += heading("Achievements") + bullets(R.ACHIEVEMENTS)
 
-    doc = SimpleDocTemplate(pdf_path, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm,
-                            topMargin=13 * mm, bottomMargin=12 * mm,
+    doc = SimpleDocTemplate(pdf_path, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm,
+                            topMargin=9 * mm, bottomMargin=7 * mm,
                             title=f"{R.NAME.title()} - Resume", author=R.NAME.title(),
                             subject="Resume", creator="build_resume.py")
     doc.build(story)
@@ -211,8 +215,8 @@ def build_docx(path):
 
     heading("Education")
     for d, s, y, g in R.EDUCATION:
-        dated(d, y)
-        para(f"{s} | {g}", after=2)
+        p = dated(d, y)
+        p.runs[0]._r.addnext(p.add_run(f" | {s} | {g}")._r)
 
     heading("Achievements")
     for a in R.ACHIEVEMENTS:
