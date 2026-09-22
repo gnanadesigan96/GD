@@ -16,7 +16,7 @@ CONTACT = [
 SUMMARY = (
     "Active Directory and Microsoft Entra ID (Azure AD) Administrator with 3.8 years of experience in "
     "enterprise Identity and Access Management (IAM) for global banking and life-sciences clients, supporting "
-    "10,000+ users and 50+ Domain Controllers. L2/L3 expertise in AD DS, AD replication, Group Policy (GPO), "
+    "10,000+ users, 50+ Domain Controllers and 50+ AD sites. L2/L3 expertise in AD DS, AD replication, Group Policy (GPO), "
     "DNS, DHCP and LDAP, plus hybrid identity with Microsoft Entra Connect, SAML SSO, MFA, Conditional Access "
     "and RBAC. SC-300 certified; uses PowerShell, ServiceNow and Splunk to deliver secure, well-controlled "
     "incident and change management."
@@ -58,13 +58,12 @@ PROJECTS = [
             "Deliver L3 Active Directory administration for 10,000+ users, resolving identity and access "
             "escalations.",
             "Manage health, replication and authentication across 50+ Domain Controllers and core AD DS services.",
-            "Administer Group Policy (GPO): troubleshoot, validate and optimize policy application and "
-            "security settings.",
-            "Maintain AD Sites and Services, subnets and replication topology for reliable connectivity across "
-            "locations.",
+            "Administer Group Policy, including the Default Domain Controllers Policy: troubleshoot, validate "
+            "and optimize security settings.",
+            "Maintain AD Sites and Services, subnets and replication topology across 50+ AD sites.",
             "Troubleshoot LDAP authentication, ACLs, delegation, service accounts and SPN / Kerberos access issues.",
             "Support Microsoft Entra ID enterprise application access, Conditional Access policies and RBAC roles.",
-            "Handle incident and change activities for security access requests, from validation to closure.",
+            "Handle incident and change activities for security access requests, resolving them within SLA.",
         ],
     },
     {
@@ -75,10 +74,10 @@ PROJECTS = [
             "Provisioned AD user/service accounts, security and distribution groups, OUs and delegated access.",
             "Administered Domain Controllers, DNS integration and AD replication; resolved authentication and "
             "replication issues.",
-            "Created, maintained and troubleshot Group Policy Objects (GPOs) to enforce security standards.",
-            "Managed Microsoft Entra ID users and groups; implemented MFA, Conditional Access and group-based "
+            "Created, maintained and troubleshot Windows Group Policy Objects (GPOs) to enforce security standards.",
+            "Rolled out MFA to 300+ users; managed Entra ID users, groups, Conditional Access and group-based "
             "licensing.",
-            "Configured SAML SSO and Microsoft Entra Connect for hybrid identity; reviewed audit and sign-in logs.",
+            "Configured SAML single sign-on for 4 enterprise applications and Entra Connect for hybrid identity.",
             "Ran DNS and DHCP operations (records, forwarders, zone transfers, scopes, reservations, failover).",
             "Controlled file-share and RBAC permissions; supported Exchange Online mailboxes and mail flow.",
         ],
