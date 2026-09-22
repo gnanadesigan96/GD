@@ -5,7 +5,7 @@ always carry identical, ATS-parsable text.
 """
 
 NAME = "ATHI SHREE V"
-TITLE = "Active Directory & Microsoft Entra ID (Azure AD) Administrator | Identity & Access Management (IAM)"
+TITLE = "Active Directory & Microsoft Entra ID Administrator | Identity & Access Management (IAM)"
 CONTACT = [
     "Chennai, India",
     "+91 63795 44624",
@@ -34,10 +34,10 @@ SKILLS = [
      "Microsoft Entra Connect (Azure AD Connect), Hybrid Identity, Microsoft 365, Exchange Online, "
      "Azure"),
     ("Windows Infrastructure",
-     "DNS (Zones, Records, Conditional Forwarders, Zone Transfers), DHCP (Scopes, Reservations, Failover), "
+     "Windows Server, DNS (Zones, Records, Conditional Forwarders, Zone Transfers), DHCP (Scopes, Reservations, Failover), "
      "Group Policy (GPO), File Share & NTFS Permissions"),
     ("Tools & Platforms",
-     "ServiceNow, Splunk, New Relic, PagerDuty, SailPoint, Quest Change Auditor, Citrix, "
+     "ServiceNow, Splunk, New Relic, PagerDuty, SailPoint (Identity Governance), Quest Change Auditor, Citrix, "
      "PowerShell"),
     ("IT Operations",
      "Incident & Change Management, Patching, DR, Root Cause Analysis, "
@@ -80,7 +80,7 @@ PROJECTS = [
             "licensing.",
             "Configured SAML SSO and Microsoft Entra Connect for hybrid identity; reviewed audit and sign-in logs.",
             "Ran DNS and DHCP operations (records, forwarders, zone transfers, scopes, reservations, failover).",
-            "Managed file-share and RBAC permissions and Exchange Online mailboxes, access and mail flow.",
+            "Controlled file-share and RBAC permissions; supported Exchange Online mailboxes and mail flow.",
         ],
     },
 ]
