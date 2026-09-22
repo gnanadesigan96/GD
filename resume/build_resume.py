@@ -1,24 +1,30 @@
 """Build ATS-friendly PDF and DOCX versions of the resume.
 
 Usage:  python3 build_resume.py
-Needs:  python-docx, and Node.js with the `playwright` package for the PDF.
+Needs:  pip install reportlab python-docx
 
 ATS rules followed in both outputs:
   * single column, no tables, text boxes, images, icons or headers/footers
   * standard section headings (Professional Summary, Skills, ...)
   * real text bullets and plain-text contact details
-  * standard fonts (Arial / Liberation Sans)
+  * standard fonts (Helvetica in the PDF, Arial in the DOCX)
 """
 
 import html
 import os
-import subprocess
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Inches
+
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import Flowable, HRFlowable, Paragraph, SimpleDocTemplate
 
 import resume_data as R
 
@@ -31,93 +37,89 @@ def e(text):
     return html.escape(text)
 
 
-# --------------------------------------------------------------------------- HTML / PDF
-def build_html():
-    skills = "\n".join(
-        f'<p class="skill"><strong>{e(k)}:</strong> {e(v)}</p>' for k, v in R.SKILLS
-    )
-    projects = ""
+# --------------------------------------------------------------------------- PDF
+# Built with ReportLab using the standard Helvetica fonts (simple Type1 fonts,
+# WinAnsi encoding, classic xref table). This is the most widely parsable PDF
+# structure; browser-printed PDFs use embedded CID fonts that some ATS reject.
+class DatedLine(Flowable):
+    """One line with bold text on the left and a right-aligned date."""
+
+    def __init__(self, left, right, size, color, space_before=0, rest=""):
+        super().__init__()
+        self.left, self.right, self.size, self.color = left, right, size, color
+        self.rest = rest  # optional regular-weight text after the bold part
+        self.spaceBefore = space_before
+
+    def wrap(self, avail_w, avail_h):
+        self.width = avail_w
+        return avail_w, self.size * 1.3
+
+    def draw(self):
+        c = self.canv
+        c.setFont("Helvetica-Bold", self.size)
+        c.setFillColor(self.color)
+        c.drawString(0, 2, self.left)
+        if self.rest:
+            c.setFont("Helvetica", self.size)
+            c.drawString(c.stringWidth(self.left, "Helvetica-Bold", self.size), 2, self.rest)
+            c.setFont("Helvetica-Bold", self.size)
+        c.setFillColor(colors.HexColor("#333333"))
+        c.drawRightString(self.width, 2, self.right)
+
+
+def build_pdf(pdf_path):
+    accent = colors.HexColor("#" + ACCENT)
+    ink = colors.HexColor("#1a1a1a")
+    base = dict(fontName="Helvetica", fontSize=9.2, leading=11.2, textColor=ink)
+    st = {
+        "name": ParagraphStyle("name", fontName="Helvetica-Bold", fontSize=21, leading=24,
+                               alignment=TA_CENTER, textColor=accent),
+        "title": ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=10.4, leading=13,
+                                alignment=TA_CENTER, textColor=colors.HexColor("#333333")),
+        "contact": ParagraphStyle("contact", **{**base, "fontSize": 9.3}, alignment=TA_CENTER,
+                                  spaceAfter=2),
+        "h2": ParagraphStyle("h2", fontName="Helvetica-Bold", fontSize=10.8, leading=13,
+                             textColor=accent, spaceBefore=5),
+        "body": ParagraphStyle("body", **base, alignment=TA_JUSTIFY),
+        "skill": ParagraphStyle("skill", **base, spaceAfter=1),
+        "bullet": ParagraphStyle("bullet", **base, leftIndent=11, bulletIndent=2, spaceAfter=0.8),
+    }
+
+    def heading(text):
+        return [Paragraph(text.upper(), st["h2"]),
+                HRFlowable(width="100%", thickness=1.2, color=accent, spaceBefore=1, spaceAfter=3)]
+
+    def bullets(items):
+        return [Paragraph(e(t), st["bullet"], bulletText="\u2022") for t in items]
+
+    story = [
+        Paragraph(e(R.NAME), st["name"]),
+        Paragraph(e(R.TITLE), st["title"]),
+        Paragraph(" | ".join(e(c) for c in R.CONTACT), st["contact"]),
+        *heading("Professional Summary"),
+        Paragraph(e(R.SUMMARY), st["body"]),
+        *heading("Skills"),
+    ]
+    for k, v in R.SKILLS:
+        story.append(Paragraph(f'<font name="Helvetica-Bold" color="#{ACCENT}">{e(k)}:</font> {e(v)}',
+                               st["skill"]))
+    story += heading("Professional Experience")
+    story.append(DatedLine(f"{R.EMPLOYER_ROLE} | {R.EMPLOYER}", R.EMPLOYER_DATES, 10.2, ink))
     for p in R.PROJECTS:
-        bullets = "".join(f"<li>{e(b)}</li>" for b in p["bullets"])
-        projects += (
-            f'<p class="proj"><span class="l">Client: {e(p["client"])} | {e(p["role"])}</span>'
-            f'<span class="r">{e(p["dates"])}</span></p>\n<ul>{bullets}</ul>\n'
-        )
-    edu = "".join(
-        f'<p class="edu"><span class="l"><strong>{e(d)}</strong> | {e(s)} | {e(g)}</span>'
-        f'<span class="r">{e(y)}</span></p>'
-        for d, s, y, g in R.EDUCATION
-    )
-    achievements = "".join(f"<li>{e(a)}</li>" for a in R.ACHIEVEMENTS)
-    certs = "".join(f"<li>{e(c)}</li>" for c in R.CERTIFICATIONS)
+        story.append(DatedLine(f"Client: {p['client']} | {p['role']}", p["dates"], 9.4, accent,
+                               space_before=3))
+        story += bullets(p["bullets"])
+    story += heading("Certifications") + bullets(R.CERTIFICATIONS)
+    story += heading("Education")
+    for d, s_, y, g in R.EDUCATION:
+        story.append(DatedLine(d, y, 9.3, ink, space_before=1, rest=f" | {s_} | {g}"))
+    story += heading("Achievements") + bullets(R.ACHIEVEMENTS)
 
-    return f"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
-<title>{e(R.NAME.title())} - Resume</title>
-<style>
-  @page {{ size: A4; margin: 9mm 12mm 8mm 12mm; }}
-  * {{ box-sizing: border-box; }}
-  body {{ margin: 0; font-family: Arial, "Liberation Sans", Helvetica, sans-serif;
-         font-size: 9.3pt; line-height: 1.26; color: #1a1a1a; }}
-  h1 {{ margin: 0; text-align: center; font-size: 22pt; letter-spacing: 2.5px;
-        color: #{ACCENT}; font-weight: 700; }}
-  .title {{ text-align: center; margin: 3px 0 2px; font-size: 10.6pt; font-weight: 700; color: #333; }}
-  .contact {{ text-align: center; margin: 0 0 4px; font-size: 9.4pt; color: #333; }}
-  h2 {{ font-size: 10.8pt; text-transform: uppercase; letter-spacing: 1.2px; color: #{ACCENT};
-        margin: 6px 0 3px; padding-bottom: 1.5px; border-bottom: 1.4px solid #{ACCENT}; }}
-  p {{ margin: 0; }}
-  .summary {{ text-align: justify; }}
-  .skill {{ margin: 1px 0; }}
-  .skill strong {{ color: #{ACCENT}; }}
-  .job, .proj {{ display: flex; justify-content: space-between; gap: 12px; }}
-  .job {{ font-weight: 700; font-size: 10.2pt; margin-top: 2px; }}
-  .proj {{ font-weight: 700; color: #{ACCENT}; margin: 4px 0 0; }}
-  .r {{ white-space: nowrap; font-weight: 700; color: #333; }}
-  .edu {{ display: flex; justify-content: space-between; gap: 10px; margin: 1.5px 0; }}
-  .sub {{ font-style: italic; color: #444; margin-bottom: 2px; }}
-  ul {{ margin: 1px 0 0; padding-left: 15px; }}
-  li {{ margin: 0.8px 0; padding-left: 1px; }}
-</style></head>
-<body>
-<h1>{e(R.NAME)}</h1>
-<p class="title">{e(R.TITLE)}</p>
-<p class="contact">{' | '.join(e(c) for c in R.CONTACT)}</p>
-
-<h2>Professional Summary</h2>
-<p class="summary">{e(R.SUMMARY)}</p>
-
-<h2>Skills</h2>
-{skills}
-
-<h2>Professional Experience</h2>
-<p class="job"><span class="l">{e(R.EMPLOYER_ROLE)} | {e(R.EMPLOYER)}</span><span class="r">{e(R.EMPLOYER_DATES)}</span></p>
-{projects}
-<h2>Certifications</h2>
-<ul>{certs}</ul>
-
-<h2>Education</h2>
-{edu}
-
-<h2>Achievements</h2>
-<ul>{achievements}</ul>
-</body></html>
-"""
-
-
-def build_pdf(html_path, pdf_path):
-    js = f"""
-const {{ chromium }} = require('playwright');
-(async () => {{
-  const b = await chromium.launch();
-  const p = await b.newPage();
-  await p.goto('file://{html_path}');
-  await p.pdf({{ path: '{pdf_path}', format: 'A4', preferCSSPageSize: true, printBackground: true }});
-  await b.close();
-}})();
-"""
-    env = dict(os.environ)
-    env.setdefault("NODE_PATH", subprocess.check_output(["npm", "root", "-g"], text=True).strip())
-    subprocess.run(["node", "-e", js], check=True, env=env)
+    doc = SimpleDocTemplate(pdf_path, pagesize=A4, leftMargin=12 * mm, rightMargin=12 * mm,
+                            topMargin=8 * mm, bottomMargin=6 * mm,
+                            title=f"{R.NAME.title()} - Resume", author=R.NAME.title(),
+                            subject="Resume", creator="build_resume.py")
+    doc.build(story)
 
 
 # --------------------------------------------------------------------------- DOCX
@@ -222,9 +224,6 @@ def build_docx(path):
 
 
 if __name__ == "__main__":
-    html_path = os.path.join(HERE, BASENAME + ".html")
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(build_html())
-    build_pdf(html_path, os.path.join(HERE, BASENAME + ".pdf"))
+    build_pdf(os.path.join(HERE, BASENAME + ".pdf"))
     build_docx(os.path.join(HERE, BASENAME + ".docx"))
-    print("Built", BASENAME + ".pdf / .docx / .html")
+    print("Built", BASENAME + ".pdf / .docx")
