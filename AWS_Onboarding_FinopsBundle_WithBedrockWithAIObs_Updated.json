@@ -221,7 +221,7 @@
 				"PolicyName": "CoreStack_AWSCURAccessPolicy",
 				"PolicyDocument": {
 					"Statement": [{
-						"Sid": "Auth",
+						"Sid": "GetCURObject",
 						"Action": [
 							"s3:GetObject"
 						],
@@ -235,6 +235,24 @@
 										"Ref": "AWSCostAndUsageReportCURBucketName"
 									},
 									"/*"
+								]
+							]
+						}
+					},
+					{
+						"Sid": "ListCURBucket",
+						"Action": [
+							"s3:ListBucket"
+						],
+						"Effect": "Allow",
+						"Resource": {
+							"Fn::Join": [
+								"",
+								[
+									"arn:aws:s3:::",
+									{
+										"Ref": "AWSCostAndUsageReportCURBucketName"
+									}
 								]
 							]
 						}
@@ -404,7 +422,6 @@
 				                        "s3:GetBucketNotification",
 										"s3:GetBucketLocation",
 				                        "s3:ListAllMyBuckets",
-							            "s3:ListBucket",
 				                        "s3:ListMultipartUploadParts",
 				                        "sagemaker:List*",
 				                        "secretsmanager:Describe*",
@@ -465,7 +482,8 @@
 							"glue:GetEntityRecords",
 							"glue:GetDataPreviewStatement",
 							"glue:GetRecipeAction",
-							"glue:GetDashboardUrl"
+							"glue:GetDashboardUrl",
+							"storagegateway:DescribeChapCredentials"
 						],
 						"Resource": "*"
 					}]
