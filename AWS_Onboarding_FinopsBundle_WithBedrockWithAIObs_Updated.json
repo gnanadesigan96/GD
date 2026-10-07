@@ -457,7 +457,14 @@
 							"quicksight:DescribeDashboardSnapshotJobResult",
 							"sns:ListPhoneNumbersOptedOut",
 							"lightsail:GetContainerLog",
-							"lightsail:GetRelationalDatabaseLogEvents"
+							"lightsail:GetRelationalDatabaseLogEvents",
+							"glue:GetConnection",
+							"glue:GetConnections",
+							"glue:GetStatement",
+							"glue:GetEntityRecords",
+							"glue:GetDataPreviewStatement",
+							"glue:GetRecipeAction",
+							"glue:GetDashboardUrl"
 						],
 						"Resource": "*"
 					}]
