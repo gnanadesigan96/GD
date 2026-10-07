@@ -446,11 +446,12 @@
 						"Effect": "Allow",
 						"Resource": "*"
 					}, {
-						"Sid": "DenyStateChangingActions",
+						"Sid": "DenySensitiveActions",
 						"Effect": "Deny",
 						"Action": [
 							"cognito-identity:GetId",
-							"lightsail:GetInstanceAccessDetails"
+							"lightsail:GetInstanceAccessDetails",
+							"lightsail:GetRelationalDatabaseMasterUserPassword"
 						],
 						"Resource": "*"
 					}]
