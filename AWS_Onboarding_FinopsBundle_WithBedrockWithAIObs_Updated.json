@@ -424,7 +424,6 @@
 				                        "sqs:Get*",
 				                        "sqs:List*",
 				                        "ssm:Describe*",
-				                        "ssm:Get*",
 				                        "ssm:List*",
 				                        "states:ListActivities",
 				                        "states:ListStateMachines",
@@ -451,7 +450,14 @@
 						"Action": [
 							"cognito-identity:GetId",
 							"lightsail:GetInstanceAccessDetails",
-							"lightsail:GetRelationalDatabaseMasterUserPassword"
+							"lightsail:GetRelationalDatabaseMasterUserPassword",
+							"wafv2:GetDecryptedAPIKey",
+							"ec2:DescribeInstanceAttribute",
+							"quicksight:DescribeAssetBundleExportJob",
+							"quicksight:DescribeDashboardSnapshotJobResult",
+							"sns:ListPhoneNumbersOptedOut",
+							"lightsail:GetContainerLog",
+							"lightsail:GetRelationalDatabaseLogEvents"
 						],
 						"Resource": "*"
 					}]
