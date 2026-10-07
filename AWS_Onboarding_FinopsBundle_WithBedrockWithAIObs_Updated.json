@@ -447,6 +447,9 @@
 						"Effect": "Deny",
 						"Action": [
 							"cognito-identity:GetId",
+							"cognito-identity:GetCredentialsForIdentity",
+							"cognito-identity:GetOpenIdToken",
+							"cognito-identity:GetOpenIdTokenForDeveloperIdentity",
 							"lightsail:GetInstanceAccessDetails",
 							"lightsail:GetRelationalDatabaseMasterUserPassword",
 							"wafv2:GetDecryptedAPIKey",
