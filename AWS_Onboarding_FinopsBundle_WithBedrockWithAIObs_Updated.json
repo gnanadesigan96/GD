@@ -323,8 +323,6 @@
 				                        "cognito-identity:Get*",
 				                        "cognito-identity:ListIdentityPools",
 				                        "cognito-idp:ListUserPools",
-				                        "cognito-user:Describe*",
-				                        "cognito-user:List*",
 				                        "datapipeline:DescribePipelines",
 				                        "datapipeline:GetPipelineDefinition",
 				                        "datapipeline:ListPipelines",
@@ -405,12 +403,11 @@
 				                        "s3:GetAccountPublicAccessBlock",
 				                        "s3:GetEncryptionConfiguration",
 				                        "s3:GetLifecycleConfiguration",
-				                        "s3:GetNotificationConfiguration",
+				                        "s3:GetBucketNotification",
 										"s3:GetBucketLocation",
 				                        "s3:ListAllMyBuckets",
 							            "s3:ListBucket",
 				                        "s3:ListMultipartUploadParts",
-										"s3:HeadBucket",
 				                        "sagemaker:List*",
 				                        "secretsmanager:Describe*",
 				                        "secretsmanager:List*",
@@ -426,7 +423,6 @@
 				                        "sns:List*",
 				                        "sqs:Get*",
 				                        "sqs:List*",
-				                        "sqs:ReceiveMessage",
 				                        "ssm:Describe*",
 				                        "ssm:Get*",
 				                        "ssm:List*",
@@ -448,6 +444,14 @@
 				                        "xray:GetSamplingRules"
 						],
 						"Effect": "Allow",
+						"Resource": "*"
+					}, {
+						"Sid": "DenyStateChangingActions",
+						"Effect": "Deny",
+						"Action": [
+							"cognito-identity:GetId",
+							"lightsail:GetInstanceAccessDetails"
+						],
 						"Resource": "*"
 					}]
 				},
