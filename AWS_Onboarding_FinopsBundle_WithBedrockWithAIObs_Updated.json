@@ -46,17 +46,8 @@
 			"Description": "The AWS Account ID of Corestack.",
 			"Default": "028811834831"
 		},
-		"EnableBedrockPermissions": {
-			"Description": "Flag to enable IAM permissions required for CoreStack to discover Amazon Bedrock, Bedrock AgentCore and Bedrock Projects resources and to read their tags.",
-			"Type": "String",
-			"Default": "false",
-			"AllowedValues": [
-				"true",
-				"false"
-			]
-		},
-		"EnableFinOpsForAI": {
-			"Description": "Flag to enable IAM permissions required for CoreStack FinOps for AI (Prompt Analytics, Bedrock Agents, and Gateway Integration).",
+		"EnableBedrockPermissionsForFinOpsForAI": {
+			"Description": "Flag to enable IAM permissions required for CoreStack to discover Amazon Bedrock, Bedrock AgentCore and Bedrock Projects resources and read their tags, and for CoreStack FinOps for AI (Prompt Analytics, Bedrock Agents, and Gateway Integration).",
 			"Type": "String",
 			"Default": "false",
 			"AllowedValues": [
@@ -88,18 +79,10 @@
 				"true"
 			]
 		},
-		"IncludeBedrockPermissions": {
+		"IncludeBedrockFinOpsForAI": {
 			"Fn::Equals": [
 				{
-					"Ref": "EnableBedrockPermissions"
-				},
-				"true"
-			]
-		},
-		"IncludeFinOpsForAI": {
-			"Fn::Equals": [
-				{
-					"Ref": "EnableFinOpsForAI"
+					"Ref": "EnableBedrockPermissionsForFinOpsForAI"
 				},
 				"true"
 			]
@@ -519,16 +502,16 @@
 				]
 			}
 		},
-		"BedrockPermissionsListingPolicy": {
+		"BedrockFinOpsForAIPolicy": {
 			"Type": "AWS::IAM::Policy",
-			"Condition": "IncludeBedrockPermissions",
+			"Condition": "IncludeBedrockFinOpsForAI",
 			"Properties": {
-				"PolicyName": "CoreStack_BedrockPermissions_Listing",
+				"PolicyName": "CoreStack_BedrockFinOpsForAIPolicy",
 				"PolicyDocument": {
 					"Version": "2012-10-17",
 					"Statement": [
 						{
-							"Sid": "CoreStackBedrockDiscoveryList",
+							"Sid": "CoreStackBedrockFinOpsForAIReadOnly",
 							"Effect": "Allow",
 							"Action": [
 								"bedrock-agentcore:ListAgentRuntimes",
@@ -562,31 +545,7 @@
 								"bedrock:ListKnowledgeBases",
 								"bedrock:ListModelCustomizationJobs",
 								"bedrock:ListPromptRouters",
-								"bedrock:ListProvisionedModelThroughputs"
-							],
-							"Resource": "*"
-						}
-					]
-				},
-				"Roles": [
-					{
-						"Ref": "Role"
-					}
-				]
-			}
-		},
-		"BedrockPermissionsDeepGetPolicy": {
-			"Type": "AWS::IAM::Policy",
-			"Condition": "IncludeBedrockPermissions",
-			"Properties": {
-				"PolicyName": "CoreStack_BedrockPermissions_DeepGet",
-				"PolicyDocument": {
-					"Version": "2012-10-17",
-					"Statement": [
-						{
-							"Sid": "CoreStackBedrockDeepDiscoveryGet",
-							"Effect": "Allow",
-							"Action": [
+								"bedrock:ListProvisionedModelThroughputs",
 								"bedrock-agentcore:GetAgentRuntime",
 								"bedrock-agentcore:GetGateway",
 								"bedrock-agentcore:GetGatewayTarget",
@@ -608,152 +567,11 @@
 								"bedrock:GetProvisionedModelThroughput",
 								"bedrock:ListAgentKnowledgeBases",
 								"bedrock:ListFlowExecutions",
-								"bedrock:ListFlowVersions"
-							],
-							"Resource": "*"
-						}
-					]
-				},
-				"Roles": [
-					{
-						"Ref": "Role"
-					}
-				]
-			}
-		},
-		"BedrockPermissionsTagReadPolicy": {
-			"Type": "AWS::IAM::Policy",
-			"Condition": "IncludeBedrockPermissions",
-			"Properties": {
-				"PolicyName": "CoreStack_BedrockPermissions_TagRead",
-				"PolicyDocument": {
-					"Version": "2012-10-17",
-					"Statement": [
-						{
-							"Sid": "CoreStackBedrockTagRead",
-							"Effect": "Allow",
-							"Action": [
+								"bedrock:ListFlowVersions",
 								"bedrock-agentcore:ListTagsForResource",
-								"bedrock:ListTagsForResource"
-							],
-							"Resource": "*"
-						}
-					]
-				},
-				"Roles": [
-					{
-						"Ref": "Role"
-					}
-				]
-			}
-		},
-		"FinOpsForAIBedrockPolicy": {
-			"Type": "AWS::IAM::Policy",
-			"Condition": "IncludeFinOpsForAI",
-			"Properties": {
-				"PolicyName": "CoreStack_FinOpsForAI_Bedrock",
-				"PolicyDocument": {
-					"Version": "2012-10-17",
-					"Statement": [
-						{
-							"Sid": "CoreStackBedrockReadOnly",
-							"Effect": "Allow",
-							"Action": [
-								"bedrock:GetModelInvocationLoggingConfiguration",
-								"bedrock:ListFoundationModels",
-								"bedrock:GetInferenceProfile",
 								"bedrock:ListTagsForResource",
-								"bedrock:ListAgents",
-								"bedrock:GetAgent",
-								"bedrock:ListAgentVersions",
 								"bedrock:GetAgentVersion",
-								"bedrock:ListAgentAliases",
-								"bedrock:GetAgentAlias",
-								"bedrock:ListAgentActionGroups",
-								"bedrock:GetAgentActionGroup",
-								"bedrock:ListAgentKnowledgeBases",
-								"bedrock:GetKnowledgeBase"
-							],
-							"Resource": "*"
-						}
-					]
-				},
-				"Roles": [
-					{
-						"Ref": "Role"
-					}
-				]
-			}
-		},
-		"FinOpsForAICloudWatchLogsPolicy": {
-			"Type": "AWS::IAM::Policy",
-			"Condition": "IncludeFinOpsForAI",
-			"Properties": {
-				"PolicyName": "CoreStack_FinOpsForAI_CloudWatchLogs",
-				"PolicyDocument": {
-					"Version": "2012-10-17",
-					"Statement": [
-						{
-							"Sid": "CoreStackCloudWatchLogsReadOnly",
-							"Effect": "Allow",
-							"Action": [
-								"logs:DescribeLogGroups",
-								"logs:DescribeLogStreams",
-								"logs:FilterLogEvents",
-								"logs:StartQuery",
-								"logs:GetQueryResults",
-								"logs:StopQuery"
-							],
-							"Resource": "*"
-						}
-					]
-				},
-				"Roles": [
-					{
-						"Ref": "Role"
-					}
-				]
-			}
-		},
-		"FinOpsForAIIAMPolicy": {
-			"Type": "AWS::IAM::Policy",
-			"Condition": "IncludeFinOpsForAI",
-			"Properties": {
-				"PolicyName": "CoreStack_FinOpsForAI_IAM",
-				"PolicyDocument": {
-					"Version": "2012-10-17",
-					"Statement": [
-						{
-							"Sid": "CoreStackIAMReadOnly",
-							"Effect": "Allow",
-							"Action": [
-								"iam:ListRoles",
-								"iam:GetRole"
-							],
-							"Resource": "*"
-						}
-					]
-				},
-				"Roles": [
-					{
-						"Ref": "Role"
-					}
-				]
-			}
-		},
-		"FinOpsForAIAPIGatewayPolicy": {
-			"Type": "AWS::IAM::Policy",
-			"Condition": "IncludeFinOpsForAI",
-			"Properties": {
-				"PolicyName": "CoreStack_FinOpsForAI_APIGateway",
-				"PolicyDocument": {
-					"Version": "2012-10-17",
-					"Statement": [
-						{
-							"Sid": "CoreStackAPIGatewayReadOnly",
-							"Effect": "Allow",
-							"Action": [
-								"apigateway:GET"
+								"bedrock:GetAgentAlias"
 							],
 							"Resource": "*"
 						}
@@ -789,16 +607,10 @@
 				"Ref": "EnforceMFA"
 			}
 		},
-		"BedrockPermissionsEnabled": {
-			"Description": "Flag to identify whether the Bedrock Permissions policies were attached to the role.",
+		"BedrockFinOpsForAIPermissionsEnabled": {
+			"Description": "Flag to identify whether the Bedrock and FinOps for AI policy was attached to the role.",
 			"Value": {
-				"Ref": "EnableBedrockPermissions"
-			}
-		},
-		"FinOpsForAIEnabled": {
-			"Description": "Flag to identify whether the FinOps for AI policies were attached to the role.",
-			"Value": {
-				"Ref": "EnableFinOpsForAI"
+				"Ref": "EnableBedrockPermissionsForFinOpsForAI"
 			}
 		}
 	}
