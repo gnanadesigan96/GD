@@ -571,7 +571,12 @@
 								"bedrock-agentcore:ListTagsForResource",
 								"bedrock:ListTagsForResource",
 								"bedrock:GetAgentVersion",
-								"bedrock:GetAgentAlias"
+								"bedrock:GetAgentAlias",
+								"logs:FilterLogEvents",
+								"logs:StartQuery",
+								"logs:GetQueryResults",
+								"logs:StopQuery",
+								"iam:ListRoles"
 							],
 							"Resource": "*"
 						}
