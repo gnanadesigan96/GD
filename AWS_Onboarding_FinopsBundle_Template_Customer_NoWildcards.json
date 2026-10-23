@@ -325,7 +325,6 @@
 								"acm:GetCertificate",
 								"acm:ListCertificates",
 								"acm:ListTagsForCertificate",
-								"apigateway:GET",
 								"application-autoscaling:DescribeScheduledActions",
 								"appstream:DescribeFleets",
 								"appstream:DescribeImages",
@@ -419,7 +418,6 @@
 								"ec2:DescribeVpnGateways",
 								"ecr-public:DescribeRepositories",
 								"ecr-public:GetRepositoryCatalogData",
-								"ecr:BatchGetImage",
 								"ecr:DescribeImages",
 								"ecr:DescribeRepositories",
 								"ecr:GetLifecyclePolicy",
@@ -437,6 +435,31 @@
 								"ecs:ListTasks"
 							],
 							"Resource": "*"
+						},
+						{
+							"Sid": "ApiGatewayReadApisOnly",
+							"Effect": "Allow",
+							"Action": [
+								"apigateway:GET"
+							],
+							"Resource": [
+								"arn:aws:apigateway:*::/restapis",
+								"arn:aws:apigateway:*::/restapis/*",
+								"arn:aws:apigateway:*::/apis",
+								"arn:aws:apigateway:*::/apis/*",
+								"arn:aws:apigateway:*::/tags/*"
+							]
+						},
+						{
+							"Sid": "DenyApiGatewayApiKeys",
+							"Effect": "Deny",
+							"Action": [
+								"apigateway:GET"
+							],
+							"Resource": [
+								"arn:aws:apigateway:*::/apikeys",
+								"arn:aws:apigateway:*::/apikeys/*"
+							]
 						}
 					]
 				},
@@ -513,7 +536,6 @@
 								"kinesis:ListTagsForStream",
 								"lambda:GetAccountSettings",
 								"lambda:GetEventSourceMapping",
-								"lambda:GetFunction",
 								"lambda:GetFunctionCodeSigningConfig",
 								"lambda:GetFunctionConcurrency",
 								"lambda:GetFunctionConfiguration",
@@ -651,7 +673,6 @@
 								"secretsmanager:ListSecrets",
 								"securityhub:DescribeStandards",
 								"securityhub:GetAdministratorAccount",
-								"securityhub:GetFindings",
 								"servicecatalog:ListPortfolios",
 								"servicecatalog:ListServiceActions",
 								"servicecatalog:ListTagOptions",
@@ -840,8 +861,7 @@
 								"logs:FilterLogEvents",
 								"logs:StartQuery",
 								"logs:GetQueryResults",
-								"logs:StopQuery",
-								"iam:ListRoles"
+								"logs:StopQuery"
 							],
 							"Resource": "*"
 						}
