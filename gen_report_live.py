@@ -245,7 +245,8 @@ def main():
 
     # Generate HTML with the SharePoint Excel URL embedded
     with open(html_path, "w", encoding="utf-8") as f:
-        html_tickets = [t for t in tickets if t["num"] not in HTML_EXCLUDED_TICKETS]
+        html_tickets = [t for t in tickets
+                        if str(t["num"]).strip().lstrip("#") not in HTML_EXCLUDED_TICKETS]
         if len(html_tickets) != len(tickets):
             logging.info("Excluded %d internal ticket(s) from HTML", len(tickets) - len(html_tickets))
         f.write(generate_html(html_tickets, today, excel_url=excel_sp_url))
