@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "azure-function"))
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timezone, timedelta
+from urllib.parse import quote
 
 import requests
 
@@ -234,6 +235,13 @@ def main():
         logging.info("Excel uploaded: %s", excel_sp_url)
     except Exception as e:
         logging.error("SharePoint Excel upload failed: %s", e)
+
+    # Without a URL the HTML would link to a bare filename, which resolves
+    # against the HTML's own (Template) folder and 404s. Point at the Excel folder.
+    if not excel_sp_url:
+        excel_sp_url = "https://{}/Shared%20Documents/{}/{}".format(
+            SHAREPOINT_SITE_URL.strip("/"), quote(sp_excel_folder.strip("/")), quote(excel_path))
+        logging.warning("No Excel URL from SharePoint — linking to %s", excel_sp_url)
 
     # Generate HTML with the SharePoint Excel URL embedded
     with open(html_path, "w", encoding="utf-8") as f:
