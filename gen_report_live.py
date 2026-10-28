@@ -62,6 +62,9 @@ ZOHO_ORG_ID        = "60019389025"
 ZOHO_DEPT_ID       = "100599000000010772"
 PENTAGON_ACCOUNT   = "100599000037212179"
 
+# Internal tickets to leave out of the HTML report (still listed in the Excel)
+HTML_EXCLUDED_TICKETS = {"251527"}
+
 ZOHO_TOKEN_URL = "https://accounts.zoho.in/oauth/v2/token"
 ZOHO_API_BASE  = "https://desk.zoho.in/api/v1"
 IST = timedelta(hours=5, minutes=30)
@@ -234,7 +237,10 @@ def main():
 
     # Generate HTML with the SharePoint Excel URL embedded
     with open(html_path, "w", encoding="utf-8") as f:
-        f.write(generate_html(tickets, today, excel_url=excel_sp_url))
+        html_tickets = [t for t in tickets if t["num"] not in HTML_EXCLUDED_TICKETS]
+        if len(html_tickets) != len(tickets):
+            logging.info("Excluded %d internal ticket(s) from HTML", len(tickets) - len(html_tickets))
+        f.write(generate_html(html_tickets, today, excel_url=excel_sp_url))
     logging.info("HTML written: %s", html_path)
 
     try:
