@@ -10,3 +10,19 @@ vpn/client.ovpn
 
 # Azure Function local settings
 local.settings.json
+
+# S3 CUR dashboard
+s3-cur-dashboard/backend/.venv/
+s3-cur-dashboard/frontend/node_modules/
+s3-cur-dashboard/frontend/dist/
+s3-cur-dashboard/frontend/tsconfig.tsbuildinfo
+s3-cur-dashboard/backend/.env
+s3-cur-dashboard/frontend/.env.production
+s3-cur-dashboard/frontend/.env.local
+
+# Never commit certificate/key material dropped in for import_certificate.sh
+s3-cur-dashboard/deploy/*.key
+s3-cur-dashboard/deploy/*.pem
+s3-cur-dashboard/deploy/*.crt
+s3-cur-dashboard/deploy/certs/
+
