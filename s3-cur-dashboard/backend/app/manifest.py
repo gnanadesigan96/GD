@@ -54,6 +54,20 @@ def parse_s3_uri(s3_uri: str) -> S3Location:
     return S3Location(bucket=bucket, key=prefix.rstrip("/"))
 
 
+def normalize_part_key(raw: str, bucket: str) -> str:
+    """A manifest's data-file list is bare keys (relative to the bucket) for
+    legacy CUR, but a real CUR 2.0 (Data Exports) manifest was confirmed to
+    list full "s3://bucket/key" URIs instead -- every other call site here
+    (duckdb_reader's "s3://{bucket}/{key}" path building, part_files.py's
+    head_object calls, the part_files response field) assumes a bare key,
+    so this strips the scheme+bucket back off right where part_keys is
+    built, the one place that needs to know about this manifest-format
+    difference.
+    """
+    prefix = f"s3://{bucket}/"
+    return raw[len(prefix):] if raw.startswith(prefix) else raw
+
+
 def _folder_matches_month(folder: str, month: str) -> bool:
     range_match = _DATE_RANGE_RE.search(folder)
     if range_match:

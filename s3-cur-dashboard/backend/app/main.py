@@ -11,7 +11,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from . import jobs
 from .aws_client import assume_role, resolve_bucket_region, s3_client_for
 from .cur_columns import resolve_columns, resolve_cost_metrics, resolve_public_on_demand_cost
-from .manifest import find_month_manifest_key, load_manifest, parse_s3_uri
+from .manifest import find_month_manifest_key, load_manifest, normalize_part_key, parse_s3_uri
 from .part_files import list_part_file_sizes
 from .readers.duckdb_reader import aggregate
 from .schemas import CurJobStartedResponse, CurJobStatusResponse, CurLoadRequest, CurLoadResponse
@@ -79,6 +79,7 @@ def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
     part_keys = manifest.get("reportKeys") or manifest.get("dataFiles") or []
     if not part_keys:
         raise HTTPException(status_code=502, detail="Manifest for this billing period lists no report files")
+    part_keys = [normalize_part_key(k, location.bucket) for k in part_keys]
 
     first_key = part_keys[0]
     if first_key.endswith(".parquet"):
