@@ -1,9 +1,12 @@
 """Resolve the dashboard's required fields against a customer's CUR schema.
 
 CUR column sets vary slightly (blended vs. unblended cost, resource tags,
-CUR 2.0 renames, etc.), so instead of hardcoding column names we match
-against the manifest's own column list -- the one part of the schema that's
-always accurate for the file we're about to read.
+etc.), and the manifest format itself varies too -- legacy CUR lists each
+column as {"category": ..., "name": ...}, while CUR 2.0 (Data Exports) gives
+one flat, already-snake_case name per column instead (see _build_lookup).
+Rather than hardcode either shape, we match against the manifest's own
+column list -- the one part of the schema that's always accurate for the
+file we're about to read.
 """
 
 import re
@@ -57,13 +60,33 @@ _PUBLIC_ON_DEMAND_COST_CANDIDATE = ("pricing", "publicOnDemandCost")
 class ResolvedColumn:
     category: str
     name: str
+    # True when this was resolved against a CUR 2.0 (Data Exports) manifest,
+    # whose columns are already a single flat, snake_case name (e.g.
+    # "line_item_unblended_cost") with no separate category field at all --
+    # see _build_lookup. Carried on the dataclass (rather than threaded
+    # through every call site) because csv_header needs to know which
+    # convention this specific export's raw files actually use.
+    flat: bool = False
 
     def athena_name(self) -> str:
-        """snake_case name AWS uses for Athena/Parquet CUR exports, e.g. line_item_unblended_cost."""
+        """snake_case name AWS uses for Athena/Parquet CUR exports, e.g. line_item_unblended_cost.
+
+        Also CUR 2.0's own column name directly (flat=True) -- not a
+        coincidence: CUR 2.0 standardized on the same flat naming Athena/
+        Parquet already used for legacy CUR, just without the category/name
+        split in its manifest.
+        """
         return f"{_to_snake(self.category)}_{_to_snake(self.name)}"
 
     def csv_header(self) -> str:
-        """Raw header used in legacy CUR CSV part files, e.g. lineItem/UnblendedCost."""
+        """Raw header used in a CUR CSV part file.
+
+        Legacy CUR CSV uses "category/Name" (e.g. lineItem/UnblendedCost).
+        CUR 2.0's CSV output uses the same flat snake_case name as its
+        Parquet/Athena schema instead, unlike legacy CUR's CSV convention.
+        """
+        if self.flat:
+            return self.athena_name()
         return f"{self.category}/{self.name}"
 
 
@@ -72,15 +95,36 @@ def _to_snake(value: str) -> str:
     return _CAMEL_BOUNDARY_2.sub(r"\1_\2", s1).lower()
 
 
+def _build_lookup(manifest_columns: list[dict]) -> tuple[dict, bool]:
+    """Legacy CUR manifests list each column as {"category": ..., "name":
+    ...}; CUR 2.0 (Data Exports) manifests instead give one flat,
+    already-snake_case name per column (e.g. "bill_bill_type") with no
+    category field -- confirmed against a real Smartsheet CUR 2.0 export,
+    whose manifest raised a bare KeyError('category') before this existed.
+    A manifest is consistently one format or the other, so checking the
+    first column decides it for the whole list.
+    """
+    is_flat = bool(manifest_columns) and "category" not in manifest_columns[0]
+    if is_flat:
+        return {c["name"].lower(): c for c in manifest_columns}, True
+    return {(c["category"].lower(), c["name"].lower()): c for c in manifest_columns}, False
+
+
+def _match_candidate(lookup: dict, is_flat: bool, category: str, name: str) -> dict | None:
+    if is_flat:
+        flat_name = f"{_to_snake(category)}_{_to_snake(name)}"
+        return lookup.get(flat_name)
+    return lookup.get((category.lower(), name.lower()))
+
+
 def resolve_columns(manifest_columns: list[dict]) -> dict[str, ResolvedColumn]:
-    lookup = {(c["category"].lower(), c["name"].lower()): c for c in manifest_columns}
+    lookup, is_flat = _build_lookup(manifest_columns)
 
     resolved: dict[str, ResolvedColumn] = {}
     for field, candidates in _CANDIDATES.items():
         for category, name in candidates:
-            match = lookup.get((category.lower(), name.lower()))
-            if match:
-                resolved[field] = ResolvedColumn(category=match["category"], name=match["name"])
+            if _match_candidate(lookup, is_flat, category, name):
+                resolved[field] = ResolvedColumn(category=category, name=name, flat=is_flat)
                 break
 
     missing = _REQUIRED - resolved.keys()
@@ -101,18 +145,18 @@ def resolve_cost_metrics(manifest_columns: list[dict]) -> dict[str, ResolvedColu
     unblended_cost and blended_cost; one that does usually adds the Net*
     variants too.
     """
-    lookup = {(c["category"].lower(), c["name"].lower()): c for c in manifest_columns}
+    lookup, is_flat = _build_lookup(manifest_columns)
 
     metrics: dict[str, ResolvedColumn] = {}
     for metric_name, (category, name) in _COST_METRIC_CANDIDATES:
-        match = lookup.get((category.lower(), name.lower()))
-        if match:
-            metrics[metric_name] = ResolvedColumn(category=match["category"], name=match["name"])
+        if _match_candidate(lookup, is_flat, category, name):
+            metrics[metric_name] = ResolvedColumn(category=category, name=name, flat=is_flat)
     return metrics
 
 
 def resolve_public_on_demand_cost(manifest_columns: list[dict]) -> ResolvedColumn | None:
-    lookup = {(c["category"].lower(), c["name"].lower()): c for c in manifest_columns}
+    lookup, is_flat = _build_lookup(manifest_columns)
     category, name = _PUBLIC_ON_DEMAND_COST_CANDIDATE
-    match = lookup.get((category.lower(), name.lower()))
-    return ResolvedColumn(category=match["category"], name=match["name"]) if match else None
+    if _match_candidate(lookup, is_flat, category, name):
+        return ResolvedColumn(category=category, name=name, flat=is_flat)
+    return None
