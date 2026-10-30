@@ -71,6 +71,11 @@ def run_cur_job(req: CurLoadRequest) -> CurLoadResponse:
 
     manifest_key = find_month_manifest_key(s3_client, location.bucket, location.key, req.month)
     manifest = load_manifest(s3_client, location.bucket, manifest_key)
+    # Temporary diagnostic: cur_columns.py's resolvers assume each
+    # manifest["columns"] entry has "category"/"name" keys, which is true
+    # for legacy CUR but not confirmed for CUR 2.0 (Data Exports) manifests
+    # -- logging the real shape here before guessing at a fix.
+    print(f"manifest keys: {sorted(manifest.keys())!r}; first 3 columns: {manifest.get('columns', [])[:3]!r}")
 
     part_keys = manifest.get("reportKeys") or manifest.get("dataFiles") or []
     if not part_keys:
